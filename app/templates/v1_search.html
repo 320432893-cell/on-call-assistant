@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Phase1: 关键词搜索</title>
+    <style>
+        body { font-family: -apple-system, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        h1 { color: #333; }
+        .search-box { margin: 20px 0; }
+        input[type="text"] { width: 70%; padding: 10px; font-size: 16px; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+        .result { border: 1px solid #eee; padding: 15px; margin: 10px 0; border-radius: 4px; }
+        .result h3 { margin: 0 0 10px 0; color: #0066cc; }
+        .result .score { color: #666; font-size: 14px; }
+        .result .snippet { color: #333; margin-top: 8px; }
+        .error { color: red; padding: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Phase1: 关键词搜索</h1>
+    <div class="search-box">
+        <input type="text" id="query" placeholder="输入关键词，如 OOM、故障、CDN..." />
+        <button onclick="search()">搜索</button>
+    </div>
+    <div id="results"></div>
+
+    <script>
+        document.getElementById('query').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') search();
+        });
+
+        async function search() {
+            const q = document.getElementById('query').value.trim();
+            if (!q) return;
+
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<p>搜索中...</p>';
+
+            try {
+                const resp = await fetch(`/v1/search?q=${encodeURIComponent(q)}`);
+                const data = await resp.json();
+
+                if (data.results.length === 0) {
+                    resultsDiv.innerHTML = '<p>未找到相关文档</p>';
+                    return;
+                }
+
+                resultsDiv.innerHTML = data.results.map(r => `
+                    <div class="result">
+                        <h3>${r.id}: ${r.title}</h3>
+                        <div class="score">相关度: ${r.score.toFixed(4)}</div>
+                        <div class="snippet">${r.snippet}</div>
+                    </div>
+                `).join('');
+
+            } catch (err) {
+                resultsDiv.innerHTML = `<div class="error">搜索失败: ${err.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html>

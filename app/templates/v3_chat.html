@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Phase3: On-Call Agent</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, sans-serif; margin: 0; padding: 16px; background: #fafafa; height: 100vh; display: flex; flex-direction: column; }
+        h1 { margin: 0 0 12px 0; color: #333; font-size: 20px; display: flex; align-items: center; gap: 12px; }
+        .meta { font-size: 11px; color: #999; font-weight: normal; }
+
+        .layout { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; min-height: 0; }
+        .panel { background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; display: flex; flex-direction: column; min-height: 0; }
+        .panel-header { padding: 10px 14px; border-bottom: 1px solid #eee; font-size: 13px; color: #666; font-weight: 600; display: flex; justify-content: space-between; }
+        .panel-body { flex: 1; padding: 12px; overflow-y: auto; }
+        .panel-empty { color: #bbb; text-align: center; margin-top: 60px; font-size: 13px; }
+
+        .msg { margin: 10px 0; padding: 10px 12px; border-radius: 6px; word-wrap: break-word; }
+        .msg.user { background: #e3f2fd; }
+        .msg.assistant { background: #f5f5f5; white-space: pre-wrap; }
+        .msg.system { color: #888; font-size: 12px; }
+
+        .trace { background: #fff8e1; border-left: 3px solid #ffb300; padding: 8px 12px; margin: 6px 0; font-family: ui-monospace, monospace; font-size: 12px; white-space: pre-wrap; word-break: break-all; border-radius: 3px; }
+        .trace.state { background: #e3f2fd; border-left-color: #1976d2; }
+        .trace.tool { background: #fff8e1; }
+        .trace.result { background: #e8f5e9; border-left-color: #43a047; }
+        .trace.error { background: #ffebee; border-left-color: #e53935; }
+        .state-pill { display: inline-block; padding: 2px 8px; border-radius: 10px; background: #1976d2; color: white; font-size: 11px; font-family: -apple-system, sans-serif; }
+        .preview { color: #555; margin-top: 4px; max-height: 80px; overflow: hidden; text-overflow: ellipsis; }
+
+        .input-bar { display: flex; gap: 8px; margin-top: 12px; }
+        #input { flex: 1; padding: 10px 12px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; }
+        button { padding: 10px 18px; font-size: 14px; cursor: pointer; color: white; border: none; border-radius: 4px; transition: background 0.15s; }
+        #sendBtn { background: #1976d2; }
+        #sendBtn:hover:not(:disabled) { background: #1565c0; }
+        #sendBtn:disabled { background: #b0bec5; cursor: not-allowed; }
+        #stopBtn { background: #e53935; display: none; }
+        #stopBtn:hover { background: #c62828; }
+        #clearBtn { background: #757575; }
+        #clearBtn:hover { background: #616161; }
+    </style>
+</head>
+<body>
+    <h1>🤖 Phase3: On-Call Agent <span class="meta" id="sid"></span></h1>
+
+    <div class="layout">
+        <!-- 左侧：对话 -->
+        <div class="panel">
+            <div class="panel-header">
+                <span>💬 对话</span>
+                <button id="clearBtn" onclick="clearChat()" style="padding: 2px 10px; font-size: 12px;">清空</button>
+            </div>
+            <div class="panel-body" id="chat">
+                <div class="panel-empty">向 Agent 提问 On-Call 故障处理流程</div>
+            </div>
+        </div>
+
+        <!-- 右侧：工具调用 / 状态轨迹 -->
+        <div class="panel">
+            <div class="panel-header">
+                <span>🔧 调用过程</span>
+                <span style="font-weight: normal; color: #999;" id="trace-count">0 步</span>
+            </div>
+            <div class="panel-body" id="trace">
+                <div class="panel-empty">Agent 调用工具时会在这里显示状态机切换 / 工具调用 / 工具结果</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="input-bar">
+        <input id="input" placeholder="例如：服务 OOM 了怎么办？" />
+        <button id="sendBtn" onclick="send()">发送</button>
+        <button id="stopBtn" onclick="stopGeneration()">⏸ 暂停</button>
+    </div>
+
+    <script>
+        let sessionId = null;
+        let abortController = null;
+        let traceCount = 0;
+        const chat = document.getElementById('chat');
+        const trace = document.getElementById('trace');
+        const input = document.getElementById('input');
+        const sendBtn = document.getElementById('sendBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const traceCountEl = document.getElementById('trace-count');
+
+        input.addEventListener('keypress', e => { if (e.key === 'Enter') send(); });
+
+        function clearEmpty(container) {
+            const empty = container.querySelector('.panel-empty');
+            if (empty) empty.remove();
+        }
+
+        function addMsg(role, text) {
+            clearEmpty(chat);
+            const div = document.createElement('div');
+            div.className = 'msg ' + role;
+            div.textContent = (role === 'user' ? '👤 ' : (role === 'assistant' ? '🤖 ' : '')) + text;
+            chat.appendChild(div);
+            chat.scrollTop = chat.scrollHeight;
+            return div;
+        }
+
+        function addTrace(content, type = '') {
+            clearEmpty(trace);
+            const div = document.createElement('div');
+            div.className = 'trace ' + type;
+            div.innerHTML = content;
+            trace.appendChild(div);
+            trace.scrollTop = trace.scrollHeight;
+            traceCount++;
+            traceCountEl.textContent = traceCount + ' 步';
+        }
+
+        function clearChat() {
+            chat.innerHTML = '<div class="panel-empty">已清空，开始新对话</div>';
+            trace.innerHTML = '<div class="panel-empty">Agent 调用工具时会在这里显示状态机切换 / 工具调用 / 工具结果</div>';
+            traceCount = 0;
+            traceCountEl.textContent = '0 步';
+            // 不清 sessionId — 让后端 Redis 会话延续；如需重开按 F5
+        }
+
+        function stopGeneration() {
+            if (abortController) {
+                abortController.abort();
+                addMsg('system', '⏸ 已暂停生成');
+            }
+        }
+
+        function setBusy(busy) {
+            sendBtn.disabled = busy;
+            stopBtn.style.display = busy ? 'inline-block' : 'none';
+            if (busy) sendBtn.textContent = '生成中...';
+            else sendBtn.textContent = '发送';
+        }
+
+        async function send() {
+            const message = input.value.trim();
+            if (!message) return;
+            addMsg('user', message);
+            input.value = '';
+            setBusy(true);
+
+            let answerDiv = null;
+            let currentAnswer = '';
+            abortController = new AbortController();
+
+            try {
+                const resp = await fetch('/v3/chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({message, session_id: sessionId}),
+                    signal: abortController.signal,
+                });
+
+                if (!resp.ok) {
+                    const err = await resp.text();
+                    addMsg('system', `[错误 ${resp.status}] ${err}`);
+                    return;
+                }
+
+                const reader = resp.body.getReader();
+                const decoder = new TextDecoder();
+                let buf = '';
+
+                while (true) {
+                    const {value, done} = await reader.read();
+                    if (done) break;
+                    buf += decoder.decode(value, {stream: true});
+
+                    const frames = buf.split('\n\n');
+                    buf = frames.pop();
+                    for (const frame of frames) {
+                        if (!frame.trim()) continue;
+                        let ev = 'message', data = '';
+                        for (const line of frame.split('\n')) {
+                            if (line.startsWith('event: ')) ev = line.slice(7);
+                            else if (line.startsWith('data: ')) data = line.slice(6);
+                        }
+                        let payload = {};
+                        try { payload = JSON.parse(data); } catch {}
+
+                        if (ev === 'session') {
+                            sessionId = payload.session_id;
+                            document.getElementById('sid').textContent = 'session: ' + sessionId.slice(0, 8);
+                        } else if (ev === 'state') {
+                            addTrace(`<span class="state-pill">${payload.state}</span>`, 'state');
+                        } else if (ev === 'think') {
+                            if (!answerDiv) answerDiv = addMsg('assistant', '');
+                            currentAnswer += payload.text || '';
+                            answerDiv.textContent = '🤖 ' + currentAnswer;
+                        } else if (ev === 'tool_call') {
+                            addTrace(`🔧 调用 <b>${payload.tool}</b>(${escapeHtml(JSON.stringify(payload.args))})`, 'tool');
+                        } else if (ev === 'tool_result') {
+                            const icon = payload.ok ? '✅' : '❌';
+                            addTrace(`${icon} 返回 ${payload.length} 字节<div class="preview">${escapeHtml(payload.preview)}</div>`, 'result');
+                        } else if (ev === 'answer') {
+                            if (!answerDiv) answerDiv = addMsg('assistant', payload.text || '');
+                            else answerDiv.textContent = '🤖 ' + (payload.text || currentAnswer);
+                        } else if (ev === 'error') {
+                            addTrace(`❌ ${escapeHtml(payload.message || '')}`, 'error');
+                            addMsg('system', '[错误] ' + (payload.message || ''));
+                        } else if (ev === 'done') {
+                            answerDiv = null;
+                            currentAnswer = '';
+                        }
+                    }
+                }
+            } catch (err) {
+                if (err.name === 'AbortError') {
+                    // 已经在 stopGeneration 里加过 system 消息了
+                } else {
+                    addMsg('system', '[网络错误] ' + err.message);
+                }
+            } finally {
+                setBusy(false);
+                abortController = null;
+            }
+        }
+
+        function escapeHtml(s) {
+            return (s || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+        }
+    </script>
+</body>
+</html>

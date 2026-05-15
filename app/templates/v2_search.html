@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Phase2: 语义搜索</title>
+    <style>
+        body { font-family: -apple-system, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        h1 { color: #333; }
+        .search-box { margin: 20px 0; }
+        input[type="text"] { width: 70%; padding: 10px; font-size: 16px; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+        .result { border: 1px solid #eee; padding: 15px; margin: 10px 0; border-radius: 4px; }
+        .result h3 { margin: 0 0 10px 0; color: #0066cc; }
+        .result .score { color: #666; font-size: 14px; }
+        .result .snippet { color: #333; margin-top: 8px; }
+        .error { color: red; padding: 10px; }
+        .hint { color: #888; font-size: 13px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>Phase2: 语义搜索</h1>
+    <div class="hint">提示：可输入自然语言描述（如"服务器挂了"），系统会返回语义相关的 SOP。</div>
+    <div class="search-box">
+        <input type="text" id="query" placeholder="输入问题，如：服务器挂了 / 黑客攻击 / 推荐质量下降" />
+        <button onclick="search()">搜索</button>
+    </div>
+    <div id="results"></div>
+
+    <script>
+        document.getElementById('query').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') search();
+        });
+
+        async function search() {
+            const q = document.getElementById('query').value.trim();
+            if (!q) return;
+
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<p>搜索中（首次需加载 bge-m3 模型，约 30 秒）...</p>';
+
+            try {
+                const resp = await fetch(`/v2/search?q=${encodeURIComponent(q)}`);
+                const data = await resp.json();
+
+                if (!data.results || data.results.length === 0) {
+                    resultsDiv.innerHTML = '<p>未找到相关文档</p>';
+                    return;
+                }
+
+                resultsDiv.innerHTML = data.results.map(r => `
+                    <div class="result">
+                        <h3>${r.id}: ${r.title}</h3>
+                        <div class="score">相似度: ${r.score.toFixed(4)}</div>
+                        <div class="snippet">${r.snippet}</div>
+                    </div>
+                `).join('');
+
+            } catch (err) {
+                resultsDiv.innerHTML = `<div class="error">搜索失败: ${err.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html>

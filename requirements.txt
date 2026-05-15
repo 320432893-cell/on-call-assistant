@@ -1,0 +1,32 @@
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+python-multipart>=0.0.6
+jinja2>=3.1.2
+python-dotenv>=1.0.0
+
+# Phase1: 全文索引
+# pytantivy 包不存在，改用 tantivy (Python bindings for Tantivy Rust library)
+# 目前稳定版本是: pip install tantivy
+tantivy>=0.21.0
+
+# 数据预处理
+beautifulsoup4>=4.12.0
+jieba>=0.42.1
+lxml>=5.1.0
+
+# Phase2: 向量检索
+qdrant-client>=1.7.0
+sentence-transformers>=2.3.0
+
+# Phase3: Agent
+redis>=5.0.0
+anthropic>=0.18.0
+openai>=1.12.0
+google-genai>=1.0.0
+
+# 开发依赖
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+httpx>=0.27.0

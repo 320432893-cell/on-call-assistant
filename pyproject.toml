@@ -1,0 +1,18 @@
+[project]
+name = "on-call-assistant"
+version = "0.1.0"
+description = "On-Call SOP 助手（关键词搜索 / 语义搜索 / Agent）"
+requires-python = ">=3.11"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+# 让 pytest / PyCharm pytest runner 自动把项目根加入 sys.path
+pythonpath = ["."]
+testpaths = ["scripts", "tests"]
+# 把以 test_ 开头但是普通 main() 风格的脚本也能识别为顶层模块
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-q"
