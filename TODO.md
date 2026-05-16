@@ -68,50 +68,14 @@ http://127.0.0.1:8000/v3   # Agent 对话
 - [ ] 把 `scripts/test_phase*.py` 重写为 pytest 风格（目前是 main() 脚本）
 - [x] 清理 `requirements.txt` 中冗余的 `google-generativeai`（已被 `google-genai` 取代）
 
-## Phase4 — 年报 RAG（market-impact-study，进行中）
+## Phase4 — 年报 RAG（market-impact-study 子项目）
 
-**目标**：基于上市公司年报 PDF 做向量检索 + 跨年报对比 + 战略/薪酬等结构化信息提取，作为 LLM 的 RAG 上下文。
+详见 [`market-impact-study/TODO.md`](market-impact-study/TODO.md)。
 
-**当前状态**：Step 1 PDF 解析已完成验证，下一步灌库 + 检索接口。
-
-### Step 1 — PDF → chunks（已完成 2026-05-16）
-- [x] `pymupdf>=1.26.0` 加入 requirements
-- [x] `data/raw/annual_reports/移远通信_2025.pdf` 首份样本就位（232页，PDF1.7，无加密，含 772 条书签）
-- [x] `app/services/report_pdf.py` 书签驱动的章节级 chunker
-  - 算法：全文拼接 + 叶子标题切片（避免同页多 chunk 文本重复的 bug）
-  - 占位文本剔除（"□适用√不适用" 类模板节）
-  - 表格 markdown 化 + 跨页表格去重
-  - 超长 chunk 软切（max 4000 字，按段落/句号）
-- [x] `scripts/test_report_pdf.py` 验证脚本
-- [x] 输出 `data/processed/annual_reports/移远通信_2025/chunks.jsonl`（339 chunk，平均 531 字，693 表）
-- [x] 抽样验证关键章节（战略/薪酬/风险/研发/董事）全部精准命中
-
-### Step 2 — 灌库 + 检索接口（TODO）
-- [ ] `QdrantService` 加多 collection 支持（`upsert_to(collection,...)` / `search_in(collection,...)`），不破坏 v2 旧调用
-- [ ] `app/services/report_indexer.py` chunks → Qdrant `annual_reports` collection
-  - chunk_id → 稳定 hash（md5），避免 `abs(hash())` 跨进程不稳
-  - payload: `{company, year, section_path, section_title, page_start, page_end, snippet, tables}`
-- [ ] `app/routers/v4_report.py`
-  - `POST /v4/ingest`（手动触发解析+灌库；不做自动首次灌库，因为年报灌库慢且无进度反馈）
-  - `GET /v4/search?q=&company=&year=&limit=`（支持 metadata filter）
-  - `GET /v4/companies` 列出已灌库公司
-- [ ] `scripts/test_v4_report.py` 验证检索质量（query：发展战略 / 董事薪酬 / 研发投入 / 主要风险）
-
-### Step 3 — Agent + 前端（后续，暂不做）
-- [ ] LLM 生成端（RAG prompt 设计 + 调用现有 LLMProvider）
-- [ ] 跨年报对比（多次检索 + agent 编排）
-- [ ] 前端 `v4_report.html`
-
-### Phase4 决策记录
-| 决策 | 选择 | 理由 |
-|------|------|------|
-| 项目位置 | 在当前仓库加 v4 路由（非独立项目） | 共用 embedder/vectorstore 预热成本 |
-| 集合隔离 | 独立 collection `annual_reports` | metadata schema 不同；与 v2 SOP 物理隔离 |
-| Chunk 边界 | TOC 叶子节点 + 标题切片 | 移远PDF 772条书签，三级粒度 ~339 chunk |
-| 表格处理 | markdown 化追加到所属 chunk 末尾 | LLM 能直接读懂；不单独建表格 chunk 避免割裂上下文 |
-| chunk_id 格式 | `{company}_{year}#{section_path}[#partN]` | 例：`移远通信_2025#第三节/.../(四)` |
-| 灌库触发 | 手动 `POST /v4/ingest`，不自动 | 年报灌库慢（~3-5分钟），无进度反馈会卡死首次请求 |
-| Agent | 暂不做，先打通核心检索 | 用户明确：核心是 RAG，agent 和前端先放 |
+**进度速览**：
+- Step 1 PDF → chunks ✅ 已完成 2026-05-16（`c8598a0`），产出 339 chunk / 693 表
+- Step 2 灌库 + 检索接口 🔵 待用户确认两个决策点后开干
+- Step 3 RAG 生成 / Step 4 Agent + 前端 ⚪ 后续
 
 ## 文件结构（最终）
 
