@@ -20,6 +20,9 @@ lxml>=5.1.0
 qdrant-client>=1.7.0
 sentence-transformers>=2.3.0
 
+# Phase4: 年报 PDF 解析
+pymupdf>=1.26.0
+
 # Phase3: Agent
 redis>=5.0.0
 anthropic>=0.18.0
