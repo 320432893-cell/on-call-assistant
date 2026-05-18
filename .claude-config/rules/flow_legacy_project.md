@@ -54,12 +54,17 @@
 
 **调用**:`bash ~/.claude/hooks/legacy_health_check.sh gate2 <项目路径>`
 
-**检查项**:
+**检查项**(本脚本独有):
 - ruff 违规密度(违规数 / 千行代码)
-- 文件大小分布(>500 行文件数)
-- 函数大小分布(>100 行函数数)
-- 循环依赖(import-linter 或 pydeps)
 - 最近修改时间分布(看是否混乱叠加修改)
+
+**与 engineering_audit hook 的分工**(避免重复):
+- 文件大小 >500 行 / >300 行 (.vue) → `engineering_audit.sh` 已自动扫
+- 循环依赖 (pydeps) / 死代码 (vulture) → `engineering_audit.sh` 已自动扫
+- 大函数 >100 行 → ruff PLR0915 + engineering_audit 双层覆盖
+- .gitignore / 大文件入库 / tests/ 缺失 → `engineering_audit.sh` 红线层
+
+> 老项目接手时:门 1 (legacy_health_check gate1) → 门 2 (gate2 跑独有项) → engineering_audit 自动报全景。
 
 **评分粗略**:
 - ruff < 50/千行 + 无 >500 行文件 + 无循环依赖 → **健康**
@@ -153,9 +158,16 @@ snake_case / camelCase / 混用
 
 ## 8. 老项目特别红线
 
+> **2026-05-18 hook 接管声明**:
+> - 风格分裂(snake/camel 混用)→ `ruff N` 规则集已物理拦截(`.ruff.toml`)
+> - 幽灵引用(改名/删除后旧名残留)→ `rename_audit.sh` hook 在 Edit/MultiEdit 后自动 grep 全项目报警
+> - 重复造轮子(死代码 / 未用 import)→ `vulture` + `ruff F401` 由 ruff_check / engineering_audit 接管
+>
+> 本节红线仍是思考层强制(hook 只查机械模式,语义判断仍需 AI),但**机械层不再依赖 AI 自觉**。
+
 ### 风格分裂红线
-- 老代码用 snake_case → 新加代码不准用 camelCase
-- 老代码函数式 → 不准硬塞 OOP 类
+- 老代码用 snake_case → 新加代码不准用 camelCase(`ruff N` 已物理拦)
+- 老代码函数式 → 不准硬塞 OOP 类(语义层,AI 自觉)
 - 老代码 print → 老项目沿用 print(直到统一改造为止),不能新代码 logging 老代码 print
 
 ### 范式分裂红线
@@ -166,9 +178,9 @@ snake_case / camelCase / 混用
 - 必须 grep 已有 utils,优先复用
 - 新建函数前 grep 同名 / 类似函数
 
-### 幽灵引用红线
-- 改名 / 删除后必须 grep 旧名 → 无残留
-- 改函数签名后必须 grep 调用方 → 全部更新
+### 幽灵引用红线(hook 已接管)
+- 改名 / 删除后必须 grep 旧名 → 无残留(`rename_audit.sh` 自动报)
+- 改函数签名后必须 grep 调用方 → 全部更新(语义层,AI 自觉 + import-linter 兜底)
 
 ---
 

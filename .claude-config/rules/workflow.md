@@ -238,5 +238,10 @@
 - `.py` 改后对应 `test_*.py` 存在 → `test_reminder.sh` stderr 提醒跑测试
 - `.json` / `.jsonl` 改后语法非法 → `json_lint.sh` stderr 报告
 - 用户 prompt 含场景关键词 → `rule_activator.sh` 注入对应规则文件路径
+- 跨层 import 违规(`routers > services > models > config`) → `import_lint.sh` stderr 报告
+- 工程缺口(.gitignore / 大文件 / 大函数 / 循环依赖 / 死代码 / .vue >300 行) → `engineering_audit.sh` 6h 内首次会话报全景
+- 改名/删除后旧名残留 → `rename_audit.sh` 在 Edit/MultiEdit 后自动 grep
+- 新项目首迭代 >50 行 → `first_iter_lines.sh` 提醒(老项目仅新建文件触发)
+- Playwright 文件含 `time.sleep(` → `playwright_no_sleep.sh` 报告
 
 > hook 失败时 AI 仍按本文件强制规则的思考层兜底,不依赖 hook 单点。

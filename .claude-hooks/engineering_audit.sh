@@ -155,7 +155,7 @@ elif [ "$test_count" -lt 3 ] && [ "$py_count" -ge 20 ]; then
   hints="${hints}\n  ★ 项目 $py_count 个 .py 但只有 $test_count 个测试 → 覆盖偏低"
 fi
 
-# 5.7 大文件 >500 行
+# 5.7 大文件 >500 行 (.py) / >300 行 (.vue)
 big_files=$(find "$project_root" -name "*.py" \
   -not -path "*/.venv/*" -not -path "*/venv/*" \
   -not -path "*/__pycache__/*" -not -path "*/.git/*" \
@@ -163,11 +163,26 @@ big_files=$(find "$project_root" -name "*.py" \
     lines=$(wc -l < "$f" 2>/dev/null || echo 0)
     [ "$lines" -gt 500 ] && echo "$f ($lines 行)"
   done | head -5)
-if [ -n "$big_files" ]; then
-  hints="${hints}\n  ★ 大文件 >500 行(SRP 信号):"
-  while IFS= read -r line; do
-    hints="${hints}\n      - $line"
-  done <<< "$big_files"
+big_vue=$(find "$project_root" -name "*.vue" \
+  -not -path "*/node_modules/*" -not -path "*/.git/*" \
+  -not -path "*/dist/*" 2>/dev/null | while read f; do
+    lines=$(wc -l < "$f" 2>/dev/null || echo 0)
+    [ "$lines" -gt 300 ] && echo "$f ($lines 行)"
+  done | head -5)
+if [ -n "$big_files" ] || [ -n "$big_vue" ]; then
+  hints="${hints}\n  ★ 大文件(SRP 信号):"
+  if [ -n "$big_files" ]; then
+    hints="${hints}\n      [.py >500 行]"
+    while IFS= read -r line; do
+      hints="${hints}\n      - $line"
+    done <<< "$big_files"
+  fi
+  if [ -n "$big_vue" ]; then
+    hints="${hints}\n      [.vue >300 行]"
+    while IFS= read -r line; do
+      hints="${hints}\n      - $line"
+    done <<< "$big_vue"
+  fi
 fi
 
 # 5.8 大函数 >100 行(用 grep 估,不精确但够用)

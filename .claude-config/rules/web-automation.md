@@ -72,6 +72,10 @@
 
 ## 3. 等待策略规则【强制】
 
+> **2026-05-18 hook 接管声明**:
+> Playwright 文件含 `time.sleep(` → `playwright_no_sleep.sh` hook 在 Edit/Write 后自动 stderr 报警
+> 本规则的自检表仍是思考层强制(超时/重试/降级方案 hook 查不到),但**硬编码 sleep 不再依赖 AI 自觉**。
+
 ### 触发条件
 新增元素定位、页面操作
 

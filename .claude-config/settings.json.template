@@ -57,6 +57,18 @@
           {
             "type": "command",
             "command": "bash ~/.claude/hooks/import_lint.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/rename_audit.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/first_iter_lines.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/playwright_no_sleep.sh"
           }
         ]
       }

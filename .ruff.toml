@@ -9,6 +9,8 @@ line-length = 120
 select = [
     # 基础(默认就该有)
     "E", "F", "W",
+    # 命名规范(老项目防风格分裂,2026-05-18 加入)
+    "N",       # pep8-naming:类 CamelCase / 函数 snake_case / 常量 UPPER 等
     # 常见 bug 模式
     "B",       # flake8-bugbear:可变默认参数等
     "BLE",     # blind-except
@@ -57,6 +59,8 @@ ignore = [
     "RUF001", "RUF002", "RUF003",
     # S101 assert 在测试和断言式编程常用,不算安全问题
     "S101",
+    # N806 函数内大写变量(常量惯用法)不算违规
+    "N806",
 ]
 
 [lint.per-file-ignores]
