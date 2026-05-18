@@ -73,6 +73,10 @@
           {
             "type": "command",
             "command": "bash ~/.claude/hooks/http_timeout.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/fastapi_debug.sh"
           }
         ]
       }
