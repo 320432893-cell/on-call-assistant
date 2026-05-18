@@ -77,6 +77,18 @@
           {
             "type": "command",
             "command": "bash ~/.claude/hooks/fastapi_debug.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/rag_hygiene.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/rag_drift.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/ml_timeseries.sh"
           }
         ]
       }

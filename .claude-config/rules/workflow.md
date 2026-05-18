@@ -246,5 +246,8 @@
 - HTTP 客户端调用无 `timeout=` → `http_timeout.sh` ast 解析后报告(requests/httpx/urllib)
 - 标准库 `random.*` 用于业务输出无 `random.seed()` → `ruff_check.sh` 自定义检查报告
 - FastAPI/Flask `debug=True` 硬编码 / CORS `allow_origins=["*"]` / uvicorn `reload=True` → `fastapi_debug.sh` ast 解析报告
+- RAG 反模式(双塔 embedder 漏 is_query / COSINE 配 normalize=False / top_k=1) → `rag_hygiene.sh` ast 解析报告
+- RAG 数据契约漂移(EMBEDDING_MODEL/chunk_size/Distance 等关键字段在 git 改动) → `rag_drift.sh` 提醒重灌 collection
+- 时序 ML 反模式(train_test_split 用在时序 / xgb/sklearn 缺 random_state / .shift(-N)+fit 共存自查) → `ml_timeseries.sh` ast 解析报告
 
 > hook 失败时 AI 仍按本文件强制规则的思考层兜底,不依赖 hook 单点。
