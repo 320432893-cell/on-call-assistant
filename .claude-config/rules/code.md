@@ -138,11 +138,12 @@
 
 > **2026-05-18 hook 接管声明**:
 > - `enumerate(set/dict.keys)` 不稳定排序 → `ruff_check.sh` 自定义 grep 拦截
-> - `random.*` / `np.random.*` 无 seed → `ruff NPY002` 拦截
+> - 标准库 `random.*` 用于业务输出无 `random.seed()` → `ruff_check.sh` 自定义 grep 拦截
+> - `numpy.random.*` 老接口 → `ruff NPY002` 拦截
 > - `os.listdir` / `glob.glob` 未 sorted → 语义层,**仅"业务依赖顺序"时需 AI 判断**,无固定形式
 >
-> 触发 hook 报告后,AI 在响应中按报告位置加 `sorted()` 或在 `# 范式: 确定性` 注释里说明业务接受无序即可。
-> 本节原 3 条阻断子项全部由工具链覆盖,不再要求填自检表。
+> 触发 hook 报告后,AI 在响应中按报告位置加 `sorted()` / `random.seed()`,或在 `# 范式: 确定性 — 业务接受不可复现` 注释里说明即可。
+> 本节原 3 条阻断子项已全部由工具链覆盖,不再要求填自检表。
 
 ---
 

@@ -243,5 +243,7 @@
 - 改名/删除后旧名残留 → `rename_audit.sh` 在 Edit/MultiEdit 后自动 grep
 - 新项目首迭代 >50 行 → `first_iter_lines.sh` 提醒(老项目仅新建文件触发)
 - Playwright 文件含 `time.sleep(` → `playwright_no_sleep.sh` 报告
+- HTTP 客户端调用无 `timeout=` → `http_timeout.sh` ast 解析后报告(requests/httpx/urllib)
+- 标准库 `random.*` 用于业务输出无 `random.seed()` → `ruff_check.sh` 自定义检查报告
 
 > hook 失败时 AI 仍按本文件强制规则的思考层兜底,不依赖 hook 单点。
