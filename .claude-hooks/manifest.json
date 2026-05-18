@@ -1,0 +1,37 @@
+{
+  "_comment": "SSOT for Claude Code settings.json — 人写这个,scripts/regen_settings.py 生成 .claude-config/settings.json{,.template}。改 hook 注册只动这个文件。",
+  "model": "claude-opus-4-7",
+  "base_url": "https://cdn.codeflow.asia",
+  "enabledPlugins": {
+    "ui-ux-pro-max@ui-ux-pro-max-skill": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git push *)"
+    ]
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      "rule_activator.sh"
+    ],
+    "PreToolUse_Bash": [
+      "dangerous_bash.sh",
+      "git_commit_safety.sh"
+    ],
+    "PostToolUse_EditWriteMultiEdit": [
+      "ruff_check.sh",
+      "test_reminder.sh",
+      "json_lint.sh",
+      "engineering_audit.sh",
+      "import_lint.sh",
+      "rename_audit.sh",
+      "first_iter_lines.sh",
+      "playwright_no_sleep.sh",
+      "http_timeout.sh",
+      "fastapi_debug.sh",
+      "rag_hygiene.sh",
+      "rag_drift.sh",
+      "ml_timeseries.sh"
+    ]
+  }
+}

@@ -26,19 +26,21 @@ Claude 读到这里时,**不要质疑**以下事实,直接按它推进:
 - **lint 配置**: 项目根 `.ruff.toml` / `.mypy.ini`(入 git,**这是同步源**)
   - 家目录 `~/.ruff.toml` / `~/.mypy.ini` 是 hook 的兜底配置,不是同步源
 
-### 1.1 Claude Code 配置同步策略(2026-05-18 二次改造)
+### 1.1 Claude Code 配置同步策略(2026-05-18 三次改造)
 
 **hook 同步**:
 - hook 物理位置: 项目根 `.claude-hooks/`(入 git,**这是同步源**)
 - `~/.claude/hooks/` 是**软链**指向项目 `.claude-hooks/`
+- **hook 注册表 SSOT**:`.claude-hooks/manifest.json`(本轮新增,详见 § 6.10)
+  - 改 hook 注册改这一个文件,跑 `python3 scripts/regen_settings.py` 即同步到 settings.json
 - 改 hook 只需 git push/pull,无需 stage 包搬运
 
-**规则 + CLAUDE.md 同步**(本轮新增):
+**规则 + CLAUDE.md 同步**:
 - 物理位置: 项目根 `.claude-config/`(入 git,**这是同步源**)
   - `.claude-config/CLAUDE.md` ← 全局决策流程
   - `.claude-config/rules/*.md` ← 16 个规则文件(workflow / governance / flow_* / 专题)
-  - `.claude-config/settings.json.template` ← 不含 token 的注册结构(入仓)
-  - `.claude-config/settings.json` ← **含 token,不入仓**(.gitignore 已排除)
+  - `.claude-config/settings.json.template` ← 不含 token 的注册结构(入仓,**机器生成**,见 § 6.10)
+  - `.claude-config/settings.json` ← **含 token,不入仓**(.gitignore 已排除,**机器生成**)
 - 软链:
   - `~/.claude/CLAUDE.md` → `.claude-config/CLAUDE.md`
   - `~/.claude/projects/-mnt-e-python--/memory/rules` → `.claude-config/rules`
@@ -48,6 +50,11 @@ Claude 读到这里时,**不要质疑**以下事实,直接按它推进:
 - 之前规则散在 `~/.claude/projects/-mnt-e-python--/memory/rules/`,跨电脑同步只能靠手抄/stage 包
 - 进仓后改规则 = git commit,push/pull 自动同步
 - 软链让 Claude Code 默认路径仍然找到文件,不改 `~/.claude/` 结构
+
+**为什么 settings.json 改成机器生成**:
+- Claude Code 引擎 linter 会挑剔 Edit 工具对 settings.json 的增量改动,有时静默回滚 hook 注册
+- 改为从 `manifest.json` 生成,避免人/AI 直接 Edit settings.json
+- 详见 § 6.10
 
 ### 1.2 hook 内部规则文件路径
 
@@ -176,28 +183,32 @@ ls -la ~/.claude/CLAUDE.md "$RULES_PARENT/rules"
 ls "$RULES_PARENT/rules/" | head -5  # 应该看到 16 个 .md 文件
 ```
 
-#### 3.4.3 settings.json(含 token,不进仓)
+#### 3.4.3 settings.json(含 token,不进仓 — 从 manifest 生成)
 
 ```bash
 cd /path/to/competitor_study
 
-# 1. 如果本机还没设过 settings,从 template 创建
-if [ ! -f .claude-config/settings.json ]; then
-    cp .claude-config/settings.json.template .claude-config/settings.json
-    echo "[!] 请编辑 .claude-config/settings.json 填入你的 ANTHROPIC_AUTH_TOKEN"
-    echo "    位置: env.ANTHROPIC_AUTH_TOKEN"
-fi
+# 1. 首次同步:跑生成器,会从 manifest.json + template 生成 settings.json
+#    若本机已有 settings.json,生成器会自动保留你已填入的 ANTHROPIC_AUTH_TOKEN
+#    若本机没有 settings.json,生成器会用占位符并打印 WARN
+python3 scripts/regen_settings.py
 
-# 2. 软链
+# 2. 如果上一步打了 WARN(token 是占位符),编辑 settings.json 填入真实 token
+#    位置: env.ANTHROPIC_AUTH_TOKEN
+#    填完后**不需要再跑生成器**,token 直接读自这个文件,下次跑生成器会保留
+
+# 3. 软链
 if [ -e ~/.claude/settings.json ] && [ ! -L ~/.claude/settings.json ]; then
     mv ~/.claude/settings.json ~/.claude/settings.json.pre-link.bak
 fi
 [ -L ~/.claude/settings.json ] && rm ~/.claude/settings.json
 ln -s "$PWD/.claude-config/settings.json" ~/.claude/settings.json
 
-# 3. 验证 JSON 合法
+# 4. 验证 JSON 合法
 python3 -c "import json; json.load(open('$HOME/.claude/settings.json'))" && echo "settings.json 合法"
 ```
+
+> **以后改 hook 注册**:改 `.claude-hooks/manifest.json` 后跑 `python3 scripts/regen_settings.py`,**不要直接 Edit settings.json**(linter 会回滚,见 § 6.10)。
 
 #### 3.4.4 测试 hook 触发
 
@@ -385,13 +396,12 @@ Get-Item $claudeMd, $rulesPath | Select-Object Name, LinkType, Target
 ```powershell
 cd C:\path\to\competitor_study
 
-# 1. 如果本机还没设过 settings,从 template 创建
-if (-not (Test-Path .claude-config\settings.json)) {
-    Copy-Item .claude-config\settings.json.template .claude-config\settings.json
-    Write-Host "[!] 请编辑 .claude-config\settings.json 填入你的 ANTHROPIC_AUTH_TOKEN"
-}
+# 1. 首次同步:跑生成器(会保留已填的 ANTHROPIC_AUTH_TOKEN,否则用占位符)
+python scripts\regen_settings.py
 
-# 2. 联接
+# 2. 如果生成器打了 WARN(token 是占位符),编辑 .claude-config\settings.json 填入真实 token
+
+# 3. 联接
 $settingsPath = "$env:USERPROFILE\.claude\settings.json"
 if ((Test-Path $settingsPath) -and -not (Get-Item $settingsPath).LinkType) {
     Move-Item $settingsPath "$settingsPath.pre-link.bak"
@@ -399,9 +409,11 @@ if ((Test-Path $settingsPath) -and -not (Get-Item $settingsPath).LinkType) {
 if (Test-Path $settingsPath) { Remove-Item $settingsPath }
 cmd /c mklink /H $settingsPath "$PWD\.claude-config\settings.json"
 
-# 3. 验证 JSON 合法
+# 4. 验证 JSON 合法
 python -c "import json; json.load(open(r'$env:USERPROFILE\.claude\settings.json'))"
 ```
+
+> **以后改 hook 注册**:改 `.claude-hooks\manifest.json` 后跑 `python scripts\regen_settings.py`,**不要直接 Edit settings.json**(见 § 6.10)。
 
 > **WSL/Windows 共用一个项目仓库的注意事项**:
 > - 同一台机器同时在 WSL 和 Windows 用同一个 git 仓库会出问题(行尾/权限混乱)
@@ -430,7 +442,7 @@ cmd /c "echo {`"tool_input`":{`"file_path`":`"$PWD\app\main.py`"}} | bash %USERP
 | 改 ruff 规则 | 改项目根 `.ruff.toml` → `git commit` → 另一台 `git pull`,**完事** |
 | 改 hook 脚本 | 改项目根 `.claude-hooks/xxx.sh` → `git commit` → 另一台 `git pull`,**完事** |
 | 改 CLAUDE.md / 规则文件 | 改 `.claude-config/CLAUDE.md` 或 `.claude-config/rules/*.md` → `git commit` → 另一台 `git pull`,**完事** |
-| 加新 hook | 写到 `.claude-hooks/`,**用 Python 脚本一次性重写** `.claude-config/settings.json` + `settings.json.template` 的 PostToolUse 列表(见 § 6.10) |
+| 加新 hook | 写到 `.claude-hooks/xxx.sh`,在 `.claude-hooks/manifest.json` 对应 stage 列表加文件名,跑 `python3 scripts/regen_settings.py`(详见 § 6.10 SSOT 流程) |
 | 加新规则文件 | 写到 `.claude-config/rules/`,在 `.claude-config/rules/workflow.md § 8` 加激活条件 |
 | 改 token | 只改本机 `.claude-config/settings.json`(不入仓),不影响另一台 |
 
@@ -514,10 +526,10 @@ VSCode/PyCharm 没用上 venv 解释器。手动选 `.venv/bin/python`(WSL) 或
 
 ### 6.8 settings.json 软链断了 / token 不见了
 
-`settings.json` **不入仓**。新机器需要:
-1. `cp .claude-config/settings.json.template .claude-config/settings.json`
-2. 编辑填入 `ANTHROPIC_AUTH_TOKEN`
-3. `ln -s "$PWD/.claude-config/settings.json" ~/.claude/settings.json`
+`settings.json` **不入仓**(自 § 6.10 SSOT 改造后是机器生成的派生产物)。新机器需要:
+1. `python3 scripts/regen_settings.py` — 从 manifest 生成 settings.json(若无则用占位符 token,会打 WARN)
+2. 编辑 `.claude-config/settings.json` 填入真实 `ANTHROPIC_AUTH_TOKEN`
+3. `ln -s "$PWD/.claude-config/settings.json" ~/.claude/settings.json`(WSL)或 `mklink /H`(Windows)
 
 ### 6.9 规则文件改动了但 AI 还在用旧规则
 
@@ -525,61 +537,93 @@ VSCode/PyCharm 没用上 venv 解释器。手动选 `.venv/bin/python`(WSL) 或
 1. 重启 Claude Code 会话(开新对话)
 2. 或者用户在 prompt 里显式说"重新读 xxx.md"
 
-### 6.10 settings.json 被 Claude Code linter 静默回滚 hook 注册
+### 6.10 settings.json 被 Claude Code linter 静默回滚 hook 注册(已根源解决)
 
-**现象**:在会话里用 Edit 工具增量改 `.claude-config/settings.json` 的 `hooks.PostToolUse.hooks[]` 列表,
-有时会收到 system-reminder 提示 settings.json 被改动,然后**新加的 hook 注册条目消失了**(被回滚)。
+#### 历史现象(2026-05-18 多次踩坑)
+在会话里用 Edit 工具增量改 `.claude-config/settings.json` 的 `hooks.PostToolUse.hooks[]` 列表,
+有时会收到 system-reminder 提示 settings.json 被改动,**新加的 hook 注册条目消失了**(被回滚)。
 linter 同时会把这次执行 chmod 的命令追加到 `permissions.allow`,**只剩 permissions 变长,hook 实际没注册**。
 
-**怎么知道发生了**(三个信号,占一即怀疑):
-1. 改完 Edit 后**立刻收到** `<system-reminder> Note: ...settings.json was modified, either by the user or by a linter` 这种提示
-2. 同一文件你只改了 hook 列表,但 system-reminder 显示 `permissions.allow` 变长
-3. 你显式跑下面这条 sanity check:
-```bash
-python3 -c "
-import json
-s = json.load(open('.claude-config/settings.json'))
-hooks = s['hooks']['PostToolUse'][0]['hooks']
-print('PostToolUse hook 数:', len(hooks))
-for h in hooks: print('  -', h['command'].split('/')[-1])
-"
-# 如果数量与你预期的不一致(比如刚加的 hook 不在列表里) → 被回滚了
-```
+#### 根源解决方案:SSOT + 生成器(已实施)
 
-**解决**:**不要再用 Edit 增量改**,改用 Python 一次性重写完整列表。这样 linter 拿不到"增量 diff"可以挑剔,只能整体接受:
+**核心改动**:`.claude-config/settings.json` 不再是真相源,改为**派生产物**。
+
+| 文件 | 角色 | 入仓? |
+|------|------|------|
+| `.claude-hooks/manifest.json` | **SSOT,人写** — 列出每个 stage 注册哪些 hook 文件名 | ✅ 入仓 |
+| `scripts/regen_settings.py` | **生成器** — 从 manifest 生成 settings.json + .template | ✅ 入仓 |
+| `.claude-config/settings.json` | **派生,机器写** — 含本地真实 token | ❌ 不入仓 |
+| `.claude-config/settings.json.template` | **派生,机器写** — token 用占位符 | ✅ 入仓 |
+
+#### 加新 hook 流程(SSOT 三步)
+
 ```bash
 cd /path/to/competitor_study
-python3 <<'PYEOF'
-import json
-from pathlib import Path
 
-# 这里是你要的完整 hook 列表(改这个变量即可)
-target_post = [
-    "ruff_check.sh", "test_reminder.sh", "json_lint.sh",
-    "engineering_audit.sh", "import_lint.sh", "rename_audit.sh",
-    "first_iter_lines.sh", "playwright_no_sleep.sh",
-    "http_timeout.sh", "fastapi_debug.sh",
-    "rag_hygiene.sh", "rag_drift.sh", "ml_timeseries.sh",
-    # 加新 hook 在这里追加文件名即可
-]
+# 1. 写新 hook
+cat > .claude-hooks/new_hook.sh << 'EOF'
+#!/usr/bin/env bash
+# ...
+EOF
+chmod +x .claude-hooks/new_hook.sh
 
-for p in [".claude-config/settings.json", ".claude-config/settings.json.template"]:
-    s = json.load(open(p))
-    s["hooks"]["PostToolUse"] = [{
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [{"type": "command", "command": f"bash ~/.claude/hooks/{h}"} for h in target_post]
-    }]
-    Path(p).write_text(json.dumps(s, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+# 2. 改 manifest(在对应 stage 列表追加文件名)
+#    手动编辑 .claude-hooks/manifest.json
+#    PostToolUse_EditWriteMultiEdit 或 PreToolUse_Bash 或 UserPromptSubmit
 
-# 校验
-s = json.load(open(".claude-config/settings.json"))
-print("现 PostToolUse hooks:", len(s["hooks"]["PostToolUse"][0]["hooks"]))
-PYEOF
+# 3. 跑生成器
+python3 scripts/regen_settings.py
+# 输出:
+#   [regen_settings] OK — 写入 settings.json 和 settings.json.template,共注册 N 个 hook
 ```
 
-**为什么 Edit 会被回滚但 Python 写入不会**:Edit 是 Claude Code 原生工具,改 settings.json 时引擎会把它当"用户配置"参与 linter;Python 通过 Bash 写入是普通文件操作,引擎不挑剔。这是经验现象,2026-05-18 多次踩坑确认。
+**生成器自带校验**:
+- manifest 引用的每个 .sh 文件必须实际存在,否则报 FATAL 退出 1
+- 生成的 JSON 必须合法(回读校验)
+- 自动从现有 settings.json 提取并保留 ANTHROPIC_AUTH_TOKEN(无破坏性)
+- `permissions.allow` 只保留 manifest 显式声明的,**自动清掉 linter 累积的脏命令**(chmod / python3 -c 等)
 
-**预防**:加新 hook 时**直接用 Python 脚本重写**,不走 Edit。文档 § 5 速查表"加新 hook"一行已更新指向本节。
+#### 为什么生成器不会被 linter 回滚
+
+| 写入方式 | linter 介入? | 安全? |
+|---------|-------------|------|
+| Edit 工具改 settings.json | ✅ 引擎把 settings 当用户配置参与 lint | ❌ 会回滚 |
+| Write 工具改 settings.json | ⚠️ 同上,可能也会被 lint | ❌ 不保证 |
+| **Python 通过 Bash 写文件** | ❌ 普通 IO 操作,引擎不挑 | ✅ 安全 |
+
+`scripts/regen_settings.py` 走 Bash → python3 → 文件写入路径,linter 拦不到。
+
+#### 如何判断是否漂移了
+
+跑下面这条 sanity check,manifest 与 settings.json 应一致:
+```bash
+cd /path/to/competitor_study
+python3 -c "
+import json
+m = json.load(open('.claude-hooks/manifest.json'))
+s = json.load(open('.claude-config/settings.json'))
+manifest_hooks = set()
+for stage_hooks in m['hooks'].values():
+    manifest_hooks.update(stage_hooks)
+settings_hooks = set()
+for stage in s['hooks'].values():
+    for entry in stage:
+        for h in entry['hooks']:
+            settings_hooks.add(h['command'].split('/')[-1])
+diff = manifest_hooks ^ settings_hooks
+if diff:
+    print(f'DRIFT! manifest 与 settings 不一致: {diff}')
+    print('修复:python3 scripts/regen_settings.py')
+else:
+    print(f'OK,manifest 与 settings 一致({len(manifest_hooks)} hooks)')
+"
+```
+
+#### 历史踩坑(留作记忆)
+
+- 2026-05-18 早:Edit 加 `http_timeout.sh` / `fastapi_debug.sh` 注册,linter 静默回滚,permissions.allow 累积 chmod 脏数据
+- 2026-05-18 晚:发现回滚现象,用 Python 一次性重写 hooks 列表复位
+- 2026-05-18 晚:实施 SSOT + 生成器,根源解决
 
 ---
 

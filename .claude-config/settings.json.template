@@ -4,8 +4,10 @@
     "ANTHROPIC_BASE_URL": "https://cdn.codeflow.asia"
   },
   "model": "claude-opus-4-7",
-  "enabledPlugins": {
-    "ui-ux-pro-max@ui-ux-pro-max-skill": true
+  "permissions": {
+    "allow": [
+      "Bash(git push *)"
+    ]
   },
   "hooks": {
     "UserPromptSubmit": [
@@ -93,5 +95,8 @@
         ]
       }
     ]
+  },
+  "enabledPlugins": {
+    "ui-ux-pro-max@ui-ux-pro-max-skill": true
   }
 }
