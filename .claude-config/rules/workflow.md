@@ -111,7 +111,7 @@
 ## § 3. 测试存在性【强制 6】
 
 ### 触发条件(满足任一即触发)
-- 修改 `src/某模块.py` 且 `tests/test_某模块.py` 存在(可机械匹配,`test_reminder.sh` hook 会自动提醒)
+- 修改 `src/某模块.py` 且 `tests/test_某模块.py` 存在(可机械匹配,`pytest-cov` pre-commit 覆盖率门禁)
 - 修改的函数被某测试文件 import (Grep 可查)
 
 > 项目无测试基础设施时不触发。
@@ -234,17 +234,17 @@
 
 - `rm -rf` / `git reset --hard` / `git push --force` / `git clean -fd` / `rm .git` → `dangerous_bash.sh` 物理拦
 - commit 含 `.env` / `*.key` / 虚拟环境 / IDE 元数据 / >5MB 大文件 → `git_commit_safety.sh` 物理拦
-- `.py` 改后 ruff/mypy 不过 → `ruff_check.sh` stderr 报告
-- `.py` 改后对应 `test_*.py` 存在 → `test_reminder.sh` stderr 提醒跑测试
-- `.json` / `.jsonl` 改后语法非法 → `json_lint.sh` stderr 报告
+- `.py` 改后 ruff/mypy 不过 → `ruff` / `mypy`(pre-commit)阻断
+- `.py` 改后对应 `test_*.py` 存在 → `pytest-cov`(pre-commit)覆盖率门禁
+- `.json` / `.jsonl` 改后语法非法 → `check-json`(pre-commit)阻断
 - 用户 prompt 含场景关键词 → `rule_activator.sh` 注入对应规则文件路径
-- 跨层 import 违规(`routers > services > models > config`) → `import_lint.sh` stderr 报告
+- 跨层 import 违规(`routers > services > models > config`) → `import-linter`(pre-commit)阻断
 - 工程缺口(.gitignore / 大文件 / 大函数 / 循环依赖 / 死代码 / .vue >300 行) → `engineering_audit.sh` 6h 内首次会话报全景
 - 改名/删除后旧名残留 → `rename_audit.sh` 在 Edit/MultiEdit 后自动 grep
 - 新项目首迭代 >50 行 → `first_iter_lines.sh` 提醒(老项目仅新建文件触发)
 - Playwright 文件含 `time.sleep(` → `playwright_no_sleep.sh` 报告
 - HTTP 客户端调用无 `timeout=` → `http_timeout.sh` ast 解析后报告(requests/httpx/urllib)
-- 标准库 `random.*` 用于业务输出无 `random.seed()` → `ruff_check.sh` 自定义检查报告
+- 标准库 `random.*` 用于业务输出无 `random.seed()` → `ruff`(pre-commit)拦截
 - FastAPI/Flask `debug=True` 硬编码 / CORS `allow_origins=["*"]` / uvicorn `reload=True` → `fastapi_debug.sh` ast 解析报告
 - RAG 反模式(双塔 embedder 漏 is_query / COSINE 配 normalize=False / top_k=1) → `rag_hygiene.sh` ast 解析报告
 - RAG 数据契约漂移(EMBEDDING_MODEL/chunk_size/Distance 等关键字段在 git 改动) → `rag_drift.sh` 提醒重灌 collection

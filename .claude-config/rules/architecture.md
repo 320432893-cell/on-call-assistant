@@ -38,7 +38,7 @@
 
 > **2026-05-18 hook 接管声明**:
 > 跨层反向 import(引擎层 → 服务层 / 页面层 → 引擎层 / 公共层 → 业务模块)
-> 由 `import_lint.sh` hook + 项目根 `.importlinter` 配置物理拦截。
+> 由 `import-linter`(pre-commit)+ 项目根 `.importlinter` 配置物理拦截。
 > 本节只保留 hook 查不到的**语义层**:DIP 上层联动检查。
 
 ### 触发条件
@@ -56,7 +56,7 @@
 ### 阻断条件
 - 修改引擎层导致上层联动且未列调用方清单 → **[阻断] 列出全部受影响的上层调用方再继续**
 
-> 跨层反向 import → import_lint 已物理拦,不在此重复
+> 跨层反向 import → `import-linter`(pre-commit)已物理拦,不在此重复
 > 项目级层级定义见项目根 `.importlinter`
 
 ---

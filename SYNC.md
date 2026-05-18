@@ -20,7 +20,7 @@ Claude 读到这里时,**不要质疑**以下事实,直接按它推进:
 - **venv 位置**: 项目根 `.venv/`(不入 git)
 - **lint/类型检查工具链**: `ruff` + `mypy`,通过 `pipx` 全局安装
 - **代码分析工具链**: `pydeps`(循环 import)+ `vulture`(死代码),通过 `pipx` 全局安装,被 `engineering_audit.sh` 调用
-- **架构契约工具链**: `import-linter` 在**项目 venv**(`pyproject.toml [dependency-groups] dev`),被 `import_lint.sh` 调用
+- **架构契约工具链**: `import-linter` 在**项目 venv**(`pyproject.toml [dependency-groups] dev`),由 `pre-commit` 调用
   - 它需要 import 项目代码解析依赖图,所以必须在能 import `app/` 的 venv 里,不走 pipx
   - 配置文件: 项目根 `.importlinter`,定义层级契约(`routers > services > models > config`)
 - **lint 配置**: 项目根 `.ruff.toml` / `.mypy.ini`(入 git,**这是同步源**)
@@ -64,7 +64,7 @@ Claude 读到这里时,**不要质疑**以下事实,直接按它推进:
 
 ### 1.3 工具链配置查找策略
 
-`ruff_check.sh` 从被改文件目录向上找 `.ruff.toml`/`.mypy.ini`,
+`ruff` / `mypy` 从被改文件目录向上找 `.ruff.toml`/`.mypy.ini`,
 找到用项目级,找不到回退 `~/.ruff.toml`/`~/.mypy.ini`。
 
 ---
@@ -127,8 +127,7 @@ uv sync --index-url https://pypi.tuna.tsinghua.edu.cn/simple
 .venv/bin/python -c "import fastapi, tantivy, sentence_transformers, anthropic; print('imports OK')"
 
 # 测 hook 配置查找(应该输出项目根的 .ruff.toml 路径)
-echo '{"tool_input":{"file_path":"'"$PWD"'/app/main.py"}}' \
-  | bash ~/.claude/hooks/ruff_check.sh 2>&1 | grep -E "config:|imports OK" | head -3
+.venv/bin/ruff check app/main.py 2>&1 | head -3
 ```
 
 ### 3.4 Claude Code 配置软链(首次同步必做)
@@ -217,9 +216,8 @@ python3 -c "import json; json.load(open('$HOME/.claude/settings.json'))" && echo
 > 详细清单见 `.claude-config/rules/workflow.md` 附录 B。
 
 ```bash
-# 测 ruff_check
-echo '{"tool_input":{"file_path":"'"$PWD"'/app/main.py"}}' \
-  | bash ~/.claude/hooks/ruff_check.sh 2>&1 | grep -E "config:" | head -1
+# 测 ruff(直接调用,不再通过 hook 壳)
+.venv/bin/ruff check app/main.py 2>&1 | head -3
 
 # 测 rule_activator
 echo '{"session_id":"x","prompt":"线上挂了"}' | bash ~/.claude/hooks/rule_activator.sh
@@ -229,10 +227,8 @@ rm -f /tmp/eng_audit_*.done
 echo '{"tool_input":{"file_path":"'"$PWD"'/app/main.py"}}' \
   | bash ~/.claude/hooks/engineering_audit.sh 2>&1 | head -3
 
-# 测 import_lint(架构契约,本项目应输出 KEPT)
-rm -f /tmp/import_lint_*.done
-echo '{"tool_input":{"file_path":"'"$PWD"'/app/main.py"}}' \
-  | bash ~/.claude/hooks/import_lint.sh 2>&1
+# 测 import-linter(直接调用,不再通过 hook 壳)
+.venv/bin/lint-imports --config .importlinter --no-cache
 echo "(无输出说明契约 KEPT;有输出说明发现违规)"
 
 # 测 rename_audit(用一个真实跨文件引用的符号)
@@ -425,8 +421,8 @@ python -c "import json; json.load(open(r'$env:USERPROFILE\.claude\settings.json'
 ```powershell
 .venv\Scripts\python -c "import fastapi, tantivy, sentence_transformers, anthropic; print('imports OK')"
 
-# 测 hook 触发
-cmd /c "echo {`"tool_input`":{`"file_path`":`"$PWD\app\main.py`"}} | bash %USERPROFILE%\.claude\hooks\ruff_check.sh"
+# 测 hook 触发(直接调用 ruff,不再通过 hook 壳)
+.venv\Scripts\ruff check app\main.py
 ```
 
 ---
@@ -461,8 +457,8 @@ ls -la ~/.claude/hooks
 which ruff mypy
 # 2. 配置文件能找到吗
 ls ./.ruff.toml ~/.ruff.toml
-# 3. 手动模拟 hook 输入
-echo '{"tool_input":{"file_path":"./app/main.py"}}' | bash ~/.claude/hooks/ruff_check.sh
+# 3. 手动验证 ruff(不再通过 hook 壳)
+.venv/bin/ruff check ./app/main.py
 ```
 
 ### 6.2 rule_activator hook 没注入规则路径
@@ -492,19 +488,14 @@ rm -f /tmp/eng_audit_*.done
 echo '{"tool_input":{"file_path":"'"$PWD"'/app/main.py"}}' | bash ~/.claude/hooks/engineering_audit.sh
 ```
 
-### 6.4 import_lint 没拦反向 import
+### 6.4 import-linter 没拦反向 import
 
 ```bash
 # 0. 项目 venv 里有 lint-imports?
 ls .venv/bin/lint-imports || echo "缺! 跑 uv sync 装上"
 # 1. .importlinter 配置存在?
 ls .importlinter
-# 2. TTL 标记是否还在(5 分钟内不重跑)
-ls /tmp/import_lint_*.done 2>/dev/null
-# 3. 手动模拟
-rm -f /tmp/import_lint_*.done
-echo '{"tool_input":{"file_path":"'"$PWD"'/app/main.py"}}' | bash ~/.claude/hooks/import_lint.sh
-# 4. 直接跑 lint-imports 看完整输出
+# 2. 直接跑 lint-imports 看完整输出
 .venv/bin/lint-imports --config .importlinter --no-cache
 ```
 

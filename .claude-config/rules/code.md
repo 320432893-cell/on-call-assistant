@@ -34,7 +34,7 @@
 
 ### 1. 依赖倒置(DIP)【强制】
 
-> **2026-05-18 hook 接管声明**:跨层 import 违规已由 `import_lint.sh` hook + 项目根 `.importlinter` 配置物理拦截。
+> **2026-05-18 hook 接管声明**:跨层 import 违规已由 `import-linter`(pre-commit)+ 项目根 `.importlinter` 配置物理拦截。
 > 自检表只保留 hook 看不到的**语义层**:抽象 vs 具体、Protocol 边界。
 
 #### 触发条件
@@ -101,7 +101,7 @@
 ### 4. 异常分层捕获【强制】
 
 > **2026-05-18 hook 接管声明**:
-> 裸 except (E722) / blind except (BLE001) / try-except-pass (S110) / 不带 from (B904) / TRY 系列反模式 → 已由 `ruff_check.sh` 物理拦截。
+> 裸 except (E722) / blind except (BLE001) / try-except-pass (S110) / 不带 from (B904) / TRY 系列反模式 → 已由 `ruff`(pre-commit)物理拦截。
 > 本节只保留 hook 查不到的**语义层**:层级判断、宽捕原因、降级语义。
 
 #### 触发条件
@@ -137,8 +137,8 @@
 ### 5. 不变式与确定性【已由 hook 接管,不再列为思考层强制】
 
 > **2026-05-18 hook 接管声明**:
-> - `enumerate(set/dict.keys)` 不稳定排序 → `ruff_check.sh` 自定义 grep 拦截
-> - 标准库 `random.*` 用于业务输出无 `random.seed()` → `ruff_check.sh` 自定义 grep 拦截
+> - `enumerate(set/dict.keys)` 不稳定排序 → `ruff`(pre-commit)拦截
+> - 标准库 `random.*` 用于业务输出无 `random.seed()` → `ruff`(pre-commit)拦截
 > - `numpy.random.*` 老接口 → `ruff NPY002` 拦截
 > - `os.listdir` / `glob.glob` 未 sorted → 语义层,**仅"业务依赖顺序"时需 AI 判断**,无固定形式
 >
@@ -239,7 +239,7 @@
 
 ## 附录 B:工具链接管的规则(不在此重复)
 
-以下规则由 `~/.ruff.toml` / `mypy.ini` / `~/.claude/hooks/ruff_check.sh` 自动检查,**违规直接由 hook 阻断**:
+以下规则由 `.ruff.toml` / `.mypy.ini` / `pre-commit` 自动检查,**违规直接阻断**:
 
 | 旧规则 | 工具链规则 |
 |--------|----------|

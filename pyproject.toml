@@ -37,11 +37,18 @@ dev = [
     "httpx>=0.27.0",
     # 架构契约检查(分层依赖反向 import 拦截,被 ~/.claude/hooks/import_lint.sh 调用)
     "import-linter>=2.0",
+    "pre-commit>=4.6.0",
+    "detect-secrets>=1.5.0",
+    "ruff>=0.15.13",
+    "mypy>=2.1.0",
 ]
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["app*"]
+
+[[tool.uv.index]]
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
 
 [tool.pytest.ini_options]
 # 让 pytest / PyCharm pytest runner 自动把项目根加入 sys.path

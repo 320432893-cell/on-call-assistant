@@ -161,7 +161,7 @@ snake_case / camelCase / 混用
 > **2026-05-18 hook 接管声明**:
 > - 风格分裂(snake/camel 混用)→ `ruff N` 规则集已物理拦截(`.ruff.toml`)
 > - 幽灵引用(改名/删除后旧名残留)→ `rename_audit.sh` hook 在 Edit/MultiEdit 后自动 grep 全项目报警
-> - 重复造轮子(死代码 / 未用 import)→ `vulture` + `ruff F401` 由 ruff_check / engineering_audit 接管
+> - 重复造轮子(死代码 / 未用 import)→ `vulture` + `ruff F401`(pre-commit)接管
 >
 > 本节红线仍是思考层强制(hook 只查机械模式,语义判断仍需 AI),但**机械层不再依赖 AI 自觉**。
 

@@ -19,11 +19,7 @@
       "git_commit_safety.sh"
     ],
     "PostToolUse_EditWriteMultiEdit": [
-      "ruff_check.sh",
-      "test_reminder.sh",
-      "json_lint.sh",
       "engineering_audit.sh",
-      "import_lint.sh",
       "rename_audit.sh",
       "first_iter_lines.sh",
       "playwright_no_sleep.sh",

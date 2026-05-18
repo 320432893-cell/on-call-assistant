@@ -26,7 +26,8 @@ prompt/screenshot_*.png
 
 # IDE
 .idea/
-.vscode/
+.vscode/*
+!.vscode/settings.json
 *.swp
 
 # Claude Code 本地配置（机器/账号专属，不入仓）

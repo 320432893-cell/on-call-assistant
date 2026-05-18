@@ -82,14 +82,50 @@
 触发(踩坑/对抗审计/用户提议)
     ↓
 是模式还是语义?
-    ├─ 模式 + 可静态检测 → 走 §3.1 机械层
+    ├─ 模式 + 可静态检测 → 走 §3.1 机械层 → 查 §3.5 矩阵决定具体道具
     ├─ 语义 + 业务判断   → 走 §3.2 语义层
     └─ 混合              → 拆分:机械部分入 hook,语义部分入 md
         ↓
     跑 §4.1 四维过滤
-    机械层:跑 §3.1 误报率自检
+    机械层:跑 §3.1 误报率自检 + §3.6 hook 单测要求
     语义层:跑 §4.2 M4 上限
 ```
+
+### 3.5 工具职责矩阵(机械层分工)
+
+机械层下沉到具体道具时,**先查本表选道具,选不到才考虑写 hook**。
+原则:**通用规则交成熟工具,hook 只做工具管不到的部分**。
+
+| 检查类型                     | 唯一负责道具                  | 配置位置                 | 禁止另写                 |
+|------------------------------|-------------------------------|--------------------------|--------------------------|
+| 风格/命名/复杂度/简化/性能   | `ruff check`                  | `.ruff.toml`             | bash 正则、自写 lint     |
+| 格式化                       | `ruff format`                 | `.ruff.toml`             | black / autopep8         |
+| 类型/可空性/签名             | `mypy --strict`               | `.mypy.ini`              | bash 抓 `def` 关键字     |
+| 模块分层依赖                 | `import-linter`               | `.importlinter`          | bash 抓 `import` 关键字  |
+| 代码安全(eval/exec/弱哈希)   | `ruff S` + `bandit`           | `.ruff.toml` / pyproject | bash 抓 eval/exec        |
+| 依赖 CVE                     | `pip-audit`                   | pre-commit / CI          | 自维护 CVE 列表          |
+| 密钥泄漏                     | `detect-secrets`              | `.secrets.baseline`      | bash 正则抓 token        |
+| 测试覆盖率                   | `pytest-cov`                  | pyproject `[tool.coverage]` | bash 数测试文件个数   |
+| JSON / YAML / TOML 语法      | pre-commit 标准 hook          | `.pre-commit-config.yaml`| 自写语法校验 bash        |
+| 系统级危险动作               | bash hook                     | `~/.claude/hooks/`       | 用 lint 工具管 shell     |
+| 第三方 CLI 调用反模式        | bash hook                     | `~/.claude/hooks/`       | 强写 ruff 自定义规则     |
+| 领域语义反模式(时序泄漏等)   | bash hook                     | `~/.claude/hooks/`       | 强塞 ruff/mypy           |
+| 流程胶水(规则激活/迭代约束)  | bash hook                     | `~/.claude/hooks/`       | -                        |
+
+**禁止**:
+- 通用规则(前 9 行)写新 bash hook — 已有道具的事
+- 把 hook 适用域(后 4 行)塞进 ruff 自定义规则 — 维护成本高、误报率高
+
+### 3.6 bash hook 必带单测(新 hook 强制 / 旧 hook 渐进)
+
+bash 正则脆,错一字符静默失效。**新增 bash hook 必须满足**:
+1. **文件头注释**写明"为什么不能用 §3.5 矩阵里的成熟工具",写不出理由即不该存在
+2. **同目录配 `tests/test_<name>.sh`**,至少 3 正样本 + 3 反样本(含边界:空文件、巨大文件、含中文/特殊字符)
+3. 任一条不满足,**不得合入 manifest.json / settings.json**
+
+**旧 hook**:不一次性补齐,但**修改任一旧 hook 时必须当场补单测**(改即补)。
+
+**禁止**:声称"显然能跑"跳过单测、把测试样本写进 hook 文件本体。
 
 ---
 

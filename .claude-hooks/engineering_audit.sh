@@ -6,9 +6,10 @@
 # 检测项分级:
 #   ★★★ 红线  (.gitignore 缺 / 大文件入库 / 无 .git)
 #   ★★ 警告   (无 README / 无 lock 文件 / 无 tests/)
-#   ★  提醒   (大文件 >500 行 / 大函数 >100 行 / 循环 import / 死代码)
+#   ★  提醒   (大文件 >500 行)
 #
-# 工程规范缺口检测,不替代 ruff/mypy(那些是代码规范层)
+# 为什么不能用 ruff/mypy: 本 hook 检查的是项目结构/配置完备性,不是代码质量
+# 代码级检查(大函数/循环import/死代码)已移交 ruff PLR0915 / import-linter / ruff F401
 
 set -u
 
@@ -182,53 +183,6 @@ if [ -n "$big_files" ] || [ -n "$big_vue" ]; then
     while IFS= read -r line; do
       hints="${hints}\n      - $line"
     done <<< "$big_vue"
-  fi
-fi
-
-# 5.8 大函数 >100 行(用 grep 估,不精确但够用)
-# 找 def/class 之间的距离
-big_funcs=$(find "$project_root" -name "*.py" \
-  -not -path "*/.venv/*" -not -path "*/venv/*" \
-  -not -path "*/__pycache__/*" -not -path "*/.git/*" 2>/dev/null | while read f; do
-    awk '
-      /^[[:space:]]*def / || /^[[:space:]]*async def / {
-        if (in_func && (NR - func_start) > 100) {
-          print FILENAME ":" func_line " " func_name " (" (NR - func_start) " 行)"
-        }
-        in_func = 1; func_start = NR; func_line = NR; func_name = $0
-        sub(/^[[:space:]]*/, "", func_name)
-        sub(/\(.*$/, "", func_name)
-      }
-    ' "$f"
-  done | head -5)
-if [ -n "$big_funcs" ]; then
-  hints="${hints}\n  ★ 大函数 >100 行:"
-  while IFS= read -r line; do
-    hints="${hints}\n      - $line"
-  done <<< "$big_funcs"
-fi
-
-# --- 外部工具 2 项 ---
-
-# 5.9 循环 import (pydeps)
-if command -v pydeps >/dev/null 2>&1; then
-  cycles=$(cd "$project_root" && pydeps --show-cycles --no-output --max-bacon=2 . 2>&1 | grep -E "^Cycle:" | head -3)
-  if [ -n "$cycles" ]; then
-    hints="${hints}\n  ★ 检测到循环 import:"
-    while IFS= read -r line; do
-      hints="${hints}\n      - $line"
-    done <<< "$cycles"
-  fi
-fi
-
-# 5.10 死代码 (vulture)
-if command -v vulture >/dev/null 2>&1; then
-  dead=$(cd "$project_root" && vulture . --min-confidence 80 2>/dev/null | head -5)
-  if [ -n "$dead" ]; then
-    hints="${hints}\n  ★ 可能的死代码(置信度 ≥80%):"
-    while IFS= read -r line; do
-      hints="${hints}\n      - $line"
-    done <<< "$dead"
   fi
 fi
 

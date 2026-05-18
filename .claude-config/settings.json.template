@@ -42,23 +42,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ~/.claude/hooks/ruff_check.sh"
-          },
-          {
-            "type": "command",
-            "command": "bash ~/.claude/hooks/test_reminder.sh"
-          },
-          {
-            "type": "command",
-            "command": "bash ~/.claude/hooks/json_lint.sh"
-          },
-          {
-            "type": "command",
             "command": "bash ~/.claude/hooks/engineering_audit.sh"
-          },
-          {
-            "type": "command",
-            "command": "bash ~/.claude/hooks/import_lint.sh"
           },
           {
             "type": "command",

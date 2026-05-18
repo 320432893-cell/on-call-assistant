@@ -1,0 +1,45 @@
+# 阶段 1 最小集：ruff (lint+format) / mypy / import-linter / detect-secrets
+# 设计原则：
+#   - ruff、detect-secrets 与项目依赖无关 → 用 pre-commit 隔离 env (repo: 模式)
+#   - mypy、import-linter 必须能 import 到 app/* 与 fastapi/pydantic 类型 → 用 language: system 跑项目 .venv 里的工具
+#   - 版本钉死(rev / 本地工具走 venv)，确保可复现
+# 见 ~/.claude/CLAUDE.md § 4.6：本次范式 = 多层防御 + 关注点分离
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.13
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ["--baseline", ".secrets.baseline"]
+        exclude: |
+          (?x)^(
+            uv\.lock|
+            \.secrets\.baseline
+          )$
+
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy (project venv, --strict 渐进开启)
+        entry: .venv/bin/mypy
+        language: system
+        types: [python]
+        # 仅检查 app/，scripts/ 与 tests/ 后续阶段再纳入
+        files: ^app/
+        pass_filenames: false
+        args: [app]
+
+      - id: import-linter
+        name: import-linter (分层契约)
+        entry: .venv/bin/lint-imports
+        language: system
+        pass_filenames: false
+        # 任何 .py 改动都跑一遍(架构契约级,不该被跳)
+        types: [python]

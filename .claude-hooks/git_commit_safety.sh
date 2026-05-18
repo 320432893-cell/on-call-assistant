@@ -21,8 +21,12 @@ fi
 risky=""
 while IFS= read -r f; do
   # 先放行公开占位符文件 (.env.example / .env.template / .env.sample)
+  # 以及 detect-secrets 基线文件(.secrets.baseline 不含实际密钥)
   case "$f" in
     *.env.example|*.env.template|*.env.sample|.env.example|.env.template|.env.sample)
+      continue
+      ;;
+    .secrets.baseline|*/.secrets.baseline)
       continue
       ;;
   esac
