@@ -21,8 +21,9 @@ if [ -z "$prompt" ]; then
   exit 0
 fi
 
-# 规则文件根路径(写死,这是用户级 hook,跟 CLAUDE.md 同步迁移过来)
-RULES_DIR="$HOME/.claude/projects/-mnt-e-python--/memory/rules"
+# 规则文件根路径(动态定位,hook 在 .claude-hooks/,规则在同仓库 .claude-config/rules/)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+RULES_DIR="$SCRIPT_DIR/../.claude-config/rules"
 
 # 匹配函数:模式命中即输出激活提示
 # 用法: match "关键词正则" "规则文件名" "场景标签"
