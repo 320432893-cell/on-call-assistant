@@ -1,0 +1,76 @@
+# Claude Code 项目级 Ruff 配置
+# 由 ~/.claude/hooks/ruff_check.sh 调用(项目级优先于 ~/.ruff.toml)
+# 个别规则可在文件级 # noqa 豁免
+
+target-version = "py310"
+line-length = 120
+
+[lint]
+select = [
+    # 基础(默认就该有)
+    "E", "F", "W",
+    # 常见 bug 模式
+    "B",       # flake8-bugbear:可变默认参数等
+    "BLE",     # blind-except
+    "TRY",     # tryceratops:try/except 反模式
+    # 路径与资源
+    "PTH",     # 强制 pathlib
+    "S",       # flake8-bandit:安全(2026-05-18 启用整套,OWASP 防御)
+    # 时间
+    "DTZ",     # datetime 时区(naive datetime 防御)
+    # 调试输出
+    "T20",     # 禁 print
+    # 日志规范
+    "LOG",     # flake8-logging
+    "G",       # flake8-logging-format
+    # 类型注解
+    "ANN",     # flake8-annotations
+    # 异步并发安全
+    "ASYNC",   # async/await 反模式(FastAPI 项目必备)
+    # 测试规范
+    "PT",      # pytest 风格
+    # 复杂度与重构
+    "PLR0915", # 函数语句数(变相控制函数大小)
+    "PLR0912", # 分支数
+    "PLR0913", # 参数数
+    "PLR2004", # 魔法数字
+    "PLC0415", # 函数内动态 import
+    # ruff 特定 + 性能
+    "RUF",
+    "PERF",
+    # numpy 反模式(包括随机源)
+    "NPY",
+    # 简化建议
+    "SIM",
+]
+
+ignore = [
+    # Any 类型(由 mypy 兜底)
+    "ANN401",
+    # try/except 中"long messages in raise"过苛
+    "TRY003",
+    # SIM108(if-else 改 ternary)有时反而难读
+    "SIM108",
+    # 行宽冲突由格式化器处理
+    "E501",
+    # RUF001-003 中文标点全角警告 — 中文项目里全是误报
+    "RUF001", "RUF002", "RUF003",
+    # S101 assert 在测试和断言式编程常用,不算安全问题
+    "S101",
+]
+
+[lint.per-file-ignores]
+# 测试文件放宽
+"tests/**" = ["ANN", "PLR2004", "S101", "PLR0915", "PT"]
+"test_*.py" = ["ANN", "PLR2004", "S101", "PLR0915", "PT"]
+# __init__.py 允许未用 import(re-export)
+"__init__.py" = ["F401"]
+# scripts/ 一次性脚本,放宽
+"scripts/**" = ["T20", "ANN", "S603", "S607"]
+
+[lint.flake8-annotations]
+suppress-dummy-args = true
+mypy-init-return = true
+
+[lint.flake8-bugbear]
+extend-immutable-calls = ["pathlib.Path", "datetime.datetime"]

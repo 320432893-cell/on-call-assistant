@@ -32,6 +32,9 @@ prompt/screenshot_*.png
 # Claude Code 本地配置（机器/账号专属，不入仓）
 .claude/
 
+# Claude 共享配置中含 token 的实文件不入仓，只入 template
+.claude-config/settings.json
+
 # 测试 / 缓存
 .pytest_cache/
 .mypy_cache/

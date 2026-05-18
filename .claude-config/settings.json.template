@@ -1,0 +1,65 @@
+{
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "REPLACE_ME_WITH_YOUR_TOKEN",
+    "ANTHROPIC_BASE_URL": "https://cdn.codeflow.asia"
+  },
+  "model": "claude-opus-4-7",
+  "enabledPlugins": {
+    "ui-ux-pro-max@ui-ux-pro-max-skill": true
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/rule_activator.sh"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/dangerous_bash.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/git_commit_safety.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/ruff_check.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/test_reminder.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/json_lint.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/engineering_audit.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/import_lint.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

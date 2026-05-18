@@ -1,0 +1,16 @@
+[importlinter]
+root_packages =
+    app
+
+# === 契约: 分层架构 (DIP) ===
+# 强制 routers > services > models > config 单向依赖
+# 任何反向 import (config 不许 import models 等) 会被拦截
+# 这是 code.md § 1 DIP 规则的物理实施
+[importlinter:contract:layers]
+name = Layered architecture: routers > services > models > config
+type = layers
+layers =
+    app.routers
+    app.services
+    app.models
+    app.config
