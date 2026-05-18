@@ -21,6 +21,21 @@ if [ -z "$prompt" ]; then
   exit 0
 fi
 
+# === T1 状态管理(governance.md § 9.2) ===
+# 探索型检测 → 写标记文件,供 exploration_gate.sh 读取
+# 确认词检测 → 写确认标记,解除 gate 阻断
+TASK_HASH=$(echo -n "$$_$(date +%Y%m%d)" | md5sum | cut -c1-8)
+
+# 检测用户确认词(优先级最高,先处理)
+if printf '%s' "$prompt" | grep -iqE '确认|^做$|开始|选[A-Z]|就这样|^可以$|^行$|^好$|同意|拍板|按你'; then
+  touch "/tmp/claude_task_confirmed_${TASK_HASH}" 2>/dev/null
+fi
+
+# 检测探索型任务(新项目/架构决策)
+if printf '%s' "$prompt" | grep -iqE '新项目|新模块|从零|架构决策|设计.*(一个|系统|方案)|搭建.*(项目|系统)'; then
+  touch "/tmp/claude_task_exploratory_${TASK_HASH}" 2>/dev/null
+fi
+
 # 规则文件根路径(动态定位,hook 在 .claude-hooks/,规则在同仓库 .claude-config/rules/)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RULES_DIR="$SCRIPT_DIR/../.claude-config/rules"

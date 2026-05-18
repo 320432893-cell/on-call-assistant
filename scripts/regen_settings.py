@@ -20,6 +20,7 @@
     0 = 成功
     1 = manifest 或 .sh 文件校验失败
 """
+
 from __future__ import annotations
 
 import json
@@ -34,7 +35,7 @@ HOOKS_DIR = REPO_ROOT / ".claude-hooks"
 SETTINGS = REPO_ROOT / ".claude-config" / "settings.json"
 TEMPLATE = REPO_ROOT / ".claude-config" / "settings.json.template"
 
-TOKEN_PLACEHOLDER = "REPLACE_ME_WITH_YOUR_TOKEN"
+TOKEN_PLACEHOLDER = "REPLACE_ME_WITH_YOUR_TOKEN"  # noqa: S105
 
 
 def load_manifest() -> dict[str, Any]:
@@ -45,11 +46,12 @@ def load_manifest() -> dict[str, Any]:
 
 
 def validate_hooks_exist(manifest: dict[str, Any]) -> None:
-    missing: list[str] = []
-    for stage_key, hook_names in manifest.get("hooks", {}).items():
-        for name in hook_names:
-            if not (HOOKS_DIR / name).exists():
-                missing.append(f"  {stage_key}: {name}(.claude-hooks/{name} 不存在)")
+    missing: list[str] = [
+        f"  {stage_key}: {name}(.claude-hooks/{name} 不存在)"
+        for stage_key, hook_names in manifest.get("hooks", {}).items()
+        for name in hook_names
+        if not (HOOKS_DIR / name).exists()
+    ]
     if missing:
         print("[regen_settings] FATAL: manifest 引用的 hook 文件缺失:", file=sys.stderr)
         for m in missing:
@@ -63,9 +65,9 @@ def read_local_token() -> str:
     try:
         data = json.loads(SETTINGS.read_text(encoding="utf-8"))
         token = data.get("env", {}).get("ANTHROPIC_AUTH_TOKEN", TOKEN_PLACEHOLDER)
-        return token if token else TOKEN_PLACEHOLDER
-    except Exception:
+    except (json.JSONDecodeError, OSError):
         return TOKEN_PLACEHOLDER
+    return token if token else TOKEN_PLACEHOLDER
 
 
 def build_hook_entry(hook_name: str) -> dict[str, str]:
@@ -92,7 +94,11 @@ def build_settings(manifest: dict[str, Any], token: str) -> dict[str, Any]:
                 {
                     "matcher": "Bash",
                     "hooks": [build_hook_entry(n) for n in h.get("PreToolUse_Bash", [])],
-                }
+                },
+                {
+                    "matcher": "Edit|Write|MultiEdit",
+                    "hooks": [build_hook_entry(n) for n in h.get("PreToolUse_EditWriteMultiEdit", [])],
+                },
             ],
             "PostToolUse": [
                 {
@@ -129,7 +135,10 @@ def main() -> int:
     print(f"  PostToolUse(Edit|Write|MultiEdit): {len(manifest['hooks'].get('PostToolUse_EditWriteMultiEdit', []))}")
 
     if local_token == TOKEN_PLACEHOLDER:
-        print("[regen_settings] WARN — settings.json 中 token 是占位符,本地使用前请填入真实 ANTHROPIC_AUTH_TOKEN", file=sys.stderr)
+        print(
+            "[regen_settings] WARN — settings.json 中 token 是占位符,本地使用前请填入真实 ANTHROPIC_AUTH_TOKEN",
+            file=sys.stderr,
+        )
     return 0
 
 

@@ -18,6 +18,9 @@
       "dangerous_bash.sh",
       "git_commit_safety.sh"
     ],
+    "PreToolUse_EditWriteMultiEdit": [
+      "exploration_gate.sh"
+    ],
     "PostToolUse_EditWriteMultiEdit": [
       "engineering_audit.sh",
       "rename_audit.sh",

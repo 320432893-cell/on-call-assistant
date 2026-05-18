@@ -34,6 +34,15 @@
             "command": "bash ~/.claude/hooks/git_commit_safety.sh"
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/exploration_gate.sh"
+          }
+        ]
       }
     ],
     "PostToolUse": [
