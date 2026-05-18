@@ -3,6 +3,41 @@ name = "on-call-assistant"
 version = "0.1.0"
 description = "On-Call SOP 助手（关键词搜索 / 语义搜索 / Agent）"
 requires-python = ">=3.11"
+dependencies = [
+    # Web 框架
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.27.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "python-multipart>=0.0.6",
+    "jinja2>=3.1.2",
+    "python-dotenv>=1.0.0",
+    # Phase1: 全文索引
+    "tantivy>=0.21.0",
+    # 数据预处理
+    "beautifulsoup4>=4.12.0",
+    "jieba>=0.42.1",
+    "lxml>=5.1.0",
+    # Phase2: 向量检索
+    "qdrant-client>=1.7.0",
+    "sentence-transformers>=2.3.0",
+    # Phase4: 年报 PDF 解析
+    "pymupdf>=1.26.0",
+    # Phase3: Agent
+    "redis>=5.0.0",
+    "anthropic>=0.18.0",
+    "openai>=1.12.0",
+    "google-genai>=1.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "httpx>=0.27.0",
+    # 架构契约检查(分层依赖反向 import 拦截,被 ~/.claude/hooks/import_lint.sh 调用)
+    "import-linter>=2.0",
+]
 
 [tool.setuptools.packages.find]
 where = ["."]

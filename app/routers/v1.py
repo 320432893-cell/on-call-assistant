@@ -151,7 +151,7 @@ def _substring_fallback(q: str, limit: int = 10) -> list:
                 ))
                 if len(hits) >= limit:
                     break
-        except Exception:
+        except Exception:  # noqa: BLE001, S112 — 单 collection 失败不阻断其他 collection 检索
             continue
     return hits
 

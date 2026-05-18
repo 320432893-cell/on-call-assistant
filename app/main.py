@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 import os
 
 from app.config import get_settings
-from app.routers import v1_router, v2_router, v3_router
+from app.routers import v1_router, v2_router, v3_router, v4_router
 
 settings = get_settings()
 
@@ -49,6 +49,7 @@ app.templates = Jinja2Templates(directory="app/templates")
 app.include_router(v1_router)
 app.include_router(v2_router)
 app.include_router(v3_router)
+app.include_router(v4_router)
 
 
 @app.get("/")

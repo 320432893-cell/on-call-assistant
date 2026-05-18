@@ -321,12 +321,12 @@ def parse_annual_report(
                     page = doc.load_page(pg)
                     try:
                         tabs = page.find_tables()
-                    except Exception:
+                    except Exception:  # noqa: BLE001, S112 — 单页表格抽取失败不阻断整文档
                         continue
                     for t in tabs.tables:
                         try:
                             rows = t.extract()
-                        except Exception:
+                        except Exception:  # noqa: BLE001, S112 — 单表抽取失败跳过该表,继续其他表
                             continue
                         md = _table_to_markdown(rows)
                         if not md:

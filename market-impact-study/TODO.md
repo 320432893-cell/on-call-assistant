@@ -21,7 +21,44 @@
 ## 当前状态
 
 **Step 1 已完成（2026-05-16）** —— PDF 解析链路打通，质量验证通过。
-**Step 2 进行中** —— 灌库 + 检索接口（待决策两个点后开干）。
+**Step 2 已完成（2026-05-16）** —— 灌库 + 检索接口实测通过，召回 4/4 全过、18/20 命中期望关键词。
+**Step 3 待开工** —— RAG 生成（`POST /v4/ask` 流式答案）。
+
+---
+
+## 回家继续做：从这里开始
+
+### 当前可直接运行的状态
+
+- 服务已通过实测：`POST /v4/ingest` → `n_indexed=339`；`scripts/test_v4_report.py` → 4/4 query 全过
+- Qdrant 库里有 `annual_reports` collection，包含 移远通信_2025 的 339 chunk（重启后仍在，path 模式持久化）
+
+### 启动复现命令（WSL）
+
+```bash
+# 终端 A：起服务（首次重启 bge-m3 reload 约 30 秒，模型已在本地缓存不会再下）
+cd ~/data_project/on-call-assistant-20260514
+.venv/bin/python -m uvicorn app.main:app --port 8000
+
+# 终端 B：确认库还活着（应返回 n_indexed=339；为 0 则需重灌）
+curl http://127.0.0.1:8000/v4/health
+
+# 重灌（仅在 n_indexed=0 时需要；md5 稳定 id 重灌不会翻倍）
+curl -X POST http://127.0.0.1:8000/v4/ingest \
+  -H "Content-Type: application/json" \
+  -d '{"company":"移远通信","year":2025}'
+
+# 跑检索回归（4 query 应 4/4 全过）
+./.venv/bin/python scripts/test_v4_report.py
+```
+
+### 下一步建议（Step 3 入口）
+
+直接做 `POST /v4/ask`：
+1. 复用 v3 `LLMProvider`（`app/services/agent/llm_provider.py`）
+2. 检索 top-K（K=5 起步）→ 拼 RAG prompt（system: 仅基于上下文回答；user: query + numbered passages）
+3. SSE 流式返回（参考 v3 SSE 事件结构，但状态机简化为 retrieve → generate）
+4. payload 里带 `text`（完整章节）+ `tables`（markdown），LLM 上下文充足
 
 ---
 
@@ -44,36 +81,45 @@
 
 **Step 1 commit**：`c8598a0 feat(v4): 年报 PDF 解析器（书签驱动章节切片 + 表格抽取）`
 
-### Step 2 — 灌库 + 检索接口 🔵 待决策后开干
+### Step 2 — 灌库 + 检索接口 ✅ 已完成 2026-05-16
 
-**待用户确认（电脑充电后回来确认）**：
+决策已确认（方案 A + 手动 ingest），实施 + 实测通过：
 
-1. **Qdrant 多 collection 改造方案**：
-   - **方案A（推荐）**：`QdrantService` 加 `upsert_to(collection, ...)` / `search_in(collection, ...)`，不破坏 v2 旧调用，path 复用避免双客户端锁问题
-   - 方案B：年报项目独立写 `ReportVectorStore` 类自管 Qdrant 客户端
+- [x] `app/services/vectorstore.py` 加多 collection 支持（`ensure_collection` / `upsert_batch_to` / `search_in` / `count_in` / `scroll_distinct`）+ md5 稳定 `_stable_point_id`
+- [x] `app/services/report_indexer.py` chunks → Qdrant `annual_reports` collection
+  - passage 前置「公司 / 年度 / 章节」+ 表格 markdown 追加（沿用 v2 双侧前缀）
+  - payload: `{company, year, section_path, section_title, page_start, page_end, snippet, text, tables, n_chars, has_tables}`
+  - `ingest_from_pdf` / `ingest_from_jsonl` 两条入口
+  - snippet 渲染时剥占位串（`√适用□不适用` 等模板，仅影响 snippet，chunk.text 主体保留）
+- [x] `app/routers/v4_report.py` 全部端点改 `def`（非 async），避免 ingest 阻塞 event loop
+  - `POST /v4/ingest`（优先复用已有 jsonl，缺失或 force_reparse=true 时现场解析）
+  - `GET /v4/search?q=&company=&year=&limit=`（payload 等值过滤）
+  - `GET /v4/companies` / `GET /v4/health`
+- [x] `app/main.py` + `app/routers/__init__.py` 挂载 v4_router
+- [x] `scripts/test_v4_report.py` 改为 HTTP 客户端模式（避免与 uvicorn 抢 Qdrant 嵌入式锁）
+  - 4 query 实测：4/4 全过、18/20 top-5 命中、top-1 全部精准命中真实章节
 
-2. **灌库触发方式**：
-   - **手动 `POST /v4/ingest`（推荐）**：年报灌库慢（3-5分钟），自动首次触发会卡死请求且无进度
-   - 自动触发（仿 v2 的 `_ensure_indexed`）
+**实测结果（2026-05-16）：**
 
-**确认后实施**：
+| Query | top-1 命中章节 | top-1 score |
+| --- | --- | --- |
+| 公司未来三到五年的发展战略 | 第三节/.../(一)行业格局和趋势 | 0.556 |
+| 董事和高级管理人员的薪酬情况 | 第四节/.../(三)董事、高级管理人员薪酬情况 | 0.589 |
+| 研发投入金额和研发人员构成 | 第三节/.../4、研发投入 | 0.650 |
+| 公司面临的主要风险有哪些 | 十、重大风险提示（指向(四)可能面对的风险） | 0.602 |
 
-- [ ] `app/services/vectorstore.py` 加多 collection 支持（按方案 A）
-- [ ] `app/services/report_indexer.py` chunks → Qdrant `annual_reports` collection
-  - chunk_id 用 md5 稳定 hash（替代 `abs(hash())` 跨进程不稳）
-  - payload: `{company, year, section_path, section_title, page_start, page_end, snippet, tables}`
-- [ ] `app/routers/v4_report.py`
-  - `POST /v4/ingest`（解析 + 灌库）
-  - `GET /v4/search?q=&company=&year=&limit=`（支持 metadata filter）
-  - `GET /v4/companies`（列出已灌库公司）
-- [ ] `scripts/test_v4_report.py` 检索质量验证
-  - 4 类典型 query：发展战略 / 董事薪酬 / 研发投入 / 主要风险
+ingest 实测耗时：74.67s（339 chunk，bge-m3 单进程 CPU，模型已驻留内存）。
 
-### Step 3 — RAG 生成 + 跨年报对比 ⚪ 后续
+### Step 3 — RAG 生成 + 跨年报对比 🔵 下一步开工
 
-- [ ] LLM 生成端（RAG prompt + 调用现有 `LLMProvider`）
-- [ ] 跨年报对比（多次检索 + agent 编排）
-- [ ] 多公司年报扩展（下载并灌库其他公司）
+- [ ] `POST /v4/ask` SSE 流式（事件：retrieve / passages / answer / done）
+  - 复用 v3 `LLMProvider`（无需重写 provider 抽象）
+  - retrieve top-K=5（实测向量召回已够，先不加 rerank）
+  - prompt：system 约束"仅基于给定 passages 回答，无法回答时直接说明"；user 拼 numbered passages（含 section_path + page_range + text + tables）
+  - 必须返回 citations（passage idx → chunk_id），前端可点击溯源
+- [ ] 跨年报对比（多次检索 + 简单编排）
+  - 用户 query → 拆 N 个公司分别检索 → 合并上下文 → LLM 横向对比
+- [ ] 多公司年报扩展（下载并灌库其他公司，至少补 2-3 家做对比测试用）
 
 ### Step 4 — Agent + 前端 ⚪ 暂不做
 
@@ -106,14 +152,14 @@
 on-call-assistant-20260514/
 ├── app/
 │   ├── routers/
-│   │   └── v4_report.py                 # 待写：/v4/ingest /v4/search /v4/companies
+│   │   └── v4_report.py                 # ✅ /v4/ingest /v4/search /v4/companies /v4/health
 │   └── services/
 │       ├── report_pdf.py                # ✅ PDF → ReportChunk
-│       ├── report_indexer.py            # 待写：chunks → Qdrant
-│       └── vectorstore.py               # 待改：加多 collection 支持
+│       ├── report_indexer.py            # ✅ chunks → Qdrant + snippet 占位串清洗
+│       └── vectorstore.py               # ✅ 加多 collection 支持 + md5 稳定 point_id
 ├── scripts/
 │   ├── test_report_pdf.py               # ✅ Step 1 验证
-│   └── test_v4_report.py                # 待写：Step 2 检索验证
+│   └── test_v4_report.py                # ✅ Step 2 HTTP 检索回归（4/4 通过）
 ├── data/
 │   ├── raw/annual_reports/
 │   │   └── 移远通信_2025.pdf             # ✅ 首份样本
@@ -127,7 +173,9 @@ on-call-assistant-20260514/
 
 ## 已知约束 / 注意事项
 
-1. **chunk_id 跨进程稳定性**：现有 v2 `vectorstore.upsert` 用 `abs(hash(doc_id))`，Python `PYTHONHASHSEED` 默认随机，重启后 point_id 会变。年报场景必须改 md5。
-2. **跨页大表**：PyMuPDF `find_tables` 对跨页表格会在每页各识别一份，已用前 100 字签名做去重。复杂跨页财务表（合并资产负债表）可能仍丢行，Step 2 上线后实测再优化。
+1. **chunk_id 跨进程稳定性**：v4 已用 md5；v2 旧 `vectorstore.upsert` 仍是 `abs(hash(doc_id))`，潜伏 bug：v2 重启后 `get(doc_id)`/`delete(doc_id)` 会失效。但 v2 路由从不调它们，未爆发。如要修：5 行改动 + 清掉 `indexes/qdrant/sop_documents` 重灌 v2。
+2. **跨页大表**：PyMuPDF `find_tables` 对跨页表格会在每页各识别一份，已用前 100 字签名做去重。复杂跨页财务表（合并资产负债表）可能仍丢行，Step 3 上 LLM 后实测再优化。
 3. **占位章节误删**：当前用"剔除占位串后剩余 < 20 字"判断，可能误伤极短的实质内容（如纯一句话节）。如果发现召回缺失，调阈值。
-4. **Qdrant 嵌入式 path 锁**：v2 已占用 `indexes/qdrant/`。多 collection 共用同一 path，单进程无锁冲突；多进程需走 server 模式。
+4. **Qdrant 嵌入式 path 锁**：v2/v4 共用 `indexes/qdrant/`，**单进程多 collection OK；多进程会拿不到锁直接 fail**。`scripts/test_v4_report.py` 已改 HTTP 客户端模式规避。后续跑任何"独立进程也要访问 Qdrant"的脚本，要么走 HTTP，要么改 server 模式。
+5. **同步端点必须 `def` 不能 `async def`**：v4 全部端点已是 `def`（FastAPI 会丢线程池跑）。`async def` + 同步阻塞调用会冻结整个 event loop（ingest 期间 health/search 全卡），这是 Step 2 实测踩过的坑。后续加端点务必沿用 `def`。
+6. **uvicorn 启动目录**：必须在 `~/data_project/on-call-assistant-20260514` 下起，否则 `data/processed/...` 相对路径找不到。

@@ -74,8 +74,9 @@ http://127.0.0.1:8000/v3   # Agent 对话
 
 **进度速览**：
 - Step 1 PDF → chunks ✅ 已完成 2026-05-16（`c8598a0`），产出 339 chunk / 693 表
-- Step 2 灌库 + 检索接口 🔵 待用户确认两个决策点后开干
-- Step 3 RAG 生成 / Step 4 Agent + 前端 ⚪ 后续
+- Step 2 灌库 + 检索接口 ✅ 已完成 2026-05-16，实测 4/4 query 全过、18/20 命中（详见子 TODO）
+- Step 3 RAG 生成 🔵 下一步开工（`POST /v4/ask` 流式 + citations）
+- Step 4 Agent + 前端 ⚪ 暂不做
 
 ## 文件结构（最终）
 
