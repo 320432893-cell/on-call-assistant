@@ -35,27 +35,22 @@
 ### 1. 依赖倒置(DIP)【强制】
 
 > **2026-05-18 hook 接管声明**:跨层 import 违规已由 `import_lint.sh` hook + 项目根 `.importlinter` 配置物理拦截。
-> 本节自检表仍是思考层强制(hook 看不到"是抽象还是具体类"这种语义),但**架构层级反向 import 不再依赖 AI 自觉**。
+> 自检表只保留 hook 看不到的**语义层**:抽象 vs 具体、Protocol 边界。
 
 #### 触发条件
 新增类/模块,被 ≥ 2 处依赖,或需要 mock 测试,或包含 IO/外部依赖
 
-#### 必须输出
+#### 必须输出(只填 hook 查不到的语义项)
 ```
 [DIP 自检]
-- 被依赖的东西:____
-- 上层依赖它的位置:____(grep)
 - 这个东西是抽象(Protocol/ABC) vs 具体类:____
 - 上层 import 的是抽象还是具体:____
-- 若上层想替换实现要改几处:____
 ```
 
 #### 阻断条件
 - 上层直接 `from X import 具体类`,且该类含 IO/外部依赖 → **[阻断] 改为依赖 Protocol/ABC**
-- 修改引擎层签名导致上层联动且未列调用方清单 → **[阻断] 列出全部上层调用方**
-- **跨层反向 import**(如 `app.services` 反向 import `app.routers`) → **[hook 物理拦截] `import_lint.sh` 已强制**
+- 跨层反向 import → **[hook 物理拦截]** 不在此重复
 
-> 跨层 import(GUI 直接 import 引擎层)由 `architecture.md` § 2 阻断,不在此重复。
 > 项目级层级定义见项目根 `.importlinter` 配置文件。
 
 ---
@@ -105,64 +100,49 @@
 
 ### 4. 异常分层捕获【强制】
 
+> **2026-05-18 hook 接管声明**:
+> 裸 except (E722) / blind except (BLE001) / try-except-pass (S110) / 不带 from (B904) / TRY 系列反模式 → 已由 `ruff_check.sh` 物理拦截。
+> 本节只保留 hook 查不到的**语义层**:层级判断、宽捕原因、降级语义。
+
 #### 触发条件
 新增/修改 try-except;错误信息构造
 
-#### 必须输出
+#### 必须输出(只填 hook 查不到的语义项)
 ```
 [异常分层自检]
-- 异常场景:____
 - 本 try-except 所在层:□ 引擎层 □ 服务层 □ 边界层(CLI/HTTP/UI handler)
-- 捕获方式:□ 具体异常类型(通过) □ except Exception(必须填宽捕原因:□ 边界层 □ 任务隔离 □ UI 顶层) □ 裸 except(阻断)
-- 处理动作:
-  □ 处理并恢复 → 必填三项:
-    - 恢复值的业务语义:____
-    - 调用方如何区分正常 vs 降级:____
-    - 日志级别:□ WARNING □ ERROR
-  □ 补充上下文后抛出(raise from)
-  □ 透传
-- traceback 处理:□ 保留(raise from / 原样抛出) □ 丢失(阻断)
+- 若用 except Exception 宽捕,原因:□ 边界层 □ 任务隔离 □ UI 顶层
+- 若处理并恢复:
+  - 恢复值的业务语义:____
+  - 调用方如何区分正常 vs 降级:____
+  - 日志级别:□ WARNING □ ERROR
 ```
 
-#### 分层捕获规则
+#### 分层捕获规则(语义层,工具查不到)
 - **引擎层**:只 raise,不 catch(除非真要降级,需明示业务理由)
 - **服务层**:可 catch 转译成业务异常(`BusinessError`)
 - **边界层**:必须 catch 兜底,转译为用户可见信息(不暴露 traceback)
 
-#### 阻断条件
-- 裸 except → **[阻断] 指定具体异常类型**
-- except 体仅吞错(pass / return None / return [] / return {} / continue)且无日志无 raise → **[阻断] 说明业务为何可吞,或改为透传**
+#### 阻断条件(语义层)
 - except Exception 未填宽捕原因 → **[阻断] 填三选一**
 - 处理并恢复未填三项 → **[阻断] 补齐**
-- traceback 丢失 → **[阻断] raise from 或原样抛出**
 - 错误信息含敏感字段(密码/token/key) → **[阻断] 移除**
 - 引擎层吞了异常未上报 → **[阻断] 改为 raise,catch 移到服务/边界层**
 - 边界层未兜底导致 traceback 暴露给用户 → **[阻断] 边界层加 catch + 转译**
 
+> 裸 except / 吞错 / 丢 traceback / TRY 反模式 → ruff 已物理拦,不在此重复
+
 ---
 
-### 5. 不变式与确定性【强制】
+### 5. 不变式与确定性【已由 hook 接管,不再列为思考层强制】
 
-#### 触发条件(满足任一)
-- 涉及 `random.` / `np.random.` / `torch.*seed`
-- 涉及 `set(...)` / `dict(...).keys()` 用于编号/排序/输出
-- 涉及 `os.listdir` / `glob.glob` 且业务依赖顺序
-- 并发结果汇总(任务结果合并)
-
-#### 必须输出
-```
-[确定性自检]
-- 这段代码跑两次输出会一样吗:□ 一定一样 □ 不一定(说明哪里变 + 业务是否接受)
-- 随机源:□ 无 □ 有(seed 是否固定:____)
-- 集合迭代:□ 已 sorted □ 业务接受无序
-- 文件遍历:□ 已 sorted □ 业务接受无序
-- 并发汇总:□ 已按 key 排序 □ 业务接受无序
-```
-
-#### 阻断条件
-- `set(...)` 或 `dict(...).keys()` 用于 enumerate/编号且无 sorted → **[阻断] 加 sorted 或说明业务接受**
-- random/np.random/torch 无 seed 且产物用于训练/输出 → **[阻断] 加 seed 或说明**
-- `os.listdir` / `glob.glob` 用于业务依赖顺序的场景且无 sorted → **[阻断] 加 sorted**
+> **2026-05-18 hook 接管声明**:
+> - `enumerate(set/dict.keys)` 不稳定排序 → `ruff_check.sh` 自定义 grep 拦截
+> - `random.*` / `np.random.*` 无 seed → `ruff NPY002` 拦截
+> - `os.listdir` / `glob.glob` 未 sorted → 语义层,**仅"业务依赖顺序"时需 AI 判断**,无固定形式
+>
+> 触发 hook 报告后,AI 在响应中按报告位置加 `sorted()` 或在 `# 范式: 确定性` 注释里说明业务接受无序即可。
+> 本节原 3 条阻断子项全部由工具链覆盖,不再要求填自检表。
 
 ---
 
