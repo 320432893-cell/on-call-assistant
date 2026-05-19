@@ -7,7 +7,7 @@ from typing import List
 
 from app.config import get_settings
 from app.services import get_preprocessor, get_indexer
-from app.models import DocumentInput, DocumentResponse, SearchResult, SearchResponse
+from app.models import SearchResult
 
 settings = get_settings()
 
@@ -19,18 +19,21 @@ router = APIRouter(prefix="/v1", tags=["Phase1-关键词搜索"])
 
 class DocumentInputV1(BaseModel):
     """文档入库请求（与通用模型一致）"""
+
     id: str = Field(..., description="文档ID，如 sop-001")
     html: str = Field(..., description="HTML原文")
 
 
 class DocumentResponseV1(BaseModel):
     """文档入库响应"""
+
     id: str
     title: str
 
 
 class SearchResponseV1(BaseModel):
     """搜索响应"""
+
     query: str
     results: List[SearchResult]
 
@@ -76,7 +79,7 @@ async def create_document(doc_input: DocumentInputV1):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"处理失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"处理失败: {e!s}")
 
 
 @router.get("/search", response_model=SearchResponseV1)
@@ -117,7 +120,7 @@ async def search_documents(q: str, limit: int = 10):
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"搜索失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"搜索失败: {e!s}")
 
 
 def _substring_fallback(q: str, limit: int = 10) -> list:
@@ -142,13 +145,15 @@ def _substring_fallback(q: str, limit: int = 10) -> list:
                 title_tag = soup.find("title") or soup.find("h1")
                 title = title_tag.get_text(strip=True) if title_tag else html_file.stem
                 idx = text.index(q)
-                snippet = text[max(0, idx-60):idx+60]
-                hits.append(IndexerResult(
-                    doc_id=html_file.stem,
-                    title=title,
-                    snippet=snippet,
-                    score=1.0,  # 纯匹配，无分差
-                ))
+                snippet = text[max(0, idx - 60) : idx + 60]
+                hits.append(
+                    IndexerResult(
+                        doc_id=html_file.stem,
+                        title=title,
+                        snippet=snippet,
+                        score=1.0,  # 纯匹配，无分差
+                    )
+                )
                 if len(hits) >= limit:
                     break
         except Exception:  # noqa: BLE001, S112 — 单 collection 失败不阻断其他 collection 检索

@@ -5,9 +5,18 @@ from .vectorstore import QdrantService, VectorSearchResult, get_vectorstore
 from .session_store import SessionStore, get_session_store
 
 __all__ = [
-    "DocumentPreprocessor", "ProcessedDocument", "get_preprocessor",
-    "TantivyIndexer", "SearchResult", "get_indexer", "close_indexer",
-    "EmbeddingService", "get_embedder",
-    "QdrantService", "VectorSearchResult", "get_vectorstore",
-    "SessionStore", "get_session_store",
+    "DocumentPreprocessor",
+    "EmbeddingService",
+    "ProcessedDocument",
+    "QdrantService",
+    "SearchResult",
+    "SessionStore",
+    "TantivyIndexer",
+    "VectorSearchResult",
+    "close_indexer",
+    "get_embedder",
+    "get_indexer",
+    "get_preprocessor",
+    "get_session_store",
+    "get_vectorstore",
 ]

@@ -14,7 +14,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from pathlib import Path
 from app.services import get_preprocessor, get_indexer, close_indexer
-from scripts.init_data import SOP_DOCUMENTS
 
 
 def test_preprocessor():

@@ -24,7 +24,6 @@
     "PostToolUse_EditWriteMultiEdit": [
       "engineering_audit.sh",
       "rename_audit.sh",
-      "first_iter_lines.sh",
       "playwright_no_sleep.sh",
       "http_timeout.sh",
       "fastapi_debug.sh",

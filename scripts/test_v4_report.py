@@ -65,9 +65,11 @@ def check_service(base: str) -> int:
     print(f"[setup] 服务存活，collection={h.get('collection')}，n_indexed={n}")
     if n == 0:
         print("[setup] collection 为空，请先 POST /v4/ingest 灌库")
-        print("        curl -X POST http://127.0.0.1:8000/v4/ingest "
-              "-H 'Content-Type: application/json' "
-              "-d '{\"company\":\"移远通信\",\"year\":2025}'")
+        print(
+            "        curl -X POST http://127.0.0.1:8000/v4/ingest "
+            "-H 'Content-Type: application/json' "
+            '-d \'{"company":"移远通信","year":2025}\''
+        )
         sys.exit(3)
     return n
 

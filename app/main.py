@@ -20,6 +20,7 @@ async def lifespan(app: FastAPI):
     # 启动时清理 Tantivy 残留 lock 文件（防 uvicorn --reload 异常退出残留）
     # 此刻 app 还没起来，不可能有任何活跃 writer，删锁安全。
     from pathlib import Path
+
     tantivy_dir = Path(settings.TANTIVY_INDEX_PATH)
     for lock_name in (".tantivy-writer.lock", ".tantivy-meta.lock"):
         stale = tantivy_dir / lock_name
@@ -33,6 +34,7 @@ async def lifespan(app: FastAPI):
     yield
     # 关闭时清理资源
     from app.services import close_indexer
+
     close_indexer()
 
 

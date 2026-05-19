@@ -99,23 +99,25 @@ def ingest_chunks(
         vec = embedder.encode(passage, is_query=False)
         if vec is None:
             continue
-        pending.append({
-            "id": chunk.chunk_id,
-            "vector": vec,
-            "payload": {
-                "company": chunk.company,
-                "year": chunk.year,
-                "section_path": chunk.section_path,
-                "section_title": chunk.section_title,
-                "page_start": chunk.page_start,
-                "page_end": chunk.page_end,
-                "snippet": _snippet(chunk.text, 200),
-                "text": chunk.text,
-                "tables": chunk.tables,
-                "n_chars": chunk.n_chars,
-                "has_tables": bool(chunk.tables),
-            },
-        })
+        pending.append(
+            {
+                "id": chunk.chunk_id,
+                "vector": vec,
+                "payload": {
+                    "company": chunk.company,
+                    "year": chunk.year,
+                    "section_path": chunk.section_path,
+                    "section_title": chunk.section_title,
+                    "page_start": chunk.page_start,
+                    "page_end": chunk.page_end,
+                    "snippet": _snippet(chunk.text, 200),
+                    "text": chunk.text,
+                    "tables": chunk.tables,
+                    "n_chars": chunk.n_chars,
+                    "has_tables": bool(chunk.tables),
+                },
+            }
+        )
 
         if len(pending) >= batch_size:
             total_written += vs.upsert_batch_to(REPORT_COLLECTION, pending)

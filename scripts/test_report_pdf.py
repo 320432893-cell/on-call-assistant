@@ -28,7 +28,7 @@ def main():
 
     # 长度分布
     lens = [c.n_chars for c in chunks]
-    print(f"text 长度: min={min(lens)}, max={max(lens)}, avg={sum(lens)//len(lens)}")
+    print(f"text 长度: min={min(lens)}, max={max(lens)}, avg={sum(lens) // len(lens)}")
     # 表格数
     n_tables = sum(len(c.tables) for c in chunks)
     print(f"表格总数: {n_tables}（attach 在 chunk 上）")
@@ -53,7 +53,7 @@ def main():
     print(f"  chunk_id: {mid.chunk_id}")
     print(f"  section_title: {mid.section_title}")
     print(f"  page_range: [{mid.page_start}-{mid.page_end}]")
-    print(f"  text 前 400 字:")
+    print("  text 前 400 字:")
     print("  " + mid.text[:400].replace("\n", "\n  "))
     if mid.tables:
         print(f"  含 {len(mid.tables)} 个表格，第 1 个前 200 字:")

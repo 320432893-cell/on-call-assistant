@@ -12,7 +12,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from pathlib import Path
 from app.services import get_preprocessor, get_embedder, get_vectorstore
-from scripts.init_data import SOP_DOCUMENTS
 
 
 def test_embedding():
@@ -37,7 +36,7 @@ def test_embedding():
     assert vec is not None, "编码失败"
     print(f"   文本: {text}")
     print(f"   维度: {len(vec)}")
-    print(f"   L2范数: {(vec**2).sum()**0.5:.6f}")
+    print(f"   L2范数: {(vec**2).sum() ** 0.5:.6f}")
 
     print("[OK] Embedding测试通过")
 
@@ -140,7 +139,7 @@ def test_vector_index_and_search():
         print(f"      结果数: {len(results)}")
         for j, r in enumerate(results[:3]):
             mark = "<-- 期望" if r.id == expected_id else ""
-            print(f"      {j+1}. {r.id}: {r.payload.get('title', '')[:25]}... (score: {r.score:.4f}) {mark}")
+            print(f"      {j + 1}. {r.id}: {r.payload.get('title', '')[:25]}... (score: {r.score:.4f}) {mark}")
 
         # 检查期望
         top_ids = [r.id for r in results[:3]]
@@ -200,6 +199,7 @@ def main():
     except Exception as e:
         print(f"\n[ERROR] {e}")
         import traceback
+
         traceback.print_exc()
         return 1
 

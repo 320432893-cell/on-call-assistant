@@ -25,8 +25,8 @@ _HEADER_PATTERNS = [
 ]
 
 # chunk 大小阈值
-MIN_CHUNK_CHARS = 30          # 太短的章节直接丢弃（仅含"□适用√不适用"等占位）
-MAX_CHUNK_CHARS = 4000        # 超长章节按 ~3000 字软切，避免向量被稀释
+MIN_CHUNK_CHARS = 30  # 太短的章节直接丢弃（仅含"□适用√不适用"等占位）
+MAX_CHUNK_CHARS = 4000  # 超长章节按 ~3000 字软切，避免向量被稀释
 
 # 占位串（用于判断章节是否只剩模板占位、无实质内容）
 _PLACEHOLDER_RE = re.compile(
@@ -43,15 +43,16 @@ _PLACEHOLDER_RE = re.compile(
 @dataclass
 class ReportChunk:
     """一份年报的一个 chunk（章节级）"""
-    chunk_id: str                       # 例: 移远通信_2025#第三节/管理层讨论与分析/六/(四)
+
+    chunk_id: str  # 例: 移远通信_2025#第三节/管理层讨论与分析/六/(四)
     company: str
     year: int
-    section_path: str                   # 例: 第三节/管理层讨论与分析/六/(四)
-    section_title: str                  # 叶子标题，例: (四) 可能面对的风险
-    page_start: int                     # 1-based
-    page_end: int                       # 1-based, inclusive
-    text: str                           # 正文（已剔页眉/页码）
-    tables: List[str] = field(default_factory=list)   # 表格 markdown
+    section_path: str  # 例: 第三节/管理层讨论与分析/六/(四)
+    section_title: str  # 叶子标题，例: (四) 可能面对的风险
+    page_start: int  # 1-based
+    page_end: int  # 1-based, inclusive
+    text: str  # 正文（已剔页眉/页码）
+    tables: List[str] = field(default_factory=list)  # 表格 markdown
     n_chars: int = 0
 
     def to_dict(self) -> dict:
@@ -340,7 +341,7 @@ def parse_annual_report(
             # 超长软切
             parts = _split_long_chunk(text)
             for pi, part in enumerate(parts):
-                suffix = f"#part{pi+1}" if len(parts) > 1 else ""
+                suffix = f"#part{pi + 1}" if len(parts) > 1 else ""
                 chunk_id = f"{company}_{year}#{sec_path}{suffix}"
                 attached_tables = tables_md if pi == 0 else []
                 chunks.append(

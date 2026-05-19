@@ -6,7 +6,7 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from typing import List
 
-from app.services import get_preprocessor, get_embedder, get_vectorstore, get_indexer
+from app.services import get_preprocessor, get_embedder, get_vectorstore
 from app.models import SearchResult
 
 router = APIRouter(prefix="/v2", tags=["Phase2-语义搜索"])
@@ -26,8 +26,8 @@ def _build_chunk_text(processed, section: dict) -> str:
     return (
         f"标题：{processed.title}\n"
         f"部门：{processed.department}\n"
-        f"章节：{section.get('heading','')}\n\n"
-        f"{section.get('content','')}"
+        f"章节：{section.get('heading', '')}\n\n"
+        f"{section.get('content', '')}"
     )
 
 
@@ -43,6 +43,7 @@ def _ensure_indexed():
         return
 
     from pathlib import Path
+
     raw_dir = Path("data/raw")
     if not raw_dir.exists():
         return
@@ -104,8 +105,10 @@ async def semantic_search(q: str, limit: int = 10):
     for r in raw_results:
         candidate_text = (
             r.payload.get("title", "")
-            + " " + r.payload.get("department", "")
-            + " " + r.payload.get("section_heading", "")
+            + " "
+            + r.payload.get("department", "")
+            + " "
+            + r.payload.get("section_heading", "")
         )
         kw_score = _keyword_boost(query_words, candidate_text)
         final_score = RERANK_ALPHA * float(r.score) + (1 - RERANK_ALPHA) * kw_score

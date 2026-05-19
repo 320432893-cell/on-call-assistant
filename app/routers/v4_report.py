@@ -37,7 +37,7 @@ class IngestRequest(BaseModel):
     pdf_path: Optional[str] = Field(
         None,
         description="PDF 绝对/相对路径；不传则用默认 data/raw/annual_reports/{company}_{year}.pdf；"
-                    "若对应 chunks.jsonl 已存在则直接复用，不重新解析"
+        "若对应 chunks.jsonl 已存在则直接复用，不重新解析",
     )
     force_reparse: bool = Field(False, description="强制重新解析 PDF（即使 jsonl 已存在）")
 

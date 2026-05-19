@@ -2,9 +2,7 @@
 
 from bs4 import BeautifulSoup
 from typing import Optional
-from pathlib import Path
 import jieba
-import json
 import re
 
 from app.config import get_settings
@@ -56,12 +54,39 @@ class DocumentPreprocessor:
         """初始化jieba分词器"""
         # 添加技术领域常用词
         tech_words = [
-            "OOM", "QPS", "TPS", "API", "SDK", "CPU", "GPU", "内存",
-            "主从延迟", "慢查询", "连接池", "热修复", "灰度发布",
-            "容器化", "K8s", "Kubernetes", "微服务", "分布式",
-            "ETL", "OLAP", "OLTP", "SQL", "NoSQL",
-            "CDN", "DNS", "DDoS", "WAF", "FCP", "LCP",
-            "埋点", "召回", "推荐", "特征",
+            "OOM",
+            "QPS",
+            "TPS",
+            "API",
+            "SDK",
+            "CPU",
+            "GPU",
+            "内存",
+            "主从延迟",
+            "慢查询",
+            "连接池",
+            "热修复",
+            "灰度发布",
+            "容器化",
+            "K8s",
+            "Kubernetes",
+            "微服务",
+            "分布式",
+            "ETL",
+            "OLAP",
+            "OLTP",
+            "SQL",
+            "NoSQL",
+            "CDN",
+            "DNS",
+            "DDoS",
+            "WAF",
+            "FCP",
+            "LCP",
+            "埋点",
+            "召回",
+            "推荐",
+            "特征",
         ]
         for word in tech_words:
             jieba.add_word(word, freq=1000)
@@ -208,6 +233,7 @@ class DocumentPreprocessor:
             # 移除 HTML 实体已经在 BeautifulSoup 阶段处理
             # 切 "On-Call" / "On Call" / "OnCall" 前缀
             import re
+
             m = re.split(r"\s*On[\s\-]?Call", title, maxsplit=1, flags=re.IGNORECASE)
             if m and m[0].strip():
                 return m[0].strip()
@@ -237,9 +263,19 @@ class DocumentPreprocessor:
 
         # 简单的关键词提取（实际可用TF-IDF或NER）
         keywords = [
-            "OOM", "主从延迟", "慢查询", "白屏", "CDN",
-            "K8s", "入侵", "ETL", "崩溃", "推理延迟",
-            "DDoS", "DNS", "热修复",
+            "OOM",
+            "主从延迟",
+            "慢查询",
+            "白屏",
+            "CDN",
+            "K8s",
+            "入侵",
+            "ETL",
+            "崩溃",
+            "推理延迟",
+            "DDoS",
+            "DNS",
+            "热修复",
         ]
         for kw in keywords:
             if kw in content:

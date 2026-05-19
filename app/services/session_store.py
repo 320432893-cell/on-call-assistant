@@ -59,11 +59,13 @@ class SessionStore:
     def append_message(self, session_id: str, role: str, content: str):
         """追加一条消息并刷新 TTL"""
         history = self.get_history(session_id)
-        history.append({
-            "role": role,
-            "content": content,
-            "ts": int(time.time()),
-        })
+        history.append(
+            {
+                "role": role,
+                "content": content,
+                "ts": int(time.time()),
+            }
+        )
         self._client.setex(
             self._key(session_id),
             self._ttl,

@@ -1,12 +1,12 @@
 # Embedding服务：本地sentence-transformers + bge-m3
 
 import os
+
 # 使用国内镜像加速 HuggingFace 模型下载（首次拉取约 2GB）
 # 注意：必须在 import sentence_transformers / transformers / huggingface_hub 之前设置
 os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
 
 from typing import Optional, List
-from pathlib import Path
 import numpy as np
 
 from app.config import get_settings

@@ -15,6 +15,7 @@ settings = get_settings()
 
 # ==================== 统一事件模型 ====================
 
+
 @dataclass
 class LLMEvent:
     """Provider 流式输出标准化事件
@@ -24,6 +25,7 @@ class LLMEvent:
       - tool_use      模型决定调用工具（一次性）
       - end           本轮 LLM 响应结束
     """
+
     type: str
     text: Optional[str] = None
     tool_name: Optional[str] = None
@@ -33,6 +35,7 @@ class LLMEvent:
 
 
 # ==================== 基类 ====================
+
 
 class BaseLLMProvider:
     """LLM Provider 抽象基类"""
@@ -60,11 +63,13 @@ class BaseLLMProvider:
 
 # ==================== Anthropic ====================
 
+
 class AnthropicProvider(BaseLLMProvider):
     name = "anthropic"
 
     def __init__(self):
         from anthropic import AsyncAnthropic
+
         if not settings.ANTHROPIC_API_KEY:
             raise RuntimeError("ANTHROPIC_API_KEY 未配置")
         self._client = AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
@@ -82,25 +87,31 @@ class AnthropicProvider(BaseLLMProvider):
         for m in messages:
             role = m["role"]
             if role == "tool":
-                out.append({
-                    "role": "user",
-                    "content": [{
-                        "type": "tool_result",
-                        "tool_use_id": m["tool_call_id"],
-                        "content": m["content"],
-                    }],
-                })
+                out.append(
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": m["tool_call_id"],
+                                "content": m["content"],
+                            }
+                        ],
+                    }
+                )
             elif role == "assistant" and m.get("tool_calls"):
                 blocks = []
                 if m.get("content"):
                     blocks.append({"type": "text", "text": m["content"]})
                 for tc in m["tool_calls"]:
-                    blocks.append({
-                        "type": "tool_use",
-                        "id": tc["id"],
-                        "name": tc["name"],
-                        "input": tc["args"],
-                    })
+                    blocks.append(
+                        {
+                            "type": "tool_use",
+                            "id": tc["id"],
+                            "name": tc["name"],
+                            "input": tc["args"],
+                        }
+                    )
                 out.append({"role": "assistant", "content": blocks})
             else:
                 out.append({"role": role, "content": m["content"]})
@@ -160,6 +171,7 @@ class AnthropicProvider(BaseLLMProvider):
                 elif etype == "content_block_stop":
                     if current_tool is not None:
                         import json as _json
+
                         try:
                             current_tool["args"] = _json.loads(current_tool_input or "{}")
                         except _json.JSONDecodeError:
@@ -179,6 +191,7 @@ class AnthropicProvider(BaseLLMProvider):
 
 # ==================== OpenAI 兼容 ====================
 
+
 class OpenAICompatProvider(BaseLLMProvider):
     """OpenAI 兼容：通过 base_url + api_key + model 适配 OpenAI / DeepSeek / 通义 / Kimi 等"""
 
@@ -186,6 +199,7 @@ class OpenAICompatProvider(BaseLLMProvider):
 
     def __init__(self):
         from openai import AsyncOpenAI
+
         if not settings.LLM_API_KEY:
             raise RuntimeError("LLM_API_KEY 未配置")
         self._client = AsyncOpenAI(
@@ -200,28 +214,33 @@ class OpenAICompatProvider(BaseLLMProvider):
         for m in messages:
             role = m["role"]
             if role == "tool":
-                out.append({
-                    "role": "tool",
-                    "tool_call_id": m["tool_call_id"],
-                    "content": m["content"],
-                })
+                out.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": m["tool_call_id"],
+                        "content": m["content"],
+                    }
+                )
             elif role == "assistant" and m.get("tool_calls"):
                 import json as _json
-                out.append({
-                    "role": "assistant",
-                    "content": m.get("content") or None,
-                    "tool_calls": [
-                        {
-                            "id": tc["id"],
-                            "type": "function",
-                            "function": {
-                                "name": tc["name"],
-                                "arguments": _json.dumps(tc["args"], ensure_ascii=False),
-                            },
-                        }
-                        for tc in m["tool_calls"]
-                    ],
-                })
+
+                out.append(
+                    {
+                        "role": "assistant",
+                        "content": m.get("content") or None,
+                        "tool_calls": [
+                            {
+                                "id": tc["id"],
+                                "type": "function",
+                                "function": {
+                                    "name": tc["name"],
+                                    "arguments": _json.dumps(tc["args"], ensure_ascii=False),
+                                },
+                            }
+                            for tc in m["tool_calls"]
+                        ],
+                    }
+                )
             else:
                 out.append({"role": role, "content": m["content"]})
         return out
@@ -290,6 +309,7 @@ class OpenAICompatProvider(BaseLLMProvider):
         # 流结束后发射所有 tool_use
         if tool_calls_buf:
             import json as _json
+
             for idx in sorted(tool_calls_buf.keys()):
                 buf = tool_calls_buf[idx]
                 try:
@@ -308,11 +328,13 @@ class OpenAICompatProvider(BaseLLMProvider):
 
 # ==================== Gemini ====================
 
+
 class GeminiProvider(BaseLLMProvider):
     name = "gemini"
 
     def __init__(self):
         from google import genai
+
         if not settings.GEMINI_API_KEY:
             raise RuntimeError("GEMINI_API_KEY 未配置")
         self._client = genai.Client(api_key=settings.GEMINI_API_KEY)
@@ -324,23 +346,25 @@ class GeminiProvider(BaseLLMProvider):
         for m in messages:
             role = m["role"]
             if role == "tool":
-                out.append({
-                    "role": "user",
-                    "parts": [{
-                        "function_response": {
-                            "name": m.get("tool_name", "readFile"),
-                            "response": {"content": m["content"]},
-                        }
-                    }],
-                })
+                out.append(
+                    {
+                        "role": "user",
+                        "parts": [
+                            {
+                                "function_response": {
+                                    "name": m.get("tool_name", "readFile"),
+                                    "response": {"content": m["content"]},
+                                }
+                            }
+                        ],
+                    }
+                )
             elif role == "assistant" and m.get("tool_calls"):
                 parts = []
                 if m.get("content"):
                     parts.append({"text": m["content"]})
                 for tc in m["tool_calls"]:
-                    parts.append({
-                        "function_call": {"name": tc["name"], "args": tc["args"]}
-                    })
+                    parts.append({"function_call": {"name": tc["name"], "args": tc["args"]}})
                 out.append({"role": "model", "parts": parts})
             else:
                 gemini_role = "model" if role == "assistant" else "user"
@@ -348,16 +372,18 @@ class GeminiProvider(BaseLLMProvider):
         return out
 
     def _to_gemini_tools(self, tools: list[dict]) -> list[dict]:
-        return [{
-            "function_declarations": [
-                {
-                    "name": t["name"],
-                    "description": t["description"],
-                    "parameters": t["parameters"],
-                }
-                for t in tools
-            ]
-        }]
+        return [
+            {
+                "function_declarations": [
+                    {
+                        "name": t["name"],
+                        "description": t["description"],
+                        "parameters": t["parameters"],
+                    }
+                    for t in tools
+                ]
+            }
+        ]
 
     async def stream_chat(
         self,

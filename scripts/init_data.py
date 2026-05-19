@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # 数据初始化脚本：生成模拟SOP数据并导入
 
-import os
 import json
 from pathlib import Path
 
@@ -67,7 +66,7 @@ SOP_DOCUMENTS = [
 <tr><td>P2</td><td>非核心业务受影响</td><td>30分钟内响应</td></tr>
 <tr><td>P3</td><td>轻微问题，不影响业务</td><td>工作时间处理</td></tr>
 </table>
-"""
+""",
     },
     {
         "id": "sop-002",
@@ -116,7 +115,7 @@ SOP_DOCUMENTS = [
 <li>使用binlog进行point-in-time恢复</li>
 <li>验证数据完整性后恢复服务</li>
 </ol>
-"""
+""",
     },
     {
         "id": "sop-003",
@@ -167,7 +166,7 @@ SOP_DOCUMENTS = [
 <li>LCP (Largest Contentful Paint) > 3秒</li>
 <li>FID (First Input Delay) > 100ms</li>
 </ul>
-"""
+""",
     },
     {
         "id": "sop-004",
@@ -221,7 +220,7 @@ SOP_DOCUMENTS = [
 <li>验证恢复并通知</li>
 <li>编写故障报告</li>
 </ol>
-"""
+""",
     },
     {
         "id": "sop-005",
@@ -267,7 +266,7 @@ SOP_DOCUMENTS = [
 <li>生产环境修复</li>
 <li>验证修复效果</li>
 </ol>
-"""
+""",
     },
     {
         "id": "sop-006",
@@ -316,7 +315,7 @@ SOP_DOCUMENTS = [
 <li>优化数据倾斜问题</li>
 <li>增加重试次数</li>
 </ol>
-"""
+""",
     },
     {
         "id": "sop-007",
@@ -360,7 +359,7 @@ SOP_DOCUMENTS = [
 <li>检查推送证书是否过期</li>
 <li>查看推送日志确认送达情况</li>
 </ol>
-"""
+""",
     },
     {
         "id": "sop-008",
@@ -409,7 +408,7 @@ SOP_DOCUMENTS = [
 <li>检查训练任务状态</li>
 <li>必要时迁移任务到健康节点</li>
 </ol>
-"""
+""",
     },
     {
         "id": "sop-009",
@@ -458,7 +457,7 @@ SOP_DOCUMENTS = [
 <li>性能测试通过</li>
 <li>安全扫描无高危问题</li>
 </ul>
-"""
+""",
     },
     {
         "id": "sop-010",
@@ -507,8 +506,8 @@ SOP_DOCUMENTS = [
 <li>设置访问频率限制</li>
 <li>启用验证码挑战</li>
 </ul>
-"""
-    }
+""",
+    },
 ]
 
 
@@ -522,10 +521,10 @@ def generate_html_files():
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>{doc['title']}</title>
+    <title>{doc["title"]}</title>
 </head>
 <body>
-{doc['content']}
+{doc["content"]}
 <script>
 // 统计脚本 - replication相关配置
 var _stats = {{ replication: true, source: 'cdn-primary' }};
@@ -534,22 +533,17 @@ var _stats = {{ replication: true, source: 'cdn-primary' }};
 </html>"""
 
         file_path = DATA_RAW / f"{doc['id']}.html"
-        with open(file_path, 'w', encoding='utf-8') as f:
+        with open(file_path, "w", encoding="utf-8") as f:
             f.write(html_content)
         print(f"生成: {file_path}")
 
     # 生成metadata.json
     metadata = []
     for doc in SOP_DOCUMENTS:
-        metadata.append({
-            "id": doc["id"],
-            "title": doc["title"],
-            "department": doc["department"],
-            "tags": doc["tags"]
-        })
+        metadata.append({"id": doc["id"], "title": doc["title"], "department": doc["department"], "tags": doc["tags"]})
 
     metadata_path = DATA_RAW / "metadata.json"
-    with open(metadata_path, 'w', encoding='utf-8') as f:
+    with open(metadata_path, "w", encoding="utf-8") as f:
         json.dump(metadata, f, ensure_ascii=False, indent=2)
     print(f"生成: {metadata_path}")
 

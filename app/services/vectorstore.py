@@ -234,8 +234,6 @@ class QdrantService:
                     ]
                 )
 
-            from qdrant_client.models import SearchRequest
-
             results = self._client.query_points(
                 collection_name=self.collection_name,
                 query=query_vector.tolist(),
@@ -364,11 +362,7 @@ class QdrantService:
         try:
             query_filter = None
             if filters:
-                must = [
-                    FieldCondition(key=k, match=MatchValue(value=v))
-                    for k, v in filters.items()
-                    if v is not None
-                ]
+                must = [FieldCondition(key=k, match=MatchValue(value=v)) for k, v in filters.items() if v is not None]
                 if must:
                     query_filter = Filter(must=must)
 

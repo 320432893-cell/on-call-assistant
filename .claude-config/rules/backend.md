@@ -2,7 +2,7 @@
 
 ## 文件定位
 - 本文件只包含**强制阻断级**规则，覆盖 FastAPI / Starlette 项目最高频高影响场景
-- 强制规则数 ≤ 10 条（workflow.md § 2.3.2 上限）
+- 强制规则数 ≤ 10 条（governance.md § 5.2 上限）
 - 跨文件职责分工：
   - 通用代码规范见 `code.md`
   - 分层架构见 `architecture.md`

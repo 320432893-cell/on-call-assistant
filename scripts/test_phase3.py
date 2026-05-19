@@ -71,6 +71,7 @@ async def test_agent_smoke():
     except Exception as e:
         print(f"[FAIL] state machine: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -86,6 +87,7 @@ async def test_session_store():
     print("\n=== Redis SessionStore ===")
     try:
         from app.services import get_session_store
+
         store = get_session_store()
     except Exception as e:
         print(f"[SKIP] SessionStore 初始化失败: {e}")

@@ -177,17 +177,14 @@ class TantivyIndexer:
             searcher = self.index.searcher()
 
             # 解析查询：title + content（jieba 分词）+ content_raw（标点字符兜底）
-            parsed_query = self.index.parse_query(
-                query,
-                default_field_names=["title", "content", "content_raw"]
-            )
+            parsed_query = self.index.parse_query(query, default_field_names=["title", "content", "content_raw"])
 
             # 执行搜索
             top_docs = searcher.search(parsed_query, limit + offset)
 
             results = []
             # hits 是 [(score, doc_address)] 列表
-            hits = top_docs.hits[offset:limit+offset] if offset == 0 else top_docs.hits[offset:limit+offset]
+            hits = top_docs.hits[offset : limit + offset] if offset == 0 else top_docs.hits[offset : limit + offset]
             for score, doc_address in hits:
                 doc = searcher.doc(doc_address)
 
@@ -249,14 +246,11 @@ class TantivyIndexer:
 
         try:
             searcher = self.index.searcher()
-            parsed_query = self.index.parse_query(
-                f'id:"{doc_id}"',
-                default_field_names=["id"]
-            )
+            parsed_query = self.index.parse_query(f'id:"{doc_id}"', default_field_names=["id"])
 
             top_docs = searcher.search(parsed_query, 1)
 
-            for (_, doc_address) in top_docs:
+            for _, doc_address in top_docs:
                 doc = searcher.doc(doc_address)
                 return {
                     "id": doc.get_first("id") or "",

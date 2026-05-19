@@ -22,8 +22,7 @@ def build_file_catalog() -> str:
             soup = BeautifulSoup(html_file.read_text(encoding="utf-8"), "lxml")
             title_tag = soup.find("title")
             h1_tag = soup.find("h1")
-            title = (title_tag.get_text(strip=True) if title_tag
-                     else (h1_tag.get_text(strip=True) if h1_tag else doc_id))
+            title = title_tag.get_text(strip=True) if title_tag else (h1_tag.get_text(strip=True) if h1_tag else doc_id)
         except Exception:
             title = doc_id
         lines.append(f"- {doc_id}.html  {title}")
