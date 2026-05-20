@@ -1,0 +1,31 @@
+rules:
+  - id: httpx-module-call-without-timeout
+    message: "HTTPX module-level calls must set timeout= explicitly."
+    severity: ERROR
+    languages: [python]
+    patterns:
+      - pattern-either:
+          - pattern: httpx.get(...)
+          - pattern: httpx.post(...)
+          - pattern: httpx.put(...)
+          - pattern: httpx.delete(...)
+          - pattern: httpx.patch(...)
+          - pattern: httpx.head(...)
+          - pattern: httpx.options(...)
+          - pattern: httpx.request(...)
+      - pattern-not: httpx.get(..., timeout=..., ...)
+      - pattern-not: httpx.post(..., timeout=..., ...)
+      - pattern-not: httpx.put(..., timeout=..., ...)
+      - pattern-not: httpx.delete(..., timeout=..., ...)
+      - pattern-not: httpx.patch(..., timeout=..., ...)
+      - pattern-not: httpx.head(..., timeout=..., ...)
+      - pattern-not: httpx.options(..., timeout=..., ...)
+      - pattern-not: httpx.request(..., timeout=..., ...)
+
+  - id: urllib-urlopen-without-timeout
+    message: "urllib.request.urlopen must set timeout= explicitly."
+    severity: ERROR
+    languages: [python]
+    patterns:
+      - pattern: urllib.request.urlopen(...)
+      - pattern-not: urllib.request.urlopen(..., timeout=..., ...)

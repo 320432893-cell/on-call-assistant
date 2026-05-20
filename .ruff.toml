@@ -2,13 +2,17 @@
 # 由 ~/.claude/hooks/ruff_check.sh 调用(项目级优先于 ~/.ruff.toml)
 # 个别规则可在文件级 # noqa 豁免
 
-target-version = "py310"
+target-version = "py311"
 line-length = 120
 
 [lint]
 select = [
     # 基础(默认就该有)
     "E", "F", "W",
+    # import 排序
+    "I",
+    # Python 现代语法升级(项目 requires-python >=3.11)
+    "UP",
     # 命名规范(老项目防风格分裂,2026-05-18 加入)
     "N",       # pep8-naming:类 CamelCase / 函数 snake_case / 常量 UPPER 等
     # 常见 bug 模式
@@ -44,6 +48,8 @@ select = [
     "NPY",
     # 简化建议
     "SIM",
+    # comprehension 写法
+    "C4",
 ]
 
 ignore = [

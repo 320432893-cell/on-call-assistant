@@ -1,0 +1,27 @@
+rules:
+  - id: rag-retrieval-limit-one
+    message: "RAG retrieval should not use limit/top_k/k=1; use a wider candidate set unless this is explicitly not RAG."
+    severity: WARNING
+    languages: [python]
+    patterns:
+      - pattern-either:
+          - pattern: $OBJ.search(..., limit=1, ...)
+          - pattern: $OBJ.search(..., top_k=1, ...)
+          - pattern: $OBJ.search(..., k=1, ...)
+          - pattern: $OBJ.query(..., limit=1, ...)
+          - pattern: $OBJ.query(..., top_k=1, ...)
+          - pattern: $OBJ.query(..., k=1, ...)
+          - pattern: $OBJ.query_points(..., limit=1, ...)
+          - pattern: $OBJ.query_points(..., top_k=1, ...)
+          - pattern: $OBJ.query_points(..., k=1, ...)
+
+  - id: sentence-transformer-no-normalize-with-cosine
+    message: "normalize_embeddings=False should not be used in the same file as Distance.COSINE."
+    severity: ERROR
+    languages: [python]
+    patterns:
+      - pattern: $ENC.encode(..., normalize_embeddings=False, ...)
+      - pattern-inside: |
+          ...
+          VectorParams(..., distance=Distance.COSINE, ...)
+          ...

@@ -1,0 +1,72 @@
+rules:
+  - id: timeseries-train-test-split
+    message: "Time-series files should not use train_test_split without shuffle=False; prefer TimeSeriesSplit or walk-forward validation."
+    severity: WARNING
+    languages: [python]
+    patterns:
+      - pattern-either:
+          - pattern-inside: |
+              ...
+              pd.to_datetime(...)
+              ...
+          - pattern-inside: |
+              ...
+              pd.DatetimeIndex(...)
+              ...
+          - pattern-inside: |
+              ...
+              pd.date_range(...)
+              ...
+      - pattern: train_test_split(...)
+      - pattern-not: train_test_split(..., shuffle=False, ...)
+
+  - id: sklearn-random-forest-without-random-state
+    message: "RandomForest models should set random_state= for reproducible training and analysis."
+    severity: WARNING
+    languages: [python]
+    patterns:
+      - pattern-either:
+          - pattern: RandomForestClassifier(...)
+          - pattern: RandomForestRegressor(...)
+      - pattern-not: RandomForestClassifier(..., random_state=..., ...)
+      - pattern-not: RandomForestRegressor(..., random_state=..., ...)
+
+  - id: sklearn-gradient-boosting-without-random-state
+    message: "GradientBoosting models should set random_state= for reproducible training and analysis."
+    severity: WARNING
+    languages: [python]
+    patterns:
+      - pattern-either:
+          - pattern: GradientBoostingClassifier(...)
+          - pattern: GradientBoostingRegressor(...)
+      - pattern-not: GradientBoostingClassifier(..., random_state=..., ...)
+      - pattern-not: GradientBoostingRegressor(..., random_state=..., ...)
+
+  - id: xgboost-without-seed
+    message: "XGBoost models should set random_state= or seed= for reproducible training and analysis."
+    severity: WARNING
+    languages: [python]
+    patterns:
+      - pattern-either:
+          - pattern: XGBClassifier(...)
+          - pattern: XGBRegressor(...)
+          - pattern: XGBRanker(...)
+      - pattern-not: XGBClassifier(..., random_state=..., ...)
+      - pattern-not: XGBClassifier(..., seed=..., ...)
+      - pattern-not: XGBRegressor(..., random_state=..., ...)
+      - pattern-not: XGBRegressor(..., seed=..., ...)
+      - pattern-not: XGBRanker(..., random_state=..., ...)
+      - pattern-not: XGBRanker(..., seed=..., ...)
+
+  - id: lightgbm-without-seed
+    message: "LightGBM models should set random_state= or seed= for reproducible training and analysis."
+    severity: WARNING
+    languages: [python]
+    patterns:
+      - pattern-either:
+          - pattern: LGBMClassifier(...)
+          - pattern: LGBMRegressor(...)
+      - pattern-not: LGBMClassifier(..., random_state=..., ...)
+      - pattern-not: LGBMClassifier(..., seed=..., ...)
+      - pattern-not: LGBMRegressor(..., random_state=..., ...)
+      - pattern-not: LGBMRegressor(..., seed=..., ...)

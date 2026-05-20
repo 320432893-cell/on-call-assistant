@@ -1,0 +1,34 @@
+rules:
+  - id: fastapi-debug-true
+    message: "Do not hardcode FastAPI(debug=True); route debug mode through settings."
+    severity: ERROR
+    languages: [python]
+    patterns:
+      - pattern: FastAPI(..., debug=True, ...)
+
+  - id: starlette-debug-true
+    message: "Do not hardcode Starlette(debug=True); route debug mode through settings."
+    severity: ERROR
+    languages: [python]
+    patterns:
+      - pattern-either:
+          - pattern: Starlette(..., debug=True, ...)
+          - pattern: Flask(..., debug=True, ...)
+
+  - id: uvicorn-reload-true
+    message: "Do not hardcode uvicorn.run(..., reload=True); route reload mode through settings or CLI."
+    severity: ERROR
+    languages: [python]
+    patterns:
+      - pattern: uvicorn.run(..., reload=True, ...)
+
+  - id: cors-allow-all-origins
+    message: "Do not use CORSMiddleware allow_origins=['*'] outside an explicit local-only exception."
+    severity: ERROR
+    languages: [python]
+    patterns:
+      - pattern-either:
+          - pattern: $APP.add_middleware(CORSMiddleware, ..., allow_origins=["*"], ...)
+          - pattern: $APP.add_middleware(CORSMiddleware, ..., allow_origins=("*",), ...)
+          - pattern: CORSMiddleware(..., allow_origins=["*"], ...)
+          - pattern: CORSMiddleware(..., allow_origins=("*",), ...)

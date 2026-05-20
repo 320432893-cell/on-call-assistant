@@ -99,6 +99,15 @@ match '不确定.*(怎么|该|要)|帮我.*问|不知道.*怎么|有什么.*(需
 match '规则|governance|治理|\.md.*(改|修|增|删)|CLAUDE\.md|workflow\.md' \
       "governance.md" "规则治理"
 
+if printf '%s' "$prompt" | grep -iqE '规则|governance|治理|\.md.*(改|修|增|删)|CLAUDE\.md|workflow\.md|静态工具|下放|hook'; then
+  echo "[规则激活] 规则/治理类讨论必须带反向论证:"
+  echo "  - 先锚定用户原话"
+  echo "  - 再说明正向收益"
+  echo "  - 必须说明反向风险/什么场景下会害用户"
+  echo "  - 最后给落地建议"
+  echo ""
+fi
+
 # === 专题层 ===
 match 'FastAPI|路由|API.*(endpoint|端点)|HTTP.*(请求|路由)|backend|后端' \
       "backend.md" "FastAPI 后端"

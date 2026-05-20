@@ -40,6 +40,9 @@ jobs:
       - name: Import linter
         run: uv run lint-imports --config .importlinter --no-cache
 
+      - name: Semgrep
+        run: uvx semgrep --config .semgrep
+
       - name: Detect secrets
         run: |
           uv run detect-secrets scan --exclude-files 'uv\.lock' \

@@ -43,3 +43,11 @@ repos:
         pass_filenames: false
         # 任何 .py 改动都跑一遍(架构契约级,不该被跳)
         types: [python]
+
+      - id: semgrep
+        name: semgrep (project static guardrails)
+        entry: uvx semgrep
+        language: system
+        pass_filenames: false
+        types: [python]
+        args: [--config, .semgrep]

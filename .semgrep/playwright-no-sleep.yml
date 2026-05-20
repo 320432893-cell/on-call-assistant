@@ -1,0 +1,12 @@
+rules:
+  - id: playwright-time-sleep
+    message: "Playwright files must not use time.sleep(); use Playwright waits or page.wait_for_timeout for explicit throttling."
+    severity: ERROR
+    languages: [python]
+    pattern-regex: (?s)(from\s+playwright(?:\.[\w_]+)?\s+import|import\s+playwright(?:\.[\w_]+)?).*?\btime\.sleep\s*\(
+
+  - id: playwright-import-time-sleep
+    message: "Playwright files must not use sleep(); use Playwright waits or page.wait_for_timeout for explicit throttling."
+    severity: ERROR
+    languages: [python]
+    pattern-regex: (?s)(from\s+playwright(?:\.[\w_]+)?\s+import|import\s+playwright(?:\.[\w_]+)?).*?\bsleep\s*\(
