@@ -54,6 +54,22 @@ cp .ai-config/settings.json.template .ai-config/settings.json
 
 `.claude/`(本地缓存)新电脑会自动重建,不用管。
 
+### 3.1 Codex memory 索引
+
+家里或新机器用 Codex 写代码前，必须把 Codex 的项目索引指向仓库规则主版本：
+
+```bash
+python3 scripts/sync_codex_memory.py
+```
+
+验证：
+
+```bash
+sed -n '1,80p' ~/.codex/memories/on-call-assistant-index.md
+```
+
+输出应指向当前仓库的 `.ai-config/AGENTS.md` 和 `.ai-config/rules/`。
+
 ---
 
 ## 3.5 Claude Code 兼容软链建立(仅使用 Claude Code 时需要)
@@ -153,6 +169,7 @@ pytest -x
 离开旧电脑前,确保以下东西已带走或同步:
 - [ ] `.env` 文件(或里面的 token/key)
 - [ ] `.ai-config/settings.json`(token 实文件)
+- [ ] `~/.codex/memories/on-call-assistant-index.md` 已由 `scripts/sync_codex_memory.py` 生成
 - [ ] `data/raw/` `data/processed/` `indexes/`(数据)
 - [ ] 任何放在 `.gitignore` 排除目录的实验产物
 - [ ] PyCharm 个人配置(若需要)

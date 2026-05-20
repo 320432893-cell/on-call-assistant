@@ -55,6 +55,17 @@ Codex/AI 读到这里时,**不要质疑**以下事实,直接按它推进:
 - 进仓后改规则 = git commit,push/pull 自动同步
 - 运行时副本或软链只服务本机加载,不能作为长期主版本
 
+**Codex memory 索引同步**:
+- 家里或新机器 `git pull` 后必须运行：
+
+```bash
+python3 scripts/sync_codex_memory.py
+```
+
+- 这个脚本会写入 `~/.codex/memories/on-call-assistant-index.md`
+- 索引只指向当前仓库的 `.ai-config/AGENTS.md`、`.ai-config/rules/`、`.ai-hooks/`
+- 不复制规则全文，避免再次出现仓库规则和 Codex memory 副本不一致
+
 **为什么 settings.json 改成机器生成**:
 - AI 工具 settings linter 会挑剔 Edit 工具对 settings.json 的增量改动,有时静默回滚 hook 注册
 - 改为从 `manifest.json` 生成,避免人/AI 直接 Edit settings.json
@@ -136,6 +147,15 @@ uv sync --index-url https://pypi.tuna.tsinghua.edu.cn/simple
 # 测 hook 配置查找(应该输出项目根的 .ruff.toml 路径)
 .venv/bin/ruff check app/main.py 2>&1 | head -3
 ```
+
+### 3.3.1 Codex memory 索引
+
+```bash
+python3 scripts/sync_codex_memory.py
+sed -n '1,80p' ~/.codex/memories/on-call-assistant-index.md
+```
+
+确认输出里项目根目录是当前 clone 的仓库路径，并且规则主版本指向 `.ai-config/AGENTS.md` 和 `.ai-config/rules/`。
 
 ### 3.4 Claude Code 兼容软链(仅使用 Claude Code 时需要)
 
@@ -432,6 +452,15 @@ python -c "import json; json.load(open(r'$env:USERPROFILE\.claude\settings.json'
 .venv\Scripts\ruff check app\main.py
 ```
 
+### 4.4.1 Codex memory 索引
+
+```powershell
+python scripts\sync_codex_memory.py
+Get-Content "$env:USERPROFILE\.codex\memories\on-call-assistant-index.md" -TotalCount 80
+```
+
+确认输出里项目根目录是当前 clone 的仓库路径，并且规则主版本指向 `.ai-config\AGENTS.md` 和 `.ai-config\rules\`。
+
 ---
 
 ## 5. 常见同步任务速查
@@ -447,6 +476,7 @@ python -c "import json; json.load(open(r'$env:USERPROFILE\.claude\settings.json'
 | 改 AGENTS.md / 规则文件 | 改 `.ai-config/AGENTS.md` 或 `.ai-config/rules/*.md` → `git commit` → 另一台 `git pull`,**完事** |
 | 加新 hook | 写到 `.ai-hooks/xxx.sh`,在 `.ai-hooks/manifest.json` 对应 stage 列表加文件名,跑 `python3 scripts/regen_settings.py`(详见 § 6.10 SSOT 流程) |
 | 加新规则文件 | 写到 `.ai-config/rules/`,在 `.ai-config/rules/workflow.md § 8` 加激活条件 |
+| 同步 Codex 项目索引 | `python3 scripts/sync_codex_memory.py` |
 | 改 token | 只改本机 `.ai-config/settings.json`(不入仓),不影响另一台 |
 
 ---
