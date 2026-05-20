@@ -1,6 +1,6 @@
-# SYNC.md — 环境同步执行手册
+# SYNC.md - 环境同步执行手册
 
-> **使用方式**：在新机器/久未同步的机器上,把整份文件发给 Claude Code,
+> **使用方式**: 在新机器/久未同步的机器上,把整份文件发给 Codex/AI,
 > 让它按"执行步骤"一步一步把环境拉到一致状态。
 >
 > 这份文件本身**入 git**,改一次,两边都能用。
@@ -9,7 +9,7 @@
 
 ## 1. 这个项目的环境契约（事实声明）
 
-Claude 读到这里时,**不要质疑**以下事实,直接按它推进:
+Codex/AI 读到这里时,**不要质疑**以下事实,直接按它推进:
 
 - **Python**: ≥3.11(`pyproject.toml` 已声明)
 - **依赖管理**: 唯一真相源是 `pyproject.toml`,锁文件 `uv.lock` 入 git
@@ -26,30 +26,34 @@ Claude 读到这里时,**不要质疑**以下事实,直接按它推进:
 - **lint 配置**: 项目根 `.ruff.toml` / `.mypy.ini`(入 git,**这是同步源**)
   - 家目录 `~/.ruff.toml` / `~/.mypy.ini` 是 hook 的兜底配置,不是同步源
 
-### 1.1 Claude Code 配置同步策略(2026-05-18 三次改造)
+### 1.1 AI 编码规则同步策略
 
 **hook 同步**:
 - hook 物理位置: 项目根 `.claude-hooks/`(入 git,**这是同步源**)
-- `~/.claude/hooks/` 是**软链**指向项目 `.claude-hooks/`
+- Claude Code 使用时: `~/.claude/hooks/` 可软链指向项目 `.claude-hooks/`
+- Codex 使用时: 以仓库 `.claude-hooks/` 为主版本；是否接入本机运行时由本机配置决定
 - **hook 注册表 SSOT**:`.claude-hooks/manifest.json`(本轮新增,详见 § 6.10)
   - 改 hook 注册改这一个文件,跑 `python3 scripts/regen_settings.py` 即同步到 settings.json
 - 改 hook 只需 git push/pull,无需 stage 包搬运
 
 **规则 + CLAUDE.md 同步**:
-- 物理位置: 项目根 `.claude-config/`(入 git,**这是同步源**)
-  - `.claude-config/CLAUDE.md` ← 全局决策流程
-  - `.claude-config/rules/*.md` ← 16 个规则文件(workflow / governance / flow_* / 专题)
+- 主版本: 项目根 `.claude-config/`(入 git,**这是同步源**)
+  - `.claude-config/CLAUDE.md` <- Codex/AI 全局协作规则
+  - `.claude-config/rules/*.md` <- 规则文件(workflow / governance / flow_* / 专题)
   - `.claude-config/settings.json.template` ← 不含 token 的注册结构(入仓,**机器生成**,见 § 6.10)
   - `.claude-config/settings.json` ← **含 token,不入仓**(.gitignore 已排除,**机器生成**)
-- 软链:
+- Codex 本机运行时副本:
+  - `/home/queclink/.codex/memories/claude-rules-copy/on-call-assistant/`
+  - 这只是本机副本/索引,**不是同步源**,不能只改这里
+- Claude Code 兼容软链:
   - `~/.claude/CLAUDE.md` → `.claude-config/CLAUDE.md`
-  - `~/.claude/projects/-mnt-e-python--/memory/rules` → `.claude-config/rules`
+  - `~/.claude/projects/-home-queclink-project-on-call-assistant/memory/rules` → `.claude-config/rules`
   - `~/.claude/settings.json` → `.claude-config/settings.json`(本地实文件)
 
 **为什么规则要进仓**:
-- 之前规则散在 `~/.claude/projects/-mnt-e-python--/memory/rules/`,跨电脑同步只能靠手抄/stage 包
+- 之前规则散在本机 Claude/Codex 运行时目录,跨电脑同步只能靠手抄
 - 进仓后改规则 = git commit,push/pull 自动同步
-- 软链让 Claude Code 默认路径仍然找到文件,不改 `~/.claude/` 结构
+- 运行时副本或软链只服务本机加载,不能作为长期主版本
 
 **为什么 settings.json 改成机器生成**:
 - Claude Code 引擎 linter 会挑剔 Edit 工具对 settings.json 的增量改动,有时静默回滚 hook 注册
@@ -58,9 +62,12 @@ Claude 读到这里时,**不要质疑**以下事实,直接按它推进:
 
 ### 1.2 hook 内部规则文件路径
 
-`rule_activator.sh` 硬编码引用 `~/.claude/projects/-mnt-e-python--/memory/rules/<file>.md`。
-本路径**不要改**——它对应着软链上文,既是 Claude 历史路径也是当前真实位置。
-家电脑同步时只要软链建对,这条路径自然能跑。
+`rule_activator.sh` 当前按脚本所在目录动态定位规则:
+
+`$SCRIPT_DIR/../.claude-config/rules`
+
+所以只要 `.claude-hooks/` 和 `.claude-config/` 在同一个仓库根下,家电脑 `git pull` 后路径自然成立。
+旧的 `~/.claude/projects/-mnt-e-python--/memory/rules` 是历史路径,不再作为本项目规则主路径。
 
 ### 1.3 工具链配置查找策略
 
@@ -69,9 +76,9 @@ Claude 读到这里时,**不要质疑**以下事实,直接按它推进:
 
 ---
 
-## 2. 执行前置:Claude 必须先确认的事
+## 2. 执行前置:Codex/AI 必须先确认的事
 
-在动手之前,Claude 用只读命令探测环境(按 § 4.5 用户已授权):
+在动手之前,Codex/AI 用只读命令探测环境:
 
 ```
 uname -s                     # Linux=WSL/Linux 流程; MINGW*/CYGWIN*/MSYS*=Windows 流程
@@ -112,7 +119,7 @@ command -v vulture  >/dev/null || pipx install vulture
 ### 3.2 项目依赖
 
 ```bash
-cd /path/to/competitor_study   # WSL 标准位置: ~/project/competitor_study
+cd /path/to/on-call-assistant
 uv sync --index-url https://pypi.tuna.tsinghua.edu.cn/simple
 ```
 
@@ -130,7 +137,7 @@ uv sync --index-url https://pypi.tuna.tsinghua.edu.cn/simple
 .venv/bin/ruff check app/main.py 2>&1 | head -3
 ```
 
-### 3.4 Claude Code 配置软链(首次同步必做)
+### 3.4 Claude Code 配置软链(仅使用 Claude Code 时需要)
 
 > 项目仓库里 `.claude-hooks/` 和 `.claude-config/` 是真身,通过软链让 Claude Code
 > 默认查找路径指向它,实现 git pull 即同步。
@@ -138,7 +145,7 @@ uv sync --index-url https://pypi.tuna.tsinghua.edu.cn/simple
 #### 3.4.1 hook 软链
 
 ```bash
-cd /path/to/competitor_study
+cd /path/to/on-call-assistant
 
 # 1. 备份原 hook(如果存在且不是软链)
 if [ -d ~/.claude/hooks ] && [ ! -L ~/.claude/hooks ]; then
@@ -153,13 +160,13 @@ ln -s "$PWD/.claude-hooks" ~/.claude/hooks
 
 # 4. 验证
 ls -la ~/.claude/hooks
-# 应该看到: ~/.claude/hooks -> /path/to/competitor_study/.claude-hooks
+# 应该看到: ~/.claude/hooks -> /path/to/on-call-assistant/.claude-hooks
 ```
 
 #### 3.4.2 CLAUDE.md 和规则文件软链(2026-05-18 新增)
 
 ```bash
-cd /path/to/competitor_study
+cd /path/to/on-call-assistant
 
 # 1. CLAUDE.md
 if [ -e ~/.claude/CLAUDE.md ] && [ ! -L ~/.claude/CLAUDE.md ]; then
@@ -168,8 +175,8 @@ fi
 [ -L ~/.claude/CLAUDE.md ] && rm ~/.claude/CLAUDE.md
 ln -s "$PWD/.claude-config/CLAUDE.md" ~/.claude/CLAUDE.md
 
-# 2. 规则目录(rule_activator.sh 硬编码这条路径)
-RULES_PARENT=~/.claude/projects/-mnt-e-python--/memory
+# 2. 规则目录(Claude Code 兼容路径)
+RULES_PARENT=~/.claude/projects/-home-queclink-project-on-call-assistant/memory
 mkdir -p "$RULES_PARENT"
 if [ -e "$RULES_PARENT/rules" ] && [ ! -L "$RULES_PARENT/rules" ]; then
     mv "$RULES_PARENT/rules" "$RULES_PARENT/rules.pre-link.bak"
@@ -179,13 +186,13 @@ ln -s "$PWD/.claude-config/rules" "$RULES_PARENT/rules"
 
 # 3. 验证
 ls -la ~/.claude/CLAUDE.md "$RULES_PARENT/rules"
-ls "$RULES_PARENT/rules/" | head -5  # 应该看到 16 个 .md 文件
+ls "$RULES_PARENT/rules/" | head -5
 ```
 
 #### 3.4.3 settings.json(含 token,不进仓 — 从 manifest 生成)
 
 ```bash
-cd /path/to/competitor_study
+cd /path/to/on-call-assistant
 
 # 1. 首次同步:跑生成器,会从 manifest.json + template 生成 settings.json
 #    若本机已有 settings.json,生成器会自动保留你已填入的 ANTHROPIC_AUTH_TOKEN
@@ -327,11 +334,11 @@ foreach ($t in 'uv','ruff','mypy','pydeps','vulture') {
 ### 4.2 项目依赖
 
 ```powershell
-cd C:\path\to\competitor_study
+cd C:\path\to\on-call-assistant
 uv sync --index-url https://pypi.tuna.tsinghua.edu.cn/simple
 ```
 
-### 4.3 Claude Code 配置目录联接(首次同步必做,2026-05-18 重写)
+### 4.3 Claude Code 配置目录联接(仅使用 Claude Code 时需要)
 
 Windows 不能用 Linux 软链,用**目录联接 (junction)**——`mklink /J` 不需要管理员权限,
 对文件用 `mklink` 硬链或 PowerShell `New-Item -ItemType SymbolicLink`(后者需开发者模式)。
@@ -339,7 +346,7 @@ Windows 不能用 Linux 软链,用**目录联接 (junction)**——`mklink /J` �
 #### 4.3.1 hook 联接
 
 ```powershell
-cd C:\path\to\competitor_study
+cd C:\path\to\on-call-assistant
 
 $hookPath = "$env:USERPROFILE\.claude\hooks"
 
@@ -360,7 +367,7 @@ cmd /c mklink /J $hookPath "$PWD\.claude-hooks"
 #### 4.3.2 CLAUDE.md 和规则联接(本轮新增)
 
 ```powershell
-cd C:\path\to\competitor_study
+cd C:\path\to\on-call-assistant
 
 # CLAUDE.md(单文件用 mklink /H 硬链,不需要权限)
 $claudeMd = "$env:USERPROFILE\.claude\CLAUDE.md"
@@ -370,8 +377,8 @@ if ((Test-Path $claudeMd) -and -not (Get-Item $claudeMd).LinkType) {
 if (Test-Path $claudeMd) { Remove-Item $claudeMd }
 cmd /c mklink /H $claudeMd "$PWD\.claude-config\CLAUDE.md"
 
-# 规则目录(rule_activator.sh 硬编码引用 ~/.claude/projects/-mnt-e-python--/memory/rules)
-$rulesParent = "$env:USERPROFILE\.claude\projects\-mnt-e-python--\memory"
+# 规则目录(Claude Code 兼容路径)
+$rulesParent = "$env:USERPROFILE\.claude\projects\-home-queclink-project-on-call-assistant\memory"
 New-Item -ItemType Directory -Force -Path $rulesParent | Out-Null
 
 $rulesPath = "$rulesParent\rules"
@@ -390,7 +397,7 @@ Get-Item $claudeMd, $rulesPath | Select-Object Name, LinkType, Target
 #### 4.3.3 settings.json(含 token,不进仓)
 
 ```powershell
-cd C:\path\to\competitor_study
+cd C:\path\to\on-call-assistant
 
 # 1. 首次同步:跑生成器(会保留已填的 ANTHROPIC_AUTH_TOKEN,否则用占位符)
 python scripts\regen_settings.py
@@ -451,7 +458,7 @@ python -c "import json; json.load(open(r'$env:USERPROFILE\.claude\settings.json'
 ```bash
 # 0. ~/.claude/hooks 是否正确指向项目仓库
 ls -la ~/.claude/hooks
-# 应该看到: hooks -> .../competitor_study/.claude-hooks
+# 应该看到: hooks -> .../on-call-assistant/.claude-hooks
 # 如果不是软链,按 § 3.4.1 重建
 # 1. 命令存在吗
 which ruff mypy
@@ -465,9 +472,9 @@ ls ./.ruff.toml ~/.ruff.toml
 
 ```bash
 # 0. 规则目录软链是否生效
-ls -la ~/.claude/projects/-mnt-e-python--/memory/rules
-# 应该看到: rules -> .../competitor_study/.claude-config/rules
-ls ~/.claude/projects/-mnt-e-python--/memory/rules/ | wc -l  # 应该是 16
+ls -la ~/.claude/projects/-home-queclink-project-on-call-assistant/memory/rules
+# 应该看到: rules -> .../on-call-assistant/.claude-config/rules
+ls ~/.claude/projects/-home-queclink-project-on-call-assistant/memory/rules/ | wc -l
 
 # 1. 手动模拟
 echo '{"session_id":"x","prompt":"线上挂了"}' | bash ~/.claude/hooks/rule_activator.sh
@@ -549,7 +556,7 @@ linter 同时会把这次执行 chmod 的命令追加到 `permissions.allow`,**�
 #### 加新 hook 流程(SSOT 三步)
 
 ```bash
-cd /path/to/competitor_study
+cd /path/to/on-call-assistant
 
 # 1. 写新 hook
 cat > .claude-hooks/new_hook.sh << 'EOF'
@@ -588,7 +595,7 @@ python3 scripts/regen_settings.py
 
 跑下面这条 sanity check,manifest 与 settings.json 应一致:
 ```bash
-cd /path/to/competitor_study
+cd /path/to/on-call-assistant
 python3 -c "
 import json
 m = json.load(open('.claude-hooks/manifest.json'))
@@ -624,5 +631,5 @@ else:
 - 加新工具/新流程,加到对应章节
 - 改完 `git commit`,两台机器自动同步
 
-> 让 Claude 维护时,可以说: **"按 SYNC.md 同步环境"** 或
+> 让 Codex/AI 维护时,可以说: **"按 SYNC.md 同步环境"** 或
 > **"更新 SYNC.md 反映 XXX 变更"**。
