@@ -116,7 +116,7 @@ while IFS= read -r name; do
   [ -z "$name" ] && continue
   refs=$(cd "$project_root" && grep -rn --include="*.py" --include="*.vue" --include="*.ts" --include="*.js" \
     --exclude-dir=.venv --exclude-dir=venv --exclude-dir=.git --exclude-dir=node_modules \
-    --exclude-dir=__pycache__ --exclude-dir=dist --exclude-dir=.claude-hooks \
+    --exclude-dir=__pycache__ --exclude-dir=dist --exclude-dir=.ai-hooks \
     -wE "\b${name}\b" 2>/dev/null | grep -v "^${file_rel}:" | head -3)
   if [ -n "$refs" ]; then
     ghost_refs="${ghost_refs}\n  [删除/改名: ${name}]"

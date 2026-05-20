@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""SSOT 生成器:从 .claude-hooks/manifest.json 生成 .claude-config/settings.json{,.template}。
+"""SSOT 生成器:从 .ai-hooks/manifest.json 生成 .ai-config/settings.json{,.template}。
 
-为什么需要这层:Claude Code 的引擎 linter 会挑剔 Edit 工具对 settings.json 的增量改动,
+为什么需要这层:AI 工具的 settings linter 会挑剔 Edit 工具对 settings.json 的增量改动,
 有时静默回滚 hook 注册。Python 通过 Bash 写文件是普通 IO 操作,引擎不挑。
 
 用法:
     python3 scripts/regen_settings.py
 
 行为:
-    - 读 .claude-hooks/manifest.json(SSOT)
-    - 读本地 .claude-config/settings.json 的 ANTHROPIC_AUTH_TOKEN(若存在)
-    - 生成 .claude-config/settings.json(含 token,不入仓)
-    - 生成 .claude-config/settings.json.template(token = REPLACE_ME_..., 入仓)
-    - 校验:每个 hook 名在 .claude-hooks/ 下都存在对应 .sh 文件,否则报错退出
+    - 读 .ai-hooks/manifest.json(SSOT)
+    - 读本地 .ai-config/settings.json 的 ANTHROPIC_AUTH_TOKEN(若存在)
+    - 生成 .ai-config/settings.json(含 token,不入仓)
+    - 生成 .ai-config/settings.json.template(token = REPLACE_ME_..., 入仓)
+    - 校验:每个 hook 名在 .ai-hooks/ 下都存在对应 .sh 文件,否则报错退出
     - 校验:生成产物是合法 JSON
     - 清理:permissions.allow 只保留 manifest 显式声明的,丢掉 linter 累积的脏命令
 
@@ -30,10 +30,10 @@ from typing import Any
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-MANIFEST = REPO_ROOT / ".claude-hooks" / "manifest.json"
-HOOKS_DIR = REPO_ROOT / ".claude-hooks"
-SETTINGS = REPO_ROOT / ".claude-config" / "settings.json"
-TEMPLATE = REPO_ROOT / ".claude-config" / "settings.json.template"
+MANIFEST = REPO_ROOT / ".ai-hooks" / "manifest.json"
+HOOKS_DIR = REPO_ROOT / ".ai-hooks"
+SETTINGS = REPO_ROOT / ".ai-config" / "settings.json"
+TEMPLATE = REPO_ROOT / ".ai-config" / "settings.json.template"
 
 TOKEN_PLACEHOLDER = "REPLACE_ME_WITH_YOUR_TOKEN"  # noqa: S105
 
@@ -47,7 +47,7 @@ def load_manifest() -> dict[str, Any]:
 
 def validate_hooks_exist(manifest: dict[str, Any]) -> None:
     missing: list[str] = [
-        f"  {stage_key}: {name}(.claude-hooks/{name} 不存在)"
+        f"  {stage_key}: {name}(.ai-hooks/{name} 不存在)"
         for stage_key, hook_names in manifest.get("hooks", {}).items()
         for name in hook_names
         if not (HOOKS_DIR / name).exists()

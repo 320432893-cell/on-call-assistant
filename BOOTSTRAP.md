@@ -42,23 +42,23 @@ cp .env.example .env
 
 ---
 
-## 3. Claude Code 配置
+## 3. AI 工具配置
 
 ```bash
 # settings.json 含 token,不入库;只入 template
 # 用模板生成实际配置文件
-cp .claude-config/settings.json.template .claude-config/settings.json
+cp .ai-config/settings.json.template .ai-config/settings.json
 
-# 编辑 .claude-config/settings.json 填入实际 token / 路径
+# 编辑 .ai-config/settings.json 填入实际 token / 路径
 ```
 
 `.claude/`(本地缓存)新电脑会自动重建,不用管。
 
 ---
 
-## 3.5 Claude Code 软链建立(关键!不建 Claude Code 看不到规则和 hook)
+## 3.5 Claude Code 兼容软链建立(仅使用 Claude Code 时需要)
 
-仓库里的 `CLAUDE.md` / 规则 / hook 不会被 Claude Code 自动加载,必须把 `~/.claude/` 下的关键路径软链到仓库内的实文件:
+仓库里的 `AGENTS.md` / 规则 / hook 是主版本。若使用 Claude Code,需要把 `~/.claude/` 下的兼容路径软链到仓库内的实文件:
 
 ```bash
 # 备份(若 ~/.claude/ 已有同名文件)
@@ -68,15 +68,15 @@ mv ~/.claude/settings.json ~/.claude/settings.json.bak 2>/dev/null
 
 # 建软链(假设仓库 clone 在 /home/<user>/data_project/on-call-assistant-20260514/)
 REPO=/home/$(whoami)/data_project/on-call-assistant-20260514
-ln -s $REPO/.claude-config/CLAUDE.md     ~/.claude/CLAUDE.md
-ln -s $REPO/.claude-hooks                ~/.claude/hooks
-ln -s $REPO/.claude-config/settings.json ~/.claude/settings.json   # 注意:settings.json 实文件不入库,见 § 3
+ln -s $REPO/.ai-config/AGENTS.md     ~/.claude/CLAUDE.md
+ln -s $REPO/.ai-hooks                ~/.claude/hooks
+ln -s $REPO/.ai-config/settings.json ~/.claude/settings.json   # 注意:settings.json 实文件不入库,见 § 3
 ```
 
 验证:
 ```bash
 ls -la ~/.claude/CLAUDE.md ~/.claude/hooks ~/.claude/settings.json
-# 三行都应显示 -> 指向 .claude-config / .claude-hooks 内的实路径
+# 三行都应显示 -> 指向 .ai-config / .ai-hooks 内的实路径
 ```
 
 **Windows / WSL 注意**:
@@ -142,9 +142,9 @@ pytest -x
 |---|---|
 | `uv sync` 慢 | 切清华镜像:`uv sync --index-url https://pypi.tuna.tsinghua.edu.cn/simple` |
 | pre-commit 报 detect-secrets 失败 | 检查 `.secrets.baseline` 是否随仓库带来 |
-| `.claude-config/settings.json` 缺失 | 见 § 3,从 template 复制 |
+| `.ai-config/settings.json` 缺失 | 见 § 3,从 template 复制 |
 | 业务功能跑不起来,提示数据缺失 | 见 § 5,数据目录需单独同步 |
-| Claude Code 无法识别规则文件 | 检查软链 `~/.claude/CLAUDE.md` → `.claude-config/CLAUDE.md` |
+| Claude Code 无法识别规则文件 | 检查软链 `~/.claude/CLAUDE.md` → `.ai-config/AGENTS.md` |
 
 ---
 
@@ -152,7 +152,7 @@ pytest -x
 
 离开旧电脑前,确保以下东西已带走或同步:
 - [ ] `.env` 文件(或里面的 token/key)
-- [ ] `.claude-config/settings.json`(token 实文件)
+- [ ] `.ai-config/settings.json`(token 实文件)
 - [ ] `data/raw/` `data/processed/` `indexes/`(数据)
 - [ ] 任何放在 `.gitignore` 排除目录的实验产物
 - [ ] PyCharm 个人配置(若需要)

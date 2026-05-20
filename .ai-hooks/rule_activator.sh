@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # UserPromptSubmit hook: 扫描用户 prompt 关键词,把对应规则文件路径注入上下文
-# 输出走 stdout(exit 0),Claude Code 会把内容加到下一轮上下文里
+# 输出走 stdout(exit 0),支持该 hook 协议的 AI 工具会把内容加到下一轮上下文里
 # 不阻断,只提示。漏匹配比误匹配代价低,所以倾向"宁可不激活也不乱激活"
 
 set -u
@@ -28,17 +28,17 @@ TASK_HASH=$(echo -n "$$_$(date +%Y%m%d)" | md5sum | cut -c1-8)
 
 # 检测用户确认词(优先级最高,先处理)
 if printf '%s' "$prompt" | grep -iqE '确认|^做$|开始|选[A-Z]|就这样|^可以$|^行$|^好$|同意|拍板|按你'; then
-  touch "/tmp/claude_task_confirmed_${TASK_HASH}" 2>/dev/null
+  touch "/tmp/ai_task_confirmed_${TASK_HASH}" 2>/dev/null
 fi
 
 # 检测探索型任务(新项目/架构决策)
 if printf '%s' "$prompt" | grep -iqE '新项目|新模块|从零|架构决策|设计.*(一个|系统|方案)|搭建.*(项目|系统)'; then
-  touch "/tmp/claude_task_exploratory_${TASK_HASH}" 2>/dev/null
+  touch "/tmp/ai_task_exploratory_${TASK_HASH}" 2>/dev/null
 fi
 
-# 规则文件根路径(动态定位,hook 在 .claude-hooks/,规则在同仓库 .claude-config/rules/)
+# 规则文件根路径(动态定位,hook 在 .ai-hooks/,规则在同仓库 .ai-config/rules/)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-RULES_DIR="$SCRIPT_DIR/../.claude-config/rules"
+RULES_DIR="$SCRIPT_DIR/../.ai-config/rules"
 
 # 匹配函数:模式命中即输出激活提示
 # 用法: match "关键词正则" "规则文件名" "场景标签"
@@ -96,10 +96,10 @@ match '不确定.*(怎么|该|要)|帮我.*问|不知道.*怎么|有什么.*(需
       "info_guidance.md" "信息引导漏斗"
 
 # === 治理层 ===
-match '规则|governance|治理|\.md.*(改|修|增|删)|CLAUDE\.md|workflow\.md' \
+match '规则|governance|治理|\.md.*(改|修|增|删)|AGENTS\.md|workflow\.md' \
       "governance.md" "规则治理"
 
-if printf '%s' "$prompt" | grep -iqE '规则|governance|治理|\.md.*(改|修|增|删)|CLAUDE\.md|workflow\.md|静态工具|下放|hook'; then
+if printf '%s' "$prompt" | grep -iqE '规则|governance|治理|\.md.*(改|修|增|删)|AGENTS\.md|workflow\.md|静态工具|下放|hook'; then
   echo "[规则激活] 规则/治理类讨论必须带反向论证:"
   echo "  - 先锚定用户原话"
   echo "  - 再说明正向收益"

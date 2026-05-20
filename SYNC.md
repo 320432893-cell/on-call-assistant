@@ -29,34 +29,34 @@ Codex/AI 读到这里时,**不要质疑**以下事实,直接按它推进:
 ### 1.1 AI 编码规则同步策略
 
 **hook 同步**:
-- hook 物理位置: 项目根 `.claude-hooks/`(入 git,**这是同步源**)
-- Claude Code 使用时: `~/.claude/hooks/` 可软链指向项目 `.claude-hooks/`
-- Codex 使用时: 以仓库 `.claude-hooks/` 为主版本；是否接入本机运行时由本机配置决定
-- **hook 注册表 SSOT**:`.claude-hooks/manifest.json`(本轮新增,详见 § 6.10)
+- hook 物理位置: 项目根 `.ai-hooks/`(入 git,**这是同步源**)
+- Claude Code 使用时: `~/.claude/hooks/` 可软链指向项目 `.ai-hooks/`
+- Codex 使用时: 以仓库 `.ai-hooks/` 为主版本；是否接入本机运行时由本机配置决定
+- **hook 注册表 SSOT**:`.ai-hooks/manifest.json`(本轮新增,详见 § 6.10)
   - 改 hook 注册改这一个文件,跑 `python3 scripts/regen_settings.py` 即同步到 settings.json
 - 改 hook 只需 git push/pull,无需 stage 包搬运
 
-**规则 + CLAUDE.md 同步**:
-- 主版本: 项目根 `.claude-config/`(入 git,**这是同步源**)
-  - `.claude-config/CLAUDE.md` <- Codex/AI 全局协作规则
-  - `.claude-config/rules/*.md` <- 规则文件(workflow / governance / flow_* / 专题)
-  - `.claude-config/settings.json.template` ← 不含 token 的注册结构(入仓,**机器生成**,见 § 6.10)
-  - `.claude-config/settings.json` ← **含 token,不入仓**(.gitignore 已排除,**机器生成**)
+**规则 + AGENTS.md 同步**:
+- 主版本: 项目根 `.ai-config/`(入 git,**这是同步源**)
+  - `.ai-config/AGENTS.md` <- Codex/AI 全局协作规则
+  - `.ai-config/rules/*.md` <- 规则文件(workflow / governance / flow_* / 专题)
+  - `.ai-config/settings.json.template` ← 不含 token 的注册结构(入仓,**机器生成**,见 § 6.10)
+  - `.ai-config/settings.json` ← **含 token,不入仓**(.gitignore 已排除,**机器生成**)
 - Codex 本机运行时副本:
-  - `/home/queclink/.codex/memories/claude-rules-copy/on-call-assistant/`
+  - `/home/queclink/.codex/memories/ai-rules-copy/on-call-assistant/`
   - 这只是本机副本/索引,**不是同步源**,不能只改这里
 - Claude Code 兼容软链:
-  - `~/.claude/CLAUDE.md` → `.claude-config/CLAUDE.md`
-  - `~/.claude/projects/-home-queclink-project-on-call-assistant/memory/rules` → `.claude-config/rules`
-  - `~/.claude/settings.json` → `.claude-config/settings.json`(本地实文件)
+  - `~/.claude/CLAUDE.md` → `.ai-config/AGENTS.md`
+  - `~/.claude/projects/-home-queclink-project-on-call-assistant/memory/rules` → `.ai-config/rules`
+  - `~/.claude/settings.json` → `.ai-config/settings.json`(本地实文件)
 
 **为什么规则要进仓**:
-- 之前规则散在本机 Claude/Codex 运行时目录,跨电脑同步只能靠手抄
+- 之前规则散在本机 AI 工具运行时目录,跨电脑同步只能靠手抄
 - 进仓后改规则 = git commit,push/pull 自动同步
 - 运行时副本或软链只服务本机加载,不能作为长期主版本
 
 **为什么 settings.json 改成机器生成**:
-- Claude Code 引擎 linter 会挑剔 Edit 工具对 settings.json 的增量改动,有时静默回滚 hook 注册
+- AI 工具 settings linter 会挑剔 Edit 工具对 settings.json 的增量改动,有时静默回滚 hook 注册
 - 改为从 `manifest.json` 生成,避免人/AI 直接 Edit settings.json
 - 详见 § 6.10
 
@@ -64,9 +64,9 @@ Codex/AI 读到这里时,**不要质疑**以下事实,直接按它推进:
 
 `rule_activator.sh` 当前按脚本所在目录动态定位规则:
 
-`$SCRIPT_DIR/../.claude-config/rules`
+`$SCRIPT_DIR/../.ai-config/rules`
 
-所以只要 `.claude-hooks/` 和 `.claude-config/` 在同一个仓库根下,家电脑 `git pull` 后路径自然成立。
+所以只要 `.ai-hooks/` 和 `.ai-config/` 在同一个仓库根下,家电脑 `git pull` 后路径自然成立。
 旧的 `~/.claude/projects/-mnt-e-python--/memory/rules` 是历史路径,不再作为本项目规则主路径。
 
 ### 1.3 工具链配置查找策略
@@ -137,9 +137,9 @@ uv sync --index-url https://pypi.tuna.tsinghua.edu.cn/simple
 .venv/bin/ruff check app/main.py 2>&1 | head -3
 ```
 
-### 3.4 Claude Code 配置软链(仅使用 Claude Code 时需要)
+### 3.4 Claude Code 兼容软链(仅使用 Claude Code 时需要)
 
-> 项目仓库里 `.claude-hooks/` 和 `.claude-config/` 是真身,通过软链让 Claude Code
+> 项目仓库里 `.ai-hooks/` 和 `.ai-config/` 是真身,通过软链让 Claude Code
 > 默认查找路径指向它,实现 git pull 即同步。
 
 #### 3.4.1 hook 软链
@@ -155,25 +155,25 @@ fi
 # 2. 如果已是软链但指向错误,先删除
 [ -L ~/.claude/hooks ] && rm ~/.claude/hooks
 
-# 3. 建软链(指向当前项目的 .claude-hooks)
-ln -s "$PWD/.claude-hooks" ~/.claude/hooks
+# 3. 建软链(指向当前项目的 .ai-hooks)
+ln -s "$PWD/.ai-hooks" ~/.claude/hooks
 
 # 4. 验证
 ls -la ~/.claude/hooks
-# 应该看到: ~/.claude/hooks -> /path/to/on-call-assistant/.claude-hooks
+# 应该看到: ~/.claude/hooks -> /path/to/on-call-assistant/.ai-hooks
 ```
 
-#### 3.4.2 CLAUDE.md 和规则文件软链(2026-05-18 新增)
+#### 3.4.2 AGENTS.md 和规则文件软链
 
 ```bash
 cd /path/to/on-call-assistant
 
-# 1. CLAUDE.md
+# 1. AGENTS.md 主规则通过 Claude Code 兼容入口 CLAUDE.md 暴露
 if [ -e ~/.claude/CLAUDE.md ] && [ ! -L ~/.claude/CLAUDE.md ]; then
     mv ~/.claude/CLAUDE.md ~/.claude/CLAUDE.md.pre-link.bak
 fi
 [ -L ~/.claude/CLAUDE.md ] && rm ~/.claude/CLAUDE.md
-ln -s "$PWD/.claude-config/CLAUDE.md" ~/.claude/CLAUDE.md
+ln -s "$PWD/.ai-config/AGENTS.md" ~/.claude/CLAUDE.md
 
 # 2. 规则目录(Claude Code 兼容路径)
 RULES_PARENT=~/.claude/projects/-home-queclink-project-on-call-assistant/memory
@@ -182,7 +182,7 @@ if [ -e "$RULES_PARENT/rules" ] && [ ! -L "$RULES_PARENT/rules" ]; then
     mv "$RULES_PARENT/rules" "$RULES_PARENT/rules.pre-link.bak"
 fi
 [ -L "$RULES_PARENT/rules" ] && rm "$RULES_PARENT/rules"
-ln -s "$PWD/.claude-config/rules" "$RULES_PARENT/rules"
+ln -s "$PWD/.ai-config/rules" "$RULES_PARENT/rules"
 
 # 3. 验证
 ls -la ~/.claude/CLAUDE.md "$RULES_PARENT/rules"
@@ -208,19 +208,19 @@ if [ -e ~/.claude/settings.json ] && [ ! -L ~/.claude/settings.json ]; then
     mv ~/.claude/settings.json ~/.claude/settings.json.pre-link.bak
 fi
 [ -L ~/.claude/settings.json ] && rm ~/.claude/settings.json
-ln -s "$PWD/.claude-config/settings.json" ~/.claude/settings.json
+ln -s "$PWD/.ai-config/settings.json" ~/.claude/settings.json
 
 # 4. 验证 JSON 合法
 python3 -c "import json; json.load(open('$HOME/.claude/settings.json'))" && echo "settings.json 合法"
 ```
 
-> **以后改 hook 注册**:改 `.claude-hooks/manifest.json` 后跑 `python3 scripts/regen_settings.py`,**不要直接 Edit settings.json**(linter 会回滚,见 § 6.10)。
+> **以后改 hook 注册**:改 `.ai-hooks/manifest.json` 后跑 `python3 scripts/regen_settings.py`,**不要直接 Edit settings.json**(linter 会回滚,见 § 6.10)。
 
 #### 3.4.4 测试 hook 触发
 
 > **当前 hook 总数**:13 个 PostToolUse + 2 个 PreToolUse(Bash) + 1 个 UserPromptSubmit
 >
-> 详细清单见 `.claude-config/rules/workflow.md` 附录 B。
+> 详细清单见 `.ai-config/rules/workflow.md` 附录 B。
 
 ```bash
 # 测 ruff(直接调用,不再通过 hook 壳)
@@ -338,7 +338,7 @@ cd C:\path\to\on-call-assistant
 uv sync --index-url https://pypi.tuna.tsinghua.edu.cn/simple
 ```
 
-### 4.3 Claude Code 配置目录联接(仅使用 Claude Code 时需要)
+### 4.3 Claude Code 兼容目录联接(仅使用 Claude Code 时需要)
 
 Windows 不能用 Linux 软链,用**目录联接 (junction)**——`mklink /J` 不需要管理员权限,
 对文件用 `mklink` 硬链或 PowerShell `New-Item -ItemType SymbolicLink`(后者需开发者模式)。
@@ -361,21 +361,21 @@ if ((Test-Path $hookPath) -and (Get-Item $hookPath).LinkType) {
 }
 
 # 3. 建目录联接
-cmd /c mklink /J $hookPath "$PWD\.claude-hooks"
+cmd /c mklink /J $hookPath "$PWD\.ai-hooks"
 ```
 
-#### 4.3.2 CLAUDE.md 和规则联接(本轮新增)
+#### 4.3.2 AGENTS.md 和规则联接
 
 ```powershell
 cd C:\path\to\on-call-assistant
 
-# CLAUDE.md(单文件用 mklink /H 硬链,不需要权限)
+# AGENTS.md 主规则通过 Claude Code 兼容入口 CLAUDE.md 暴露
 $claudeMd = "$env:USERPROFILE\.claude\CLAUDE.md"
 if ((Test-Path $claudeMd) -and -not (Get-Item $claudeMd).LinkType) {
     Move-Item $claudeMd "$claudeMd.pre-link.bak"
 }
 if (Test-Path $claudeMd) { Remove-Item $claudeMd }
-cmd /c mklink /H $claudeMd "$PWD\.claude-config\CLAUDE.md"
+cmd /c mklink /H $claudeMd "$PWD\.ai-config\AGENTS.md"
 
 # 规则目录(Claude Code 兼容路径)
 $rulesParent = "$env:USERPROFILE\.claude\projects\-home-queclink-project-on-call-assistant\memory"
@@ -388,7 +388,7 @@ if ((Test-Path $rulesPath) -and -not (Get-Item $rulesPath).LinkType) {
 if ((Test-Path $rulesPath) -and (Get-Item $rulesPath).LinkType) {
     Remove-Item $rulesPath
 }
-cmd /c mklink /J $rulesPath "$PWD\.claude-config\rules"
+cmd /c mklink /J $rulesPath "$PWD\.ai-config\rules"
 
 # 验证
 Get-Item $claudeMd, $rulesPath | Select-Object Name, LinkType, Target
@@ -402,7 +402,7 @@ cd C:\path\to\on-call-assistant
 # 1. 首次同步:跑生成器(会保留已填的 ANTHROPIC_AUTH_TOKEN,否则用占位符)
 python scripts\regen_settings.py
 
-# 2. 如果生成器打了 WARN(token 是占位符),编辑 .claude-config\settings.json 填入真实 token
+# 2. 如果生成器打了 WARN(token 是占位符),编辑 .ai-config\settings.json 填入真实 token
 
 # 3. 联接
 $settingsPath = "$env:USERPROFILE\.claude\settings.json"
@@ -410,13 +410,13 @@ if ((Test-Path $settingsPath) -and -not (Get-Item $settingsPath).LinkType) {
     Move-Item $settingsPath "$settingsPath.pre-link.bak"
 }
 if (Test-Path $settingsPath) { Remove-Item $settingsPath }
-cmd /c mklink /H $settingsPath "$PWD\.claude-config\settings.json"
+cmd /c mklink /H $settingsPath "$PWD\.ai-config\settings.json"
 
 # 4. 验证 JSON 合法
 python -c "import json; json.load(open(r'$env:USERPROFILE\.claude\settings.json'))"
 ```
 
-> **以后改 hook 注册**:改 `.claude-hooks\manifest.json` 后跑 `python scripts\regen_settings.py`,**不要直接 Edit settings.json**(见 § 6.10)。
+> **以后改 hook 注册**:改 `.ai-hooks\manifest.json` 后跑 `python scripts\regen_settings.py`,**不要直接 Edit settings.json**(见 § 6.10)。
 
 > **WSL/Windows 共用一个项目仓库的注意事项**:
 > - 同一台机器同时在 WSL 和 Windows 用同一个 git 仓库会出问题(行尾/权限混乱)
@@ -443,11 +443,11 @@ python -c "import json; json.load(open(r'$env:USERPROFILE\.claude\settings.json'
 | 加一个开发依赖 | 改 `pyproject.toml` 的 `[dependency-groups] dev` → `uv sync` |
 | 升级所有包到最新兼容版 | `uv lock --upgrade && uv sync` |
 | 改 ruff 规则 | 改项目根 `.ruff.toml` → `git commit` → 另一台 `git pull`,**完事** |
-| 改 hook 脚本 | 改项目根 `.claude-hooks/xxx.sh` → `git commit` → 另一台 `git pull`,**完事** |
-| 改 CLAUDE.md / 规则文件 | 改 `.claude-config/CLAUDE.md` 或 `.claude-config/rules/*.md` → `git commit` → 另一台 `git pull`,**完事** |
-| 加新 hook | 写到 `.claude-hooks/xxx.sh`,在 `.claude-hooks/manifest.json` 对应 stage 列表加文件名,跑 `python3 scripts/regen_settings.py`(详见 § 6.10 SSOT 流程) |
-| 加新规则文件 | 写到 `.claude-config/rules/`,在 `.claude-config/rules/workflow.md § 8` 加激活条件 |
-| 改 token | 只改本机 `.claude-config/settings.json`(不入仓),不影响另一台 |
+| 改 hook 脚本 | 改项目根 `.ai-hooks/xxx.sh` → `git commit` → 另一台 `git pull`,**完事** |
+| 改 AGENTS.md / 规则文件 | 改 `.ai-config/AGENTS.md` 或 `.ai-config/rules/*.md` → `git commit` → 另一台 `git pull`,**完事** |
+| 加新 hook | 写到 `.ai-hooks/xxx.sh`,在 `.ai-hooks/manifest.json` 对应 stage 列表加文件名,跑 `python3 scripts/regen_settings.py`(详见 § 6.10 SSOT 流程) |
+| 加新规则文件 | 写到 `.ai-config/rules/`,在 `.ai-config/rules/workflow.md § 8` 加激活条件 |
+| 改 token | 只改本机 `.ai-config/settings.json`(不入仓),不影响另一台 |
 
 ---
 
@@ -458,7 +458,7 @@ python -c "import json; json.load(open(r'$env:USERPROFILE\.claude\settings.json'
 ```bash
 # 0. ~/.claude/hooks 是否正确指向项目仓库
 ls -la ~/.claude/hooks
-# 应该看到: hooks -> .../on-call-assistant/.claude-hooks
+# 应该看到: hooks -> .../on-call-assistant/.ai-hooks
 # 如果不是软链,按 § 3.4.1 重建
 # 1. 命令存在吗
 which ruff mypy
@@ -473,7 +473,7 @@ ls ./.ruff.toml ~/.ruff.toml
 ```bash
 # 0. 规则目录软链是否生效
 ls -la ~/.claude/projects/-home-queclink-project-on-call-assistant/memory/rules
-# 应该看到: rules -> .../on-call-assistant/.claude-config/rules
+# 应该看到: rules -> .../on-call-assistant/.ai-config/rules
 ls ~/.claude/projects/-home-queclink-project-on-call-assistant/memory/rules/ | wc -l
 
 # 1. 手动模拟
@@ -526,32 +526,32 @@ VSCode/PyCharm 没用上 venv 解释器。手动选 `.venv/bin/python`(WSL) 或
 
 `settings.json` **不入仓**(自 § 6.10 SSOT 改造后是机器生成的派生产物)。新机器需要:
 1. `python3 scripts/regen_settings.py` — 从 manifest 生成 settings.json(若无则用占位符 token,会打 WARN)
-2. 编辑 `.claude-config/settings.json` 填入真实 `ANTHROPIC_AUTH_TOKEN`
-3. `ln -s "$PWD/.claude-config/settings.json" ~/.claude/settings.json`(WSL)或 `mklink /H`(Windows)
+2. 编辑 `.ai-config/settings.json` 填入真实 `ANTHROPIC_AUTH_TOKEN`
+3. `ln -s "$PWD/.ai-config/settings.json" ~/.claude/settings.json`(WSL)或 `mklink /H`(Windows)
 
 ### 6.9 规则文件改动了但 AI 还在用旧规则
 
-软链是 OS 层,Claude Code 不缓存规则。如果改了 `.claude-config/rules/xxx.md`:
-1. 重启 Claude Code 会话(开新对话)
+软链是 OS 层,AI 工具不缓存规则。如果改了 `.ai-config/rules/xxx.md`:
+1. 重启对应 AI 工具会话(开新对话)
 2. 或者用户在 prompt 里显式说"重新读 xxx.md"
 
 ### 6.10 settings.json 被 Claude Code linter 静默回滚 hook 注册(已根源解决)
 
 #### 历史现象(2026-05-18 多次踩坑)
-在会话里用 Edit 工具增量改 `.claude-config/settings.json` 的 `hooks.PostToolUse.hooks[]` 列表,
+在会话里用 Edit 工具增量改 `.ai-config/settings.json` 的 `hooks.PostToolUse.hooks[]` 列表,
 有时会收到 system-reminder 提示 settings.json 被改动,**新加的 hook 注册条目消失了**(被回滚)。
 linter 同时会把这次执行 chmod 的命令追加到 `permissions.allow`,**只剩 permissions 变长,hook 实际没注册**。
 
 #### 根源解决方案:SSOT + 生成器(已实施)
 
-**核心改动**:`.claude-config/settings.json` 不再是真相源,改为**派生产物**。
+**核心改动**:`.ai-config/settings.json` 不再是真相源,改为**派生产物**。
 
 | 文件 | 角色 | 入仓? |
 |------|------|------|
-| `.claude-hooks/manifest.json` | **SSOT,人写** — 列出每个 stage 注册哪些 hook 文件名 | ✅ 入仓 |
+| `.ai-hooks/manifest.json` | **SSOT,人写** — 列出每个 stage 注册哪些 hook 文件名 | ✅ 入仓 |
 | `scripts/regen_settings.py` | **生成器** — 从 manifest 生成 settings.json + .template | ✅ 入仓 |
-| `.claude-config/settings.json` | **派生,机器写** — 含本地真实 token | ❌ 不入仓 |
-| `.claude-config/settings.json.template` | **派生,机器写** — token 用占位符 | ✅ 入仓 |
+| `.ai-config/settings.json` | **派生,机器写** — 含本地真实 token | ❌ 不入仓 |
+| `.ai-config/settings.json.template` | **派生,机器写** — token 用占位符 | ✅ 入仓 |
 
 #### 加新 hook 流程(SSOT 三步)
 
@@ -559,14 +559,14 @@ linter 同时会把这次执行 chmod 的命令追加到 `permissions.allow`,**�
 cd /path/to/on-call-assistant
 
 # 1. 写新 hook
-cat > .claude-hooks/new_hook.sh << 'EOF'
+cat > .ai-hooks/new_hook.sh << 'EOF'
 #!/usr/bin/env bash
 # ...
 EOF
-chmod +x .claude-hooks/new_hook.sh
+chmod +x .ai-hooks/new_hook.sh
 
 # 2. 改 manifest(在对应 stage 列表追加文件名)
-#    手动编辑 .claude-hooks/manifest.json
+#    手动编辑 .ai-hooks/manifest.json
 #    PostToolUse_EditWriteMultiEdit 或 PreToolUse_Bash 或 UserPromptSubmit
 
 # 3. 跑生成器
@@ -598,8 +598,8 @@ python3 scripts/regen_settings.py
 cd /path/to/on-call-assistant
 python3 -c "
 import json
-m = json.load(open('.claude-hooks/manifest.json'))
-s = json.load(open('.claude-config/settings.json'))
+m = json.load(open('.ai-hooks/manifest.json'))
+s = json.load(open('.ai-config/settings.json'))
 manifest_hooks = set()
 for stage_hooks in m['hooks'].values():
     manifest_hooks.update(stage_hooks)

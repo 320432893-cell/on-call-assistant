@@ -6,8 +6,8 @@
 # 为什么不能用 ruff/mypy: 这是 AI 行为规则(流程纪律),不是代码质量
 #
 # 状态流转:
-#   rule_activator 检测到探索型 → /tmp/claude_task_exploratory_<hash>
-#   用户回复含确认词 → rule_activator 写 /tmp/claude_task_confirmed_<hash>
+#   rule_activator 检测到探索型 → /tmp/ai_task_exploratory_<hash>
+#   用户回复含确认词 → rule_activator 写 /tmp/ai_task_confirmed_<hash>
 #   本 hook: exploratory 存在 + confirmed 不存在 → exit 2
 set -u
 
@@ -47,10 +47,10 @@ esac
 
 # 用 session 级标记（rule_activator 写的）
 # 如果没有 exploratory 标记 → 不是探索型,放行
-ls /tmp/claude_task_exploratory_* >/dev/null 2>&1 || exit 0
+ls /tmp/ai_task_exploratory_* >/dev/null 2>&1 || exit 0
 
 # 有 exploratory 标记,检查是否已确认
-if ls /tmp/claude_task_confirmed_* >/dev/null 2>&1; then
+if ls /tmp/ai_task_confirmed_* >/dev/null 2>&1; then
   exit 0
 fi
 
