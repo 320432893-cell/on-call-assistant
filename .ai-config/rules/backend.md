@@ -162,6 +162,7 @@ AI 反向审查：
 工具分工：
 
 - Ruff 负责 import、现代语法、部分复杂度和常见代码问题。
-- mypy/pyright 负责类型约束。
+- basedpyright 负责类型约束。
+- semgrep 负责 FastAPI/Starlette 不安全调试配置、宽 CORS 等可静态匹配的后端反模式。
 - pytest/httpx 负责接口行为。
 - Markdown 规则只保留工具看不懂的后端语义判断。

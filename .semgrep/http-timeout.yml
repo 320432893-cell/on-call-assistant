@@ -1,8 +1,51 @@
 rules:
+  - id: requests-module-call-without-timeout
+    message: "Requests module-level calls must set timeout= explicitly."
+    severity: ERROR
+    languages: [python]
+    paths:
+      exclude:
+        - "**/tests/**"
+        - "**/test/**"
+        - "**/test_*.py"
+        - "**/*_test.py"
+    patterns:
+      - pattern-either:
+          - pattern: requests.get(...)
+          - pattern: requests.post(...)
+          - pattern: requests.put(...)
+          - pattern: requests.delete(...)
+          - pattern: requests.patch(...)
+          - pattern: requests.head(...)
+          - pattern: requests.options(...)
+          - pattern: requests.request(...)
+      - pattern-not: requests.get(..., timeout=..., ...)
+      - pattern-not: requests.post(..., timeout=..., ...)
+      - pattern-not: requests.put(..., timeout=..., ...)
+      - pattern-not: requests.delete(..., timeout=..., ...)
+      - pattern-not: requests.patch(..., timeout=..., ...)
+      - pattern-not: requests.head(..., timeout=..., ...)
+      - pattern-not: requests.options(..., timeout=..., ...)
+      - pattern-not: requests.request(..., timeout=..., ...)
+      - pattern-not: requests.get(..., **$KWARGS)
+      - pattern-not: requests.post(..., **$KWARGS)
+      - pattern-not: requests.put(..., **$KWARGS)
+      - pattern-not: requests.delete(..., **$KWARGS)
+      - pattern-not: requests.patch(..., **$KWARGS)
+      - pattern-not: requests.head(..., **$KWARGS)
+      - pattern-not: requests.options(..., **$KWARGS)
+      - pattern-not: requests.request(..., **$KWARGS)
+
   - id: httpx-module-call-without-timeout
     message: "HTTPX module-level calls must set timeout= explicitly."
     severity: ERROR
     languages: [python]
+    paths:
+      exclude:
+        - "**/tests/**"
+        - "**/test/**"
+        - "**/test_*.py"
+        - "**/*_test.py"
     patterns:
       - pattern-either:
           - pattern: httpx.get(...)
@@ -21,11 +64,77 @@ rules:
       - pattern-not: httpx.head(..., timeout=..., ...)
       - pattern-not: httpx.options(..., timeout=..., ...)
       - pattern-not: httpx.request(..., timeout=..., ...)
+      - pattern-not: httpx.get(..., **$KWARGS)
+      - pattern-not: httpx.post(..., **$KWARGS)
+      - pattern-not: httpx.put(..., **$KWARGS)
+      - pattern-not: httpx.delete(..., **$KWARGS)
+      - pattern-not: httpx.patch(..., **$KWARGS)
+      - pattern-not: httpx.head(..., **$KWARGS)
+      - pattern-not: httpx.options(..., **$KWARGS)
+      - pattern-not: httpx.request(..., **$KWARGS)
 
   - id: urllib-urlopen-without-timeout
     message: "urllib.request.urlopen must set timeout= explicitly."
     severity: ERROR
     languages: [python]
+    paths:
+      exclude:
+        - "**/tests/**"
+        - "**/test/**"
+        - "**/test_*.py"
+        - "**/*_test.py"
     patterns:
       - pattern: urllib.request.urlopen(...)
       - pattern-not: urllib.request.urlopen(..., timeout=..., ...)
+      - pattern-not: urllib.request.urlopen(..., **$KWARGS)
+
+  - id: likely-http-client-call-without-timeout
+    message: "Likely HTTP client/session calls must set timeout= explicitly, or configure a default timeout on the client."
+    severity: WARNING
+    languages: [python]
+    paths:
+      exclude:
+        - "**/tests/**"
+        - "**/test/**"
+        - "**/test_*.py"
+        - "**/*_test.py"
+    patterns:
+      - pattern-either:
+          - pattern: $CLIENT.get(...)
+          - pattern: $CLIENT.post(...)
+          - pattern: $CLIENT.put(...)
+          - pattern: $CLIENT.delete(...)
+          - pattern: $CLIENT.patch(...)
+          - pattern: $CLIENT.head(...)
+          - pattern: $CLIENT.request(...)
+      - metavariable-regex:
+          metavariable: $CLIENT
+          regex: (?i).*(client|session|http|requests|_client|_session).*
+      - pattern-not: requests.get(...)
+      - pattern-not: requests.post(...)
+      - pattern-not: requests.put(...)
+      - pattern-not: requests.delete(...)
+      - pattern-not: requests.patch(...)
+      - pattern-not: requests.head(...)
+      - pattern-not: requests.request(...)
+      - pattern-not: httpx.get(...)
+      - pattern-not: httpx.post(...)
+      - pattern-not: httpx.put(...)
+      - pattern-not: httpx.delete(...)
+      - pattern-not: httpx.patch(...)
+      - pattern-not: httpx.head(...)
+      - pattern-not: httpx.request(...)
+      - pattern-not: $CLIENT.get(..., timeout=..., ...)
+      - pattern-not: $CLIENT.post(..., timeout=..., ...)
+      - pattern-not: $CLIENT.put(..., timeout=..., ...)
+      - pattern-not: $CLIENT.delete(..., timeout=..., ...)
+      - pattern-not: $CLIENT.patch(..., timeout=..., ...)
+      - pattern-not: $CLIENT.head(..., timeout=..., ...)
+      - pattern-not: $CLIENT.request(..., timeout=..., ...)
+      - pattern-not: $CLIENT.get(..., **$KWARGS)
+      - pattern-not: $CLIENT.post(..., **$KWARGS)
+      - pattern-not: $CLIENT.put(..., **$KWARGS)
+      - pattern-not: $CLIENT.delete(..., **$KWARGS)
+      - pattern-not: $CLIENT.patch(..., **$KWARGS)
+      - pattern-not: $CLIENT.head(..., **$KWARGS)
+      - pattern-not: $CLIENT.request(..., **$KWARGS)

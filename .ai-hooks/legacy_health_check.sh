@@ -114,8 +114,8 @@ gate2() {
   # 3. 大函数粗略估算(连续非空非注释的最大块)— 用 awk 简化
   # 跳过,实战中靠 ruff PLR0915 检测
 
-  # 4. 循环依赖(可选,需 import-linter 或 pydeps)
-  # 跳过,留给用户手动配置
+  # 4. 循环依赖
+  # 跳过,实战中靠 import-linter 分层契约检测
 
   # 5. 最近修改时间分布
   recent_files=$(find . -name "*.py" -mtime -30 -not -path "*/.venv/*" -not -path "*/venv/*" -not -path "*/__pycache__/*" -not -path "*/.git/*" 2>/dev/null | wc -l)

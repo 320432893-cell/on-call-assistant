@@ -18,13 +18,13 @@ Codex/AI 读到这里时,**不要质疑**以下事实,直接按它推进:
   - **不存在 `requirements.txt`**(2026-05-18 已迁出删除)
 - **包管理器**: `uv`(通过 `pipx` 安装)
 - **venv 位置**: 项目根 `.venv/`(不入 git)
-- **lint/类型检查工具链**: `ruff` + `mypy`,通过 `pipx` 全局安装
-- **代码分析工具链**: `pydeps`(循环 import)+ `vulture`(死代码),通过 `pipx` 全局安装,被 `engineering_audit.sh` 调用
+- **lint/类型检查工具链**: `ruff` + `basedpyright`,项目 dev 依赖已声明；可用 `.venv/bin/ruff` / `.venv/bin/basedpyright`
+- **静态语义规则**: `semgrep` 已声明为项目 dev 依赖,由 `pre-commit` 通过 `.venv/bin/semgrep --config .semgrep` 调用
 - **架构契约工具链**: `import-linter` 在**项目 venv**(`pyproject.toml [dependency-groups] dev`),由 `pre-commit` 调用
   - 它需要 import 项目代码解析依赖图,所以必须在能 import `app/` 的 venv 里,不走 pipx
   - 配置文件: 项目根 `.importlinter`,定义层级契约(`routers > services > models > config`)
-- **lint 配置**: 项目根 `.ruff.toml` / `.mypy.ini`(入 git,**这是同步源**)
-  - 家目录 `~/.ruff.toml` / `~/.mypy.ini` 是 hook 的兜底配置,不是同步源
+- **lint 配置**: 项目根 `.ruff.toml` / `pyproject.toml [tool.basedpyright]`(入 git,**这是同步源**)
+  - 家目录 `~/.ruff.toml` 等兜底配置不是同步源
 
 ### 1.1 AI 编码规则同步策略
 
@@ -82,8 +82,7 @@ python3 scripts/sync_codex_memory.py
 
 ### 1.3 工具链配置查找策略
 
-`ruff` / `mypy` 从被改文件目录向上找 `.ruff.toml`/`.mypy.ini`,
-找到用项目级,找不到回退 `~/.ruff.toml`/`~/.mypy.ini`。
+`ruff` 从被改文件目录向上找 `.ruff.toml`；`basedpyright` 使用项目根 `pyproject.toml [tool.basedpyright]`。
 
 ---
 
@@ -93,7 +92,8 @@ python3 scripts/sync_codex_memory.py
 
 ```
 uname -s                     # Linux=WSL/Linux 流程; MINGW*/CYGWIN*/MSYS*=Windows 流程
-which uv ruff mypy pipx      # 缺哪个装哪个
+which uv pipx                # 缺哪个装哪个
+ls .venv/bin/ruff .venv/bin/basedpyright 2>/dev/null || true
 python3 --version            # 或 py --version (Windows)
 ls .venv 2>/dev/null         # 是否已有 venv
 git status                   # 工作区是否干净(脏的话先问用户)
@@ -117,12 +117,7 @@ pipx ensurepath
 
 # 核心工具
 command -v uv       >/dev/null || pipx install uv
-command -v ruff     >/dev/null || pipx install ruff
-command -v mypy     >/dev/null || pipx install mypy
-
-# 代码分析工具(engineering_audit hook 调用)
-command -v pydeps   >/dev/null || pipx install pydeps
-command -v vulture  >/dev/null || pipx install vulture
+# ruff/basedpyright/import-linter/semgrep 等项目工具由 uv sync 安装
 ```
 
 > 装完如果命令没找到,需要 `source ~/.bashrc` 或重开终端让 `~/.local/bin` 进 PATH。
@@ -238,9 +233,9 @@ python3 -c "import json; json.load(open('$HOME/.claude/settings.json'))" && echo
 
 #### 3.4.4 测试 hook 触发
 
-> **当前 hook 总数**:13 个 PostToolUse + 2 个 PreToolUse(Bash) + 1 个 UserPromptSubmit
+> **当前 hook 总数**:4 个 PostToolUse(Edit|Write|MultiEdit) + 3 个 PreToolUse(2 个 Bash,1 个 Edit|Write|MultiEdit) + 1 个 UserPromptSubmit,以 `.ai-hooks/manifest.json` 为准
 >
-> 详细清单见 `.ai-config/rules/workflow.md` 附录 B。
+> 详细清单见 `.ai-hooks/manifest.json`。
 
 ```bash
 # 测 ruff(直接调用,不再通过 hook 壳)
@@ -249,7 +244,7 @@ python3 -c "import json; json.load(open('$HOME/.claude/settings.json'))" && echo
 # 测 rule_activator
 echo '{"session_id":"x","prompt":"线上挂了"}' | bash ~/.claude/hooks/rule_activator.sh
 
-# 测 engineering_audit
+# 测 engineering_audit(项目成熟度提醒；基础文件卫生/新增大文件由 pre-commit-hooks 承接)
 rm -f /tmp/eng_audit_*.done
 echo '{"tool_input":{"file_path":"'"$PWD"'/app/main.py"}}' \
   | bash ~/.claude/hooks/engineering_audit.sh 2>&1 | head -3
@@ -263,41 +258,19 @@ echo '{"tool_name":"Edit","tool_input":{"file_path":"'"$PWD"'/app/services/repor
   | bash ~/.claude/hooks/rename_audit.sh 2>&1 | head -5
 # 应输出 [rename_audit] 检测到幽灵引用 + 引用位置
 
-# 测 first_iter_lines(项目里临时建一个 60 行新 .py)
-tmp_new=app/services/__test_first_iter__.py
-seq 1 60 | sed 's/^/x_var/' > "$tmp_new"
-echo '{"tool_input":{"file_path":"'"$PWD/$tmp_new"'"}}' | bash ~/.claude/hooks/first_iter_lines.sh 2>&1 | head -3
-rm -f "$tmp_new"
-# 应提示首迭代 ≤ 50 行
+# playwright-no-sleep / fastapi-debug / http-timeout / ml-timeseries 已下放到 semgrep,不再通过 PostToolUse hook 重复扫描
+HOME=/tmp/semgrep-home .venv/bin/semgrep --config .semgrep --quiet app scripts
 
-# 测 playwright_no_sleep
-cat > /tmp/probe_pw.py << 'EOF'
-from playwright.sync_api import sync_playwright
-import time
-def run():
-    time.sleep(3)
-EOF
-echo '{"tool_input":{"file_path":"/tmp/probe_pw.py"}}' | bash ~/.claude/hooks/playwright_no_sleep.sh 2>&1 | head -3
-rm -f /tmp/probe_pw.py
-
-# 测 http_timeout
+# 测 http-timeout semgrep
 cat > /tmp/probe_http.py << 'EOF'
 import requests
 def f():
     return requests.get("https://example.com")
 EOF
-echo '{"tool_input":{"file_path":"/tmp/probe_http.py"}}' | bash ~/.claude/hooks/http_timeout.sh 2>&1 | head -3
+HOME=/tmp/semgrep-home .venv/bin/semgrep --config .semgrep/http-timeout.yml --quiet /tmp/probe_http.py
 rm -f /tmp/probe_http.py
 
-# 测 fastapi_debug
-cat > /tmp/probe_api.py << 'EOF'
-from fastapi import FastAPI
-app = FastAPI(debug=True)
-EOF
-echo '{"tool_input":{"file_path":"/tmp/probe_api.py"}}' | bash ~/.claude/hooks/fastapi_debug.sh 2>&1 | head -3
-rm -f /tmp/probe_api.py
-
-# 测 rag_hygiene
+# 测 rag_hygiene(R2: BGE encode 缺 is_query；R6/R7 由 semgrep 承接)
 cat > /tmp/probe_rag.py << 'EOF'
 from sentence_transformers import SentenceTransformer
 embedder = SentenceTransformer("BAAI/bge-m3")
@@ -308,7 +281,7 @@ EOF
 echo '{"tool_input":{"file_path":"/tmp/probe_rag.py"}}' | bash ~/.claude/hooks/rag_hygiene.sh 2>&1 | head -3
 rm -f /tmp/probe_rag.py
 
-# 测 ml_timeseries
+# 测 ml-timeseries semgrep
 cat > /tmp/probe_ml.py << 'EOF'
 import pandas as pd
 from sklearn.model_selection import train_test_split
@@ -317,10 +290,11 @@ df = pd.read_csv("foo.csv"); df.index = pd.to_datetime(df["date"])
 X_train, X_test, y_train, y_test = train_test_split(df[["close"]], df["target"], test_size=0.2)
 m = XGBClassifier(); m.fit(X_train, y_train)
 EOF
-echo '{"tool_input":{"file_path":"/tmp/probe_ml.py"}}' | bash ~/.claude/hooks/ml_timeseries.sh 2>&1 | head -3
+HOME=/tmp/semgrep-home .venv/bin/semgrep --config .semgrep/ml-timeseries.yml --quiet /tmp/probe_ml.py
 rm -f /tmp/probe_ml.py
 
-# rag_drift 不容易构造测试场景(依赖 git diff),改了 EMBEDDING_MODEL/CHUNK_SIZE 时自动触发
+# rag_drift 共享脚本检查(依赖 git diff；hook 和 CI 共用 scripts/check_rag_drift.py)
+python3 scripts/check_rag_drift.py
 ```
 
 ### 3.5 VSCode
@@ -344,11 +318,12 @@ if ($LASTEXITCODE -ne 0) {
     # 重开 PowerShell
 }
 
-# 核心工具 + 代码分析工具
-foreach ($t in 'uv','ruff','mypy','pydeps','vulture') {
+# 核心工具
+foreach ($t in 'uv') {
     where.exe $t 2>$null
     if ($LASTEXITCODE -ne 0) { pipx install $t }
 }
+# ruff/basedpyright/import-linter/semgrep 等项目工具由 uv sync 安装
 ```
 
 ### 4.2 项目依赖
@@ -483,15 +458,11 @@ Get-Content "$env:USERPROFILE\.codex\memories\on-call-assistant-index.md" -Total
 
 ## 6. 故障排查
 
-### 6.1 hook 没触发 ruff 检查
+### 6.1 ruff 检查没跑起来
 
 ```bash
-# 0. ~/.claude/hooks 是否正确指向项目仓库
-ls -la ~/.claude/hooks
-# 应该看到: hooks -> .../on-call-assistant/.ai-hooks
-# 如果不是软链,按 § 3.4.1 重建
-# 1. 命令存在吗
-which ruff mypy
+# 1. 项目工具是否存在
+ls .venv/bin/ruff || echo "缺! 跑 uv sync 装上"
 # 2. 配置文件能找到吗
 ls ./.ruff.toml ~/.ruff.toml
 # 3. 手动验证 ruff(不再通过 hook 壳)
@@ -514,13 +485,11 @@ echo '{"session_id":"x","prompt":"线上挂了"}' | bash ~/.claude/hooks/rule_ac
 ### 6.3 engineering_audit 没扫描
 
 ```bash
-# 0. 工具是否装好
-which pydeps vulture
-# 1. /tmp 标记是否还在(6 小时 TTL,新机器一定不在)
+# 0. /tmp 标记是否还在(6 小时 TTL,新机器一定不在)
 ls /tmp/eng_audit_*.done 2>/dev/null
-# 2. 项目根 .py 文件数 >= 5?
+# 1. 项目根 .py 文件数 >= 5?
 find . -name "*.py" -not -path "*/.venv/*" -not -path "*/.git/*" | wc -l
-# 3. 手动模拟
+# 2. 手动模拟
 rm -f /tmp/eng_audit_*.done
 echo '{"tool_input":{"file_path":"'"$PWD"'/app/main.py"}}' | bash ~/.claude/hooks/engineering_audit.sh
 ```

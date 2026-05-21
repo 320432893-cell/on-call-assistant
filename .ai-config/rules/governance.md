@@ -48,7 +48,7 @@
 - 流程层: 新项目、遗留项目、救火、调研等场景流程。
 - 专题层: 代码、GUI、测试、信息整理等单领域规则。
 - 项目局部层: 当前项目业务、架构、运行、部署规则。
-- 机械层: ruff、mypy、import-linter、pre-commit、CI、hook。
+- 机械层: ruff、basedpyright、import-linter、pre-commit、CI、hook。
 
 动作:
 
@@ -79,24 +79,28 @@
 
 动作:
 
-- 能用 ruff、mypy、import-linter、pytest、coverage、detect-secrets、pip-audit、pre-commit 标准 hook 解决的，不写 bash 正则 hook。
+- 能用 ruff、basedpyright、import-linter、pytest、coverage、detect-secrets、pip-audit、pre-commit 标准 hook 解决的，不写 bash 正则 hook。
 - 能放进工具配置的，不写 AI 自觉规则。
 - 能用项目已有工具表达的，不新增第二套机制。
 - 自定义 hook 只处理成熟工具管不到的高风险、项目特异、流程性约束。
+- 偏好 `ruff` 这类快速、成熟、能合并多套旧工具的实现；但速度差异若在当前项目规模下不可感知，不作为单独替换理由。
+- 新静态工具必须说明维护性收益: 是否减少配置、减少误报、改善兼容性、统一本地/CI 行为，或覆盖现有工具表达不了的问题。
+- 本地 pre-commit 优先保留快且局部的检查；慢、全量、专项扫描优先放 CI 或手动审计。
 
 禁止:
 
-- 用 bash 正则重写 ruff / mypy / import-linter / pytest / pre-commit 已覆盖能力。
+- 用 bash 正则重写 ruff / basedpyright / import-linter / pytest / pre-commit 已覆盖能力。
 - 在 Markdown 里复述工具的完整检查清单。
 - 为了“看起来更严格”增加多套重复检查。
 - 把业务语义判断强塞进低质量正则，导致高误报。
+- 为了“更新/更快”替换稳定工具，却增加配置、锁文件、CI、规则文档和团队心智成本。
 
 ### 4.2 责任映射
 
 默认下放:
 
 - 格式、lint、import 排序、常见 bug、复杂度: `ruff`
-- 类型、签名、可空性: `mypy`
+- 类型、签名、可空性: `basedpyright`
 - 分层 import 边界: `import-linter`
 - 单元测试、集成测试、覆盖率: `pytest` / `pytest-cov`
 - JSON / YAML / TOML 语法和基础文件卫生: pre-commit 标准 hook
@@ -122,6 +126,8 @@
 
 - 为什么成熟工具不能解决？
 - 为什么不能只改现有工具配置？
+- 为什么不能拆到 pre-commit / CI / 共享脚本后只让 hook 做适配层？
+- hook 是否只有一个职责？如果包含多条规则，每条为什么必须同生同死？
 - 误报率是否可接受？
 - 失败提示是否能让用户直接知道怎么处理？
 - 长期维护成本是否值得？
@@ -129,8 +135,14 @@
 
 规则:
 
+- hook 默认必须单职责: 一个触发来源、一个判断目标、一个处置建议。
+- 禁止把项目体检、静态代码规则、流程门禁、业务语义提醒塞进同一个 hook。
+- hook 只应保留即时上下文能力: 当前工具调用、old/new edit 内容、即将执行的命令、用户确认状态、git diff 语义漂移。
+- 可复用逻辑必须抽到共享脚本；hook 只做输入适配和即时提示，CI/pre-commit/manual 能复用同一份逻辑。
 - 新 bash hook 必须配测试样本，至少覆盖正例、反例、边界例。
 - 修改旧 hook 时，若触及匹配逻辑，必须补对应测试。
+- 修改旧 hook 时，必须先检查是否已经变成“一坨”: 若同时承担多类检查，先拆职责，再谈新增能力。
+- 新增 hook 注册前，必须列出“可下放部分”和“不下放原因”；没有不可替代的即时上下文，不注册 hook。
 - 写不出准入理由时，不写 hook，改用工具配置或 AI 语义规则。
 
 ## 5. 新增规则过滤

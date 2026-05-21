@@ -1,5 +1,5 @@
-# Claude Code 项目级 Ruff 配置
-# 由 ~/.claude/hooks/ruff_check.sh 调用(项目级优先于 ~/.ruff.toml)
+# 项目级 Ruff 配置
+# 由 pre-commit 的 ruff-check/ruff-format 或手动 ruff 命令调用
 # 个别规则可在文件级 # noqa 豁免
 
 target-version = "py311"

@@ -1,9 +1,9 @@
-# 阶段 1 最小集：ruff (lint+format) / mypy / import-linter / detect-secrets
+# 阶段 1 最小集：ruff (lint+format) / basedpyright / import-linter / detect-secrets / semgrep
 # 设计原则：
 #   - ruff、detect-secrets 与项目依赖无关 → 用 pre-commit 隔离 env (repo: 模式)
-#   - mypy、import-linter 必须能 import 到 app/* 与 fastapi/pydantic 类型 → 用 language: system 跑项目 .venv 里的工具
-#   - 版本钉死(rev / 本地工具走 venv)，确保可复现
-# 见 ~/.claude/CLAUDE.md § 4.6：本次范式 = 多层防御 + 关注点分离
+#   - basedpyright、import-linter 必须能 import 到 app/* 与 fastapi/pydantic 类型 → 用 language: system 跑项目 .venv 里的工具
+#   - semgrep 跑项目 .venv 里的固定 dev 依赖，避免 uvx 临时解析/缓存
+#   - ruff/detect-secrets 版本钉死(rev); basedpyright/import-linter/semgrep 走项目 venv
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
@@ -24,17 +24,27 @@ repos:
             \.secrets\.baseline
           )$
 
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+        args: ["--maxkb=5120"]
+      - id: check-json
+      - id: check-yaml
+      - id: check-toml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+
   - repo: local
     hooks:
-      - id: mypy
-        name: mypy (project venv, --strict 渐进开启)
-        entry: .venv/bin/mypy
+      - id: basedpyright
+        name: basedpyright (project venv)
+        entry: .venv/bin/basedpyright
         language: system
         types: [python]
         # 仅检查 app/，scripts/ 与 tests/ 后续阶段再纳入
         files: ^app/
         pass_filenames: false
-        args: [app]
 
       - id: import-linter
         name: import-linter (分层契约)
@@ -46,7 +56,7 @@ repos:
 
       - id: semgrep
         name: semgrep (project static guardrails)
-        entry: uvx semgrep
+        entry: .venv/bin/semgrep
         language: system
         pass_filenames: false
         types: [python]

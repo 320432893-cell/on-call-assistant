@@ -3,6 +3,12 @@ rules:
     message: "RAG retrieval should not use limit/top_k/k=1; use a wider candidate set unless this is explicitly not RAG."
     severity: WARNING
     languages: [python]
+    paths:
+      exclude:
+        - "**/tests/**"
+        - "**/test/**"
+        - "**/test_*.py"
+        - "**/*_test.py"
     patterns:
       - pattern-either:
           - pattern: $OBJ.search(..., limit=1, ...)
@@ -19,6 +25,12 @@ rules:
     message: "normalize_embeddings=False should not be used in the same file as Distance.COSINE."
     severity: ERROR
     languages: [python]
+    paths:
+      exclude:
+        - "**/tests/**"
+        - "**/test/**"
+        - "**/test_*.py"
+        - "**/*_test.py"
     patterns:
       - pattern: $ENC.encode(..., normalize_embeddings=False, ...)
       - pattern-inside: |

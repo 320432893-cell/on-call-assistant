@@ -63,7 +63,7 @@ def build_index() -> str:
 ```bash
 uv run ruff check .
 uv run ruff format --check .
-uv run mypy app
+uv run basedpyright
 uv run lint-imports --config .importlinter --no-cache
 uv run pytest
 ```

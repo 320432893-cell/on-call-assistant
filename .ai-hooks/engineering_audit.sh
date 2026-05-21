@@ -4,12 +4,13 @@
 # 同会话+同项目只报一次,避免噪音
 #
 # 检测项分级:
-#   ★★★ 红线  (.gitignore 缺 / 大文件入库 / 无 .git)
+#   ★★★ 红线  (.gitignore 缺 / 无 .git)
 #   ★★ 警告   (无 README / 无 lock 文件 / 无 tests/)
 #   ★  提醒   (大文件 >500 行)
 #
-# 为什么不能用 ruff/mypy: 本 hook 检查的是项目结构/配置完备性,不是代码质量
+# 为什么不能用 ruff/basedpyright: 本 hook 检查的是项目结构/配置完备性,不是代码质量
 # 代码级检查(大函数/循环import/死代码)已移交 ruff PLR0915 / import-linter / ruff F401
+# 基础文件卫生和新增大文件已移交 pre-commit-hooks。
 
 set -u
 
@@ -33,10 +34,17 @@ find_project_root() {
   dir=$(dirname "$file_path")
   dir=$(cd "$dir" 2>/dev/null && pwd) || return 1
   while [ "$dir" != "/" ] && [ -n "$dir" ]; do
-    if [ -d "$dir/.git" ] || [ -f "$dir/pyproject.toml" ] || [ -f "$dir/setup.py" ]; then
+    if [ -d "$dir/.git" ]; then
+      root=$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null) || return 1
+      echo "$root"
+      return 0
+    fi
+    if [ -f "$dir/pyproject.toml" ] || [ -f "$dir/setup.py" ]; then
       echo "$dir"
       return 0
     fi
+    # 临时目录经常残留上层项目文件；没有 git 时不跨过 /tmp 边界继续向上猜。
+    [ "$dir" = "/tmp" ] && return 1
     dir=$(dirname "$dir")
   done
   return 1
@@ -102,29 +110,14 @@ else
   fi
 fi
 
-# 5.3 大文件入库检查(>5MB 已跟踪)
-if [ -d "$project_root/.git" ]; then
-  large_tracked=$(cd "$project_root" && git ls-files 2>/dev/null | while read f; do
-    [ -f "$f" ] || continue
-    size=$(wc -c < "$f" 2>/dev/null || echo 0)
-    [ "$size" -gt 5242880 ] && echo "$f ($((size / 1048576))MB)"
-  done | head -3)
-  if [ -n "$large_tracked" ]; then
-    red_lines="${red_lines}\n  ★★★ 大文件已 tracked (>5MB):"
-    while IFS= read -r line; do
-      red_lines="${red_lines}\n      - $line"
-    done <<< "$large_tracked"
-  fi
-fi
-
-# 5.4 README 存在
+# 5.3 README 存在
 has_readme="no"
 for f in README.md README.rst README.txt README; do
   [ -f "$project_root/$f" ] && has_readme="yes" && break
 done
 [ "$has_readme" = "no" ] && warnings="${warnings}\n  ★★ 无 README → 新人接手成本高"
 
-# 5.5 lock 文件
+# 5.4 lock 文件
 has_lock="no"
 for f in poetry.lock uv.lock Pipfile.lock requirements.lock; do
   [ -f "$project_root/$f" ] && has_lock="yes" && break
@@ -142,7 +135,7 @@ fi
 
 # --- 扩展 3 项 ---
 
-# 5.6 tests/ 存在 + 测试文件数
+# 5.5 tests/ 存在 + 测试文件数
 test_count=0
 for d in tests test; do
   if [ -d "$project_root/$d" ]; then
@@ -156,7 +149,7 @@ elif [ "$test_count" -lt 3 ] && [ "$py_count" -ge 20 ]; then
   hints="${hints}\n  ★ 项目 $py_count 个 .py 但只有 $test_count 个测试 → 覆盖偏低"
 fi
 
-# 5.7 大文件 >500 行 (.py) / >300 行 (.vue)
+# 5.6 大文件 >500 行 (.py) / >300 行 (.vue)
 big_files=$(find "$project_root" -name "*.py" \
   -not -path "*/.venv/*" -not -path "*/venv/*" \
   -not -path "*/__pycache__/*" -not -path "*/.git/*" \

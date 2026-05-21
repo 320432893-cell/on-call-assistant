@@ -15,7 +15,7 @@
 
 - 本文件只管架构级边界和架构记忆维护。
 - 不向上引用其他规则，避免读取链路膨胀。
-- 机械检查交给 Ruff / import-linter / mypy；本文件只保留语义判断。
+- 机械检查交给 Ruff / basedpyright / import-linter；本文件只保留语义判断。
 
 边界:
 

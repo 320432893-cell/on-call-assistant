@@ -12,7 +12,7 @@
 动作:
 
 - 本文件只管 AI 语义判断和设计范式。
-- 格式、命名机械规则、import 排序、类型注解存在性、print、root logger、常见异常反模式交给 Ruff / mypy / import-linter。
+- 格式、命名机械规则、import 排序、类型注解存在性、print、root logger、常见异常反模式交给 Ruff / basedpyright / import-linter。
 - 老项目风格一致性、接手、改动影响面走老项目流程。
 
 边界:
@@ -28,7 +28,7 @@
 - 格式、import、基础 lint、常见 bug: Ruff。
 - 命名机械规则: Ruff `N`。
 - print、logging 格式、异常反模式、安全问题: Ruff `T20` / `LOG` / `G` / `TRY` / `BLE` / `S`。
-- 类型注解存在性和类型一致性: Ruff `ANN` + mypy。
+- 类型注解存在性和类型一致性: Ruff `ANN` + basedpyright。
 - 分层 import 边界: import-linter。
 - 测试风格基础规则: Ruff `PT` + pytest。
 
@@ -282,7 +282,7 @@ AI 仍需判断:
 
 ## 13. 本文件反模式
 
-- 把 Ruff / mypy / import-linter 能查的规则写成 AI 自觉要求。
+- 把 Ruff / basedpyright / import-linter 能查的规则写成 AI 自觉要求。
 - 在老项目里强行套新范式。
 - 为小脚本引入复杂抽象。
 - 修改公共契约却不查调用方。

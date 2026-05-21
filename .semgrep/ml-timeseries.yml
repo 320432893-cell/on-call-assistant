@@ -3,6 +3,12 @@ rules:
     message: "Time-series files should not use train_test_split without shuffle=False; prefer TimeSeriesSplit or walk-forward validation."
     severity: WARNING
     languages: [python]
+    paths:
+      exclude:
+        - "**/tests/**"
+        - "**/test/**"
+        - "**/test_*.py"
+        - "**/*_test.py"
     patterns:
       - pattern-either:
           - pattern-inside: |
@@ -20,10 +26,116 @@ rules:
       - pattern: train_test_split(...)
       - pattern-not: train_test_split(..., shuffle=False, ...)
 
+  - id: sklearn-train-test-split-without-random-state
+    message: "train_test_split with default shuffling should set random_state= for reproducible analysis."
+    severity: WARNING
+    languages: [python]
+    paths:
+      exclude:
+        - "**/tests/**"
+        - "**/test/**"
+        - "**/test_*.py"
+        - "**/*_test.py"
+    patterns:
+      - pattern: train_test_split(...)
+      - pattern-not: train_test_split(..., shuffle=False, ...)
+      - pattern-not: train_test_split(..., random_state=..., ...)
+
+  - id: sklearn-kfold-without-random-state
+    message: "Shuffling KFold variants should set random_state= for reproducible cross-validation."
+    severity: WARNING
+    languages: [python]
+    paths:
+      exclude:
+        - "**/tests/**"
+        - "**/test/**"
+        - "**/test_*.py"
+        - "**/*_test.py"
+    patterns:
+      - pattern-either:
+          - pattern: KFold(..., shuffle=True, ...)
+          - pattern: StratifiedKFold(..., shuffle=True, ...)
+      - pattern-not: KFold(..., random_state=..., ...)
+      - pattern-not: StratifiedKFold(..., random_state=..., ...)
+
+  - id: sklearn-repeated-kfold-without-random-state
+    message: "RepeatedKFold variants should set random_state= for reproducible cross-validation."
+    severity: WARNING
+    languages: [python]
+    paths:
+      exclude:
+        - "**/tests/**"
+        - "**/test/**"
+        - "**/test_*.py"
+        - "**/*_test.py"
+    patterns:
+      - pattern-either:
+          - pattern: RepeatedKFold(...)
+          - pattern: RepeatedStratifiedKFold(...)
+      - pattern-not: RepeatedKFold(..., random_state=..., ...)
+      - pattern-not: RepeatedStratifiedKFold(..., random_state=..., ...)
+
+  - id: sklearn-shuffle-split-without-random-state
+    message: "ShuffleSplit variants should set random_state= for reproducible cross-validation."
+    severity: WARNING
+    languages: [python]
+    paths:
+      exclude:
+        - "**/tests/**"
+        - "**/test/**"
+        - "**/test_*.py"
+        - "**/*_test.py"
+    patterns:
+      - pattern-either:
+          - pattern: ShuffleSplit(...)
+          - pattern: StratifiedShuffleSplit(...)
+          - pattern: GroupShuffleSplit(...)
+      - pattern-not: ShuffleSplit(..., random_state=..., ...)
+      - pattern-not: StratifiedShuffleSplit(..., random_state=..., ...)
+      - pattern-not: GroupShuffleSplit(..., random_state=..., ...)
+
+  - id: timeseries-negative-shift-with-modeling-call
+    message: "Negative shift appears in a modeling file; verify it only creates target y, not leaked future features."
+    severity: WARNING
+    languages: [python]
+    paths:
+      exclude:
+        - "**/tests/**"
+        - "**/test/**"
+        - "**/test_*.py"
+        - "**/*_test.py"
+    patterns:
+      - pattern-either:
+          - pattern-inside: |
+              ...
+              $MODEL.fit(...)
+              ...
+          - pattern-inside: |
+              ...
+              $MODEL.predict(...)
+              ...
+          - pattern-inside: |
+              ...
+              cross_val_score(...)
+              ...
+          - pattern-inside: |
+              ...
+              cross_validate(...)
+              ...
+      - pattern-either:
+          - pattern: $SERIES.shift(-$N)
+          - pattern: $SERIES.shift(periods=-$N)
+
   - id: sklearn-random-forest-without-random-state
     message: "RandomForest models should set random_state= for reproducible training and analysis."
     severity: WARNING
     languages: [python]
+    paths:
+      exclude:
+        - "**/tests/**"
+        - "**/test/**"
+        - "**/test_*.py"
+        - "**/*_test.py"
     patterns:
       - pattern-either:
           - pattern: RandomForestClassifier(...)
@@ -35,6 +147,12 @@ rules:
     message: "GradientBoosting models should set random_state= for reproducible training and analysis."
     severity: WARNING
     languages: [python]
+    paths:
+      exclude:
+        - "**/tests/**"
+        - "**/test/**"
+        - "**/test_*.py"
+        - "**/*_test.py"
     patterns:
       - pattern-either:
           - pattern: GradientBoostingClassifier(...)
@@ -46,6 +164,12 @@ rules:
     message: "XGBoost models should set random_state= or seed= for reproducible training and analysis."
     severity: WARNING
     languages: [python]
+    paths:
+      exclude:
+        - "**/tests/**"
+        - "**/test/**"
+        - "**/test_*.py"
+        - "**/*_test.py"
     patterns:
       - pattern-either:
           - pattern: XGBClassifier(...)
@@ -62,6 +186,12 @@ rules:
     message: "LightGBM models should set random_state= or seed= for reproducible training and analysis."
     severity: WARNING
     languages: [python]
+    paths:
+      exclude:
+        - "**/tests/**"
+        - "**/test/**"
+        - "**/test_*.py"
+        - "**/*_test.py"
     patterns:
       - pattern-either:
           - pattern: LGBMClassifier(...)

@@ -2,13 +2,17 @@
 
 > 本项目使用 AI 编码工具（CLI）协作完成。由于会话上下文超长，前置提示词无法截图保留，
 > 此文档浓缩"专属规则约束"与"AI 实际承担的角色"，作为面试作品的协作流程展示。
+>
+> 边界说明：本文是展示/面试材料，不是运行时规则主源。当前规则主源是
+> `.ai-config/AGENTS.md` + `.ai-config/rules/`；实际加载方式取决于使用的 AI 工具、
+> 规则索引和 hook 触发结果。
 
 ---
 
 ## 一、专属规则（强约束）
 
 规则文件主版本存于 `.ai-config/AGENTS.md` + `.ai-config/rules/`，
-**每次新会话自动加载**，对 AI 形成硬性约束。
+通过项目规则入口、按需读取和 hook 激活共同约束 AI 行为。
 
 ### 1.1 决策流程（强制阻断）
 
@@ -69,7 +73,7 @@
 - 中文回答，代码注释用中文
 - pip 用清华镜像 `-i https://pypi.tuna.tsinghua.edu.cn/simple`
 - 新建虚拟环境前需用户确认
-- 默认 IDE 环境 PyCharm
+- IDE 按项目/用户环境确认；当前规则默认 VS Code
 - 第三方库引入：优先现代替代方案、最终选择权在用户
 
 ---
@@ -86,10 +90,10 @@
 3. 画调用链（入口→第一层→第二层）
 4. 识层级（UI / Service / Engine / IO）
 5. 标状态机（如适用）
-6. 生成 PROJECT_CONTEXT.md，向用户确认
+6. 生成/更新项目记忆层，向用户确认
 ```
 
-本项目对应产物：`PROJECT_CONTEXT.md`。
+当前项目记忆层：`docs/PROJECT_MAP.md` / `docs/ARCHITECTURE.md` / `docs/AI_HANDOFF.md`。
 
 ### 2.2 重大决策点的对话节奏
 

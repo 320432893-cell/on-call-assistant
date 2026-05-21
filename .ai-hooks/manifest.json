@@ -24,12 +24,8 @@
     "PostToolUse_EditWriteMultiEdit": [
       "engineering_audit.sh",
       "rename_audit.sh",
-      "playwright_no_sleep.sh",
-      "http_timeout.sh",
-      "fastapi_debug.sh",
       "rag_hygiene.sh",
-      "rag_drift.sh",
-      "ml_timeseries.sh"
+      "rag_drift.sh"
     ]
   }
 }

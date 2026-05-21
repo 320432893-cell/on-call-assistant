@@ -132,6 +132,7 @@ def main() -> int:
     print(f"[regen_settings] OK — 写入 {SETTINGS.name} 和 {TEMPLATE.name},共注册 {hooks_count} 个 hook")
     print(f"  UserPromptSubmit: {len(manifest['hooks'].get('UserPromptSubmit', []))}")
     print(f"  PreToolUse(Bash): {len(manifest['hooks'].get('PreToolUse_Bash', []))}")
+    print(f"  PreToolUse(Edit|Write|MultiEdit): {len(manifest['hooks'].get('PreToolUse_EditWriteMultiEdit', []))}")
     print(f"  PostToolUse(Edit|Write|MultiEdit): {len(manifest['hooks'].get('PostToolUse_EditWriteMultiEdit', []))}")
 
     if local_token == TOKEN_PLACEHOLDER:

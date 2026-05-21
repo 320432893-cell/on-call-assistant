@@ -40,7 +40,8 @@ dev = [
     "pre-commit>=4.6.0",
     "detect-secrets>=1.5.0",
     "ruff>=0.15.13",
-    "mypy>=2.1.0",
+    "basedpyright>=1.38.2",
+    "semgrep>=1.133.0",
 ]
 
 [tool.setuptools.packages.find]
@@ -58,3 +59,13 @@ testpaths = ["scripts", "tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
 addopts = "-q"
+
+[tool.basedpyright]
+include = ["app"]
+pythonVersion = "3.11"
+pythonPlatform = "All"
+venvPath = "."
+venv = ".venv"
+typeCheckingMode = "standard"
+failOnWarnings = false
+reportMissingTypeStubs = "none"

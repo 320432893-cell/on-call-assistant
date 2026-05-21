@@ -37,7 +37,9 @@ if printf '%s' "$prompt" | grep -iqE '新项目|新模块|从零|架构决策|�
 fi
 
 # 规则文件根路径(动态定位,hook 在 .ai-hooks/,规则在同仓库 .ai-config/rules/)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# 注意:Claude Code 兼容路径通常通过 ~/.claude/hooks -> <repo>/.ai-hooks 软链运行。
+# 必须用物理路径解析,否则会把规则目录误推成 ~/.claude/.ai-config/rules。
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 RULES_DIR="$SCRIPT_DIR/../.ai-config/rules"
 
 # 匹配函数:模式命中即输出激活提示
@@ -96,10 +98,15 @@ match '不确定.*(怎么|该|要)|帮我.*问|不知道.*怎么|有什么.*(需
       "info_guidance.md" "信息引导漏斗"
 
 # === 治理层 ===
-match '规则|governance|治理|\.md.*(改|修|增|删)|AGENTS\.md|workflow\.md' \
+rule_maintenance_pattern='规则|governance|治理|\.md.*(改|修|增|删)|AGENTS\.md|workflow\.md|flow_rule_maintenance\.md|hook|settings|memory|lint|CI|pre-commit|ruff|basedpyright|pyright|import-linter|semgrep|静态工具|下放'
+
+match "$rule_maintenance_pattern" \
+      "flow_rule_maintenance.md" "规则维护流程"
+
+match "$rule_maintenance_pattern" \
       "governance.md" "规则治理"
 
-if printf '%s' "$prompt" | grep -iqE '规则|governance|治理|\.md.*(改|修|增|删)|AGENTS\.md|workflow\.md|静态工具|下放|hook'; then
+if printf '%s' "$prompt" | grep -iqE "$rule_maintenance_pattern"; then
   echo "[规则激活] 规则/治理类讨论必须带反向论证:"
   echo "  - 先锚定用户原话"
   echo "  - 再说明正向收益"

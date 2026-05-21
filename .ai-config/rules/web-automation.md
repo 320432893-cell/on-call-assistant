@@ -195,7 +195,7 @@ AI 反向审查：
 
 工具下放：
 
-- 固定 `time.sleep` 可由 hook / lint 扫描提醒。
+- 固定 `time.sleep` 由 semgrep 静态规则扫描提醒。
 - 基础 Python 风格、异常、import 交给 Ruff。
 - 数据输出正确性和幂等由数据规则与测试验证。
 

@@ -3,7 +3,7 @@
 # 对应 governance.md § 9.2 T1 机械强制
 # 退出码 2 = 阻断
 #
-# 为什么不能用 ruff/mypy: 这是 AI 行为规则(流程纪律),不是代码质量
+# 为什么不能用 ruff/basedpyright: 这是 AI 行为规则(流程纪律),不是代码质量
 #
 # 状态流转:
 #   rule_activator 检测到探索型 → /tmp/ai_task_exploratory_<hash>
