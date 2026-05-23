@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """SSOT 生成器:从 .ai-hooks/manifest.json 生成 .ai-config/settings.json{,.template}。
 
-为什么需要这层:AI 工具的 settings linter 会挑剔 Edit 工具对 settings.json 的增量改动,
+为什么需要这层:AI/Codex 运行时或兼容层可能会挑剔 settings.json 的增量改动,
 有时静默回滚 hook 注册。Python 通过 Bash 写文件是普通 IO 操作,引擎不挑。
 
 用法:
@@ -9,8 +9,8 @@
 
 行为:
     - 读 .ai-hooks/manifest.json(SSOT)
-    - 读本地 .ai-config/settings.json 的 ANTHROPIC_AUTH_TOKEN(若存在)
-    - 生成 .ai-config/settings.json(含 token,不入仓)
+    - 读本地 .ai-config/settings.json 的 OPENAI_API_KEY 或 ANTHROPIC_AUTH_TOKEN(若存在)
+    - 生成 .ai-config/settings.json(含本地 token,不入仓)
     - 生成 .ai-config/settings.json.template(token = REPLACE_ME_..., 入仓)
     - 校验:每个 hook 名在 .ai-hooks/ 下都存在对应 .sh 文件,否则报错退出
     - 校验:生成产物是合法 JSON
@@ -23,11 +23,11 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 from pathlib import Path
 from typing import Any
-
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 MANIFEST = REPO_ROOT / ".ai-hooks" / "manifest.json"
@@ -36,6 +36,12 @@ SETTINGS = REPO_ROOT / ".ai-config" / "settings.json"
 TEMPLATE = REPO_ROOT / ".ai-config" / "settings.json.template"
 
 TOKEN_PLACEHOLDER = "REPLACE_ME_WITH_YOUR_TOKEN"  # noqa: S105
+SUPPORTED_HOOK_EVENTS = {
+    "UserPromptSubmit",
+    "PreToolUse_Bash",
+    "PreToolUse_EditWriteMultiEdit",
+    "PostToolUse_EditWriteMultiEdit",
+}
 
 
 def load_manifest() -> dict[str, Any]:
@@ -46,6 +52,13 @@ def load_manifest() -> dict[str, Any]:
 
 
 def validate_hooks_exist(manifest: dict[str, Any]) -> None:
+    unknown_events = sorted(set(manifest.get("hooks", {})) - SUPPORTED_HOOK_EVENTS)
+    if unknown_events:
+        print("[regen_settings] FATAL: manifest 包含生成器不支持的 hook event:", file=sys.stderr)
+        for event in unknown_events:
+            print(f"  {event}", file=sys.stderr)
+        sys.exit(1)
+
     missing: list[str] = [
         f"  {stage_key}: {name}(.ai-hooks/{name} 不存在)"
         for stage_key, hook_names in manifest.get("hooks", {}).items()
@@ -64,23 +77,26 @@ def read_local_token() -> str:
         return TOKEN_PLACEHOLDER
     try:
         data = json.loads(SETTINGS.read_text(encoding="utf-8"))
-        token = data.get("env", {}).get("ANTHROPIC_AUTH_TOKEN", TOKEN_PLACEHOLDER)
+        env = data.get("env", {})
+        token = env.get("OPENAI_API_KEY") or env.get("ANTHROPIC_AUTH_TOKEN") or TOKEN_PLACEHOLDER
     except (json.JSONDecodeError, OSError):
         return TOKEN_PLACEHOLDER
     return token if token else TOKEN_PLACEHOLDER
 
 
 def build_hook_entry(hook_name: str) -> dict[str, str]:
-    return {"type": "command", "command": f"bash ~/.claude/hooks/{hook_name}"}
+    return {"type": "command", "command": f"bash .ai-hooks/{hook_name}"}
 
 
 def build_settings(manifest: dict[str, Any], token: str) -> dict[str, Any]:
     h = manifest["hooks"]
+    env = {
+        "OPENAI_API_KEY": token,
+    }
+    if manifest.get("base_url"):
+        env["OPENAI_BASE_URL"] = manifest["base_url"]
     return {
-        "env": {
-            "ANTHROPIC_AUTH_TOKEN": token,
-            "ANTHROPIC_BASE_URL": manifest["base_url"],
-        },
+        "env": env,
         "model": manifest["model"],
         "permissions": manifest.get("permissions", {"allow": []}),
         "hooks": {
@@ -117,7 +133,16 @@ def write_json(path: Path, data: dict[str, Any]) -> None:
     json.loads(text)  # 回读校验
 
 
+def parse_args(argv: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="从 .ai-hooks/manifest.json 生成 .ai-config/settings.json 和 settings.json.template。",
+    )
+    return parser.parse_args(argv)
+
+
 def main() -> int:
+    parse_args(sys.argv[1:])
+
     manifest = load_manifest()
     validate_hooks_exist(manifest)
 
@@ -137,7 +162,7 @@ def main() -> int:
 
     if local_token == TOKEN_PLACEHOLDER:
         print(
-            "[regen_settings] WARN — settings.json 中 token 是占位符,本地使用前请填入真实 ANTHROPIC_AUTH_TOKEN",
+            "[regen_settings] WARN — settings.json 中 token 是占位符,本地使用前请填入真实 OPENAI_API_KEY",
             file=sys.stderr,
         )
     return 0

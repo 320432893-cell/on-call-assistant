@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # engineering_audit.sh 单测
-# 按 governance.md § 3.6: 至少 3 正样本 + 3 反样本(含边界)
+# 按 rule_governance/governance.index.md: 至少 3 正样本 + 3 反样本(含边界)
 # 用法: bash tests/test_engineering_audit.sh
 set -u
 

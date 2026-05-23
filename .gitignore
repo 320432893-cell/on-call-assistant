@@ -14,6 +14,12 @@ env/
 .env
 .env.local
 *.key
+*.pem
+credentials.json
+*credentials*
+*secret*
+*token*
+*password*
 
 # 索引数据（运行时生成，不入库）
 indexes/
@@ -32,6 +38,7 @@ prompt/screenshot_*.png
 
 # AI 工具本地配置（机器/账号专属，不入仓）
 .claude/
+.codex/
 
 # AI 共享配置中含 token 的实文件不入仓，只入 template
 .ai-config/settings.json
@@ -41,6 +48,9 @@ prompt/screenshot_*.png
 .mypy_cache/
 htmlcov/
 .coverage
+logs/
+*.log
+node_modules/
 
 # 模型权重文件（仅忽略实际权重文件，不忽略 app/models/ 等代码目录）
 *.bin

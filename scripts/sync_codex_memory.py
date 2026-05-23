@@ -5,7 +5,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-
 PROJECT_NAME = "on-call-assistant"
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CODEX_MEMORIES = Path.home() / ".codex" / "memories"
@@ -25,11 +24,11 @@ def build_index() -> str:
 本项目的 AI 规则主版本在仓库内，随 git 同步：
 
 - `{REPO_ROOT / ".ai-config" / "AGENTS.md"}`
-- `{REPO_ROOT / ".ai-config" / "rules"}/*.md`
+- `{REPO_ROOT / ".ai-config" / "rules"}`/**/*.md
 - `{REPO_ROOT / ".ai-hooks"}/*.sh`
-- `{REPO_ROOT / "SYNC.md"}`
-- `{REPO_ROOT / "BOOTSTRAP.md"}`
-- `{REPO_ROOT / "PROJECT_CONTEXT.md"}`
+- `{REPO_ROOT / "docs" / "SYNC.md"}`
+- `{REPO_ROOT / "docs" / "PROJECT_MAP.md"}`
+- `{REPO_ROOT / "docs" / "AI_HANDOFF.md"}`
 
 `~/.codex/memories` 只保存本索引，不复制规则全文。不要把 memory 副本当作规则主版本。
 
@@ -37,26 +36,20 @@ def build_index() -> str:
 
 1. 先读 `{REPO_ROOT / ".ai-config" / "AGENTS.md"}`。
 2. 再按任务类型读取 `{REPO_ROOT / ".ai-config" / "rules"}` 下的对应规则。
-3. 涉及同步、换机器、hook、settings 时读取 `{REPO_ROOT / "SYNC.md"}`。
-4. 涉及新电脑启动或灾难恢复时读取 `{REPO_ROOT / "BOOTSTRAP.md"}`。
-5. 涉及项目背景和运行约束时读取 `{REPO_ROOT / "PROJECT_CONTEXT.md"}`。
+3. 涉及同步、换机器、hook、settings 时读取 `{REPO_ROOT / "docs" / "SYNC.md"}`。
+4. 涉及项目背景、入口、运行约束、架构图、架构边界或 source of truth 时读取 `{REPO_ROOT / "docs" / "PROJECT_MAP.md"}`。
+5. 涉及近期风险、未验证项或接力上下文时读取 `{REPO_ROOT / "docs" / "AI_HANDOFF.md"}`。
 
 ## 常用规则入口
 
-- 通用流程/硬约束：`.ai-config/rules/workflow.md`
-- 老项目改动、bug 修复、重构、首次接手：`.ai-config/rules/flow_legacy_project.md`
-- 新项目、新模块、架构决策：`.ai-config/rules/flow_new_project.md`
-- 规则、hook、settings、lint/CI 维护：`.ai-config/rules/flow_rule_maintenance.md`
-- 规则治理和静态下沉：`.ai-config/rules/governance.md`
-- 代码语义和设计范式：`.ai-config/rules/code.md`
-- 架构边界：`.ai-config/rules/architecture.md`
-- FastAPI / 后端：`.ai-config/rules/backend.md`
-- 前端：`.ai-config/rules/frontend.md`
-- GUI：`.ai-config/rules/gui.md`
-- 数据处理：`.ai-config/rules/data.md`
-- 打包交付：`.ai-config/rules/package.md`
-- 浏览器自动化：`.ai-config/rules/web-automation.md`
-- 用户可见交互：`.ai-config/rules/interaction.md`
+- 总入口：`.ai-config/rules/index.md`
+- 流程专题：`.ai-config/rules/process/index.md`
+- 工程专题：`.ai-config/rules/engineering/index.md`
+- 交付专题：`.ai-config/rules/delivery/index.md`
+- 推理专题：`.ai-config/rules/reasoning/index.md`
+- 规则治理专题：`.ai-config/rules/rule_governance/index.md`
+- 规则、hook、settings、lint/CI 维护：`.ai-config/rules/rule_governance/flow_rule_maintenance.index.md`
+- 规则治理和静态下沉：`.ai-config/rules/rule_governance/governance.index.md`
 
 ## 项目检查命令
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # PostToolUse hook (Edit/MultiEdit): 幽灵引用扫描
-# 对应 flow_legacy_project.md § 8 老项目红线 — 改名/删除后 grep 旧名
+# 对应 process/flow_legacy_project.index.md 老项目红线 — 改名/删除后 grep 旧名
 #
 # 工作原理:
 #   - 从 tool_input 解析出本次 Edit 的 old_string / new_string
@@ -11,19 +11,17 @@ set -u
 
 input=$(cat)
 
-# 用 python 解析 JSON 全程,避开 shell 变量注入
-parsed=$(printf '%s' "$input" | OLD_INPUT="$input" python3 <<'PYEOF' 2>/dev/null
-import sys, json, os
+# 用 python 解析 JSON,所有不可信内容都走 base64/env,不 eval shell 赋值
+parsed=$(OLD_INPUT="$input" python3 <<'PYEOF' 2>/dev/null
+import json, os, sys, base64
 try:
     data = json.loads(os.environ.get('OLD_INPUT', sys.stdin.read()))
     tool = data.get('tool_name', '')
     fp = data.get('tool_input', {}).get('file_path', '')
     old = data.get('tool_input', {}).get('old_string', '')
     new = data.get('tool_input', {}).get('new_string', '')
-    print(f"TOOL={tool}")
-    print(f"FILE={fp}")
-    # 用 base64 逃逸,避免 shell 处理换行/引号
-    import base64
+    print(f"TOOL_B64={base64.b64encode(tool.encode('utf-8')).decode('ascii')}")
+    print(f"FILE_B64={base64.b64encode(fp.encode('utf-8')).decode('ascii')}")
     print(f"OLD_B64={base64.b64encode(old.encode('utf-8')).decode('ascii')}")
     print(f"NEW_B64={base64.b64encode(new.encode('utf-8')).decode('ascii')}")
 except Exception:
@@ -32,7 +30,17 @@ PYEOF
 )
 
 [ -z "$parsed" ] && exit 0
-eval "$parsed"
+while IFS='=' read -r key value; do
+  case "$key" in
+    TOOL_B64) TOOL_B64="$value" ;;
+    FILE_B64) FILE_B64="$value" ;;
+    OLD_B64) OLD_B64="$value" ;;
+    NEW_B64) NEW_B64="$value" ;;
+  esac
+done <<< "$parsed"
+
+TOOL=$(TOOL_B64="$TOOL_B64" python3 -c "import base64, os; print(base64.b64decode(os.environ.get('TOOL_B64','')).decode('utf-8', 'ignore'), end='')" 2>/dev/null)
+FILE=$(FILE_B64="$FILE_B64" python3 -c "import base64, os; print(base64.b64decode(os.environ.get('FILE_B64','')).decode('utf-8', 'ignore'), end='')" 2>/dev/null)
 
 # 只处理 Edit / MultiEdit (Write 是新文件或全量改写,不适用)
 case "${TOOL:-}" in
@@ -128,7 +136,7 @@ done <<< "$removed_names"
 
 if [ -n "$ghost_refs" ]; then
   echo "" >&2
-  echo "[rename_audit] 检测到幽灵引用 — flow_legacy_project.md § 8" >&2
+  echo "[rename_audit] 检测到幽灵引用 — process/flow_legacy_project.index.md" >&2
   echo "[rename_audit] 本次 Edit 删除/改名了符号,但项目其他文件仍在引用:" >&2
   printf '%b\n' "$ghost_refs" >&2
   echo "" >&2

@@ -1,9 +1,8 @@
 {
   "env": {
-    "ANTHROPIC_AUTH_TOKEN": "REPLACE_ME_WITH_YOUR_TOKEN",
-    "ANTHROPIC_BASE_URL": "https://cdn.codeflow.asia"
+    "OPENAI_API_KEY": "REPLACE_ME_WITH_YOUR_TOKEN"
   },
-  "model": "claude-opus-4-7",
+  "model": "gpt-5-codex",
   "permissions": {
     "allow": [
       "Bash(git push *)"
@@ -16,7 +15,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ~/.claude/hooks/rule_activator.sh"
+            "command": "bash .ai-hooks/rule_activator.sh"
           }
         ]
       }
@@ -27,11 +26,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ~/.claude/hooks/dangerous_bash.sh"
+            "command": "bash .ai-hooks/dangerous_bash.sh"
           },
           {
             "type": "command",
-            "command": "bash ~/.claude/hooks/git_commit_safety.sh"
+            "command": "bash .ai-hooks/git_commit_safety.sh"
           }
         ]
       },
@@ -40,7 +39,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ~/.claude/hooks/exploration_gate.sh"
+            "command": "bash .ai-hooks/exploration_gate.sh"
           }
         ]
       }
@@ -51,19 +50,19 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ~/.claude/hooks/engineering_audit.sh"
+            "command": "bash .ai-hooks/engineering_audit.sh"
           },
           {
             "type": "command",
-            "command": "bash ~/.claude/hooks/rename_audit.sh"
+            "command": "bash .ai-hooks/rename_audit.sh"
           },
           {
             "type": "command",
-            "command": "bash ~/.claude/hooks/rag_hygiene.sh"
+            "command": "bash .ai-hooks/rag_hygiene.sh"
           },
           {
             "type": "command",
-            "command": "bash ~/.claude/hooks/rag_drift.sh"
+            "command": "bash .ai-hooks/rag_drift.sh"
           }
         ]
       }

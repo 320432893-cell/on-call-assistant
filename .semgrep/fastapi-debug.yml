@@ -23,7 +23,7 @@ rules:
       - pattern: uvicorn.run(..., reload=True, ...)
 
   - id: cors-allow-all-origins
-    message: "Do not use CORSMiddleware allow_origins=['*'] outside an explicit local-only exception."
+    message: "Do not use CORSMiddleware allow_origins=['*']; route explicit local-only exceptions through settings and a narrower origin list."
     severity: ERROR
     languages: [python]
     patterns:

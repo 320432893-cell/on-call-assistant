@@ -93,7 +93,7 @@
 6. 生成/更新项目记忆层，向用户确认
 ```
 
-当前项目记忆层：`docs/PROJECT_MAP.md` / `docs/ARCHITECTURE.md` / `docs/AI_HANDOFF.md`。
+当前项目记忆层：`docs/PROJECT_MAP.md` / `docs/AI_HANDOFF.md`。
 
 ### 2.2 重大决策点的对话节奏
 

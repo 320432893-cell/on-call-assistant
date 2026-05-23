@@ -1,15 +1,73 @@
 #!/usr/bin/env bash
 # PreToolUse hook on Bash: git commit 前体检暂存区
-# 对应 workflow.md § 6.1 开局体检 + 4.3.1 git 仓库治理
+# 对应 process/workflow.index.md 的开局体检 + git 仓库治理
 # 退出码 2 = 阻断
 set -u
 
 input=$(cat)
-cmd=$(printf '%s' "$input" | grep -oE '"command"[[:space:]]*:[[:space:]]*"([^"\\]|\\.)*"' | head -1 | sed -E 's/.*"command"[[:space:]]*:[[:space:]]*"(.*)"$/\1/' | sed 's/\\"/"/g; s/\\\\/\\/g')
+commit_action=$(printf '%s' "$input" | python3 -c "
+import json
+import shlex
+import sys
 
-# 只拦 git commit (排除 git commit --help 等查询命令)
-echo "$cmd" | grep -Eq 'git[[:space:]]+commit($|[[:space:]])' || exit 0
-echo "$cmd" | grep -Eq 'git[[:space:]]+commit[[:space:]]+(--help|-h)($|[[:space:]])' && exit 0
+GIT_OPTS_WITH_VALUE = {'-C', '-c', '--git-dir', '--work-tree', '--namespace'}
+
+def command_words(command):
+    lexer = shlex.shlex(command, posix=True, punctuation_chars=';&|()')
+    lexer.whitespace_split = True
+    lexer.commenters = ''
+    words = []
+    current = []
+    for token in lexer:
+        if token in {';', '&&', '||', '|', '(', ')'}:
+            if current:
+                words.append(current)
+                current = []
+            continue
+        current.append(token)
+    if current:
+        words.append(current)
+    return words
+
+def is_git_commit(words):
+    if not words or words[0] != 'git':
+        return False
+    i = 1
+    while i < len(words):
+        word = words[i]
+        if word == 'commit':
+            return True
+        if word in GIT_OPTS_WITH_VALUE:
+            i += 2
+            continue
+        if word.startswith('--git-dir=') or word.startswith('--work-tree=') or word.startswith('--namespace='):
+            i += 1
+            continue
+        if word.startswith('-'):
+            i += 1
+            continue
+        return False
+    return False
+
+try:
+    data = json.load(sys.stdin)
+    command = data.get('tool_input', {}).get('command', '')
+except Exception:
+    command = ''
+
+if not command:
+    raise SystemExit(0)
+
+for words in command_words(command):
+    if is_git_commit(words):
+        if any(word in {'--help', '-h'} for word in words):
+            print('help', end='')
+        else:
+            print('commit', end='')
+        break
+" 2>/dev/null)
+
+[ "$commit_action" = "commit" ] || exit 0
 
 # 检查暂存区是否含敏感文件
 staged=$(git diff --cached --name-only 2>/dev/null) || exit 0  # 不是 git 仓库放行
@@ -31,14 +89,20 @@ while IFS= read -r f; do
       ;;
   esac
   case "$f" in
-    *.env|.env|.env.*|*/.env|*.key|*.pem|*credentials*|*secret*|*token*)
+    *.env|.env|.env.*|*/.env|*.key|*.pem|*credentials*|*secret*|*token*|*password*)
       risky="$risky\n  - $f (密钥/敏感)"
       ;;
     *.venv/*|venv/*|*/__pycache__/*|*.pyc)
       risky="$risky\n  - $f (虚拟环境/缓存)"
       ;;
-    *node_modules/*|*/.idea/*|*/.vscode/*)
+    *node_modules/*|*/node_modules/*|.idea/*|*/.idea/*|.vscode/*|*/.vscode/*)
       risky="$risky\n  - $f (依赖/IDE 元数据)"
+      ;;
+    .claude/*|*/.claude/*|.codex/*|*/.codex/*)
+      risky="$risky\n  - $f (AI 工具本地配置)"
+      ;;
+    screenshot/*|*/screenshot/*|*screenshot_*.png|*.log|logs/*|*/logs/*)
+      risky="$risky\n  - $f (运行产物/截图/日志)"
       ;;
   esac
   # 大文件检测 (>5MB)
@@ -53,7 +117,7 @@ done <<< "$staged"
 if [ -n "$risky" ]; then
   echo "[git_commit_safety] 阻断: 暂存区含风险文件:" >&2
   printf "$risky\n" >&2
-  echo "[git_commit_safety] 按 workflow.md § 6.1, 必须先 git rm --cached 撤出 + 补 .gitignore 后再 commit" >&2
+  echo "[git_commit_safety] 按 process/workflow.index.md, 必须先 git rm --cached 撤出 + 补 .gitignore 后再 commit" >&2
   exit 2
 fi
 

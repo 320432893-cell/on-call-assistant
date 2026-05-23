@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # PostToolUse hook (Edit/Write/MultiEdit): 工程规范审计器
 # 改完代码后扫描项目根缺口,stderr 报告,不阻断
-# 同会话+同项目只报一次,避免噪音
+# 同项目 6 小时只报一次,避免噪音
 #
 # 检测项分级:
 #   ★★★ 红线  (.gitignore 缺 / 无 .git)
@@ -200,7 +200,7 @@ if [ -n "$red_lines" ] || [ -n "$warnings" ] || [ -n "$hints" ]; then
     printf '%b\n' "$hints" >&2
   fi
   echo "" >&2
-  echo "[engineering_audit] 同会话同项目本次后不再重复报告。如需跳过该项目,touch \$PROJECT/.eng_audit_skip" >&2
+  echo "[engineering_audit] 同项目 6 小时内不再重复报告。如需跳过该项目,touch \$PROJECT/.eng_audit_skip" >&2
 fi
 
 # 标记已扫

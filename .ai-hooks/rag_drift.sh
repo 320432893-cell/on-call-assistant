@@ -37,5 +37,9 @@ case "$project_root" in
   "$HOME/.claude"*) exit 0 ;;
 esac
 
-python3 "$project_root/scripts/check_rag_drift.py" --file "$file_path" 2>&1 1>/dev/null >&2 || true
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+CHECK_SCRIPT="$SCRIPT_DIR/../scripts/check_rag_drift.py"
+[ -f "$CHECK_SCRIPT" ] || exit 0
+
+python3 "$CHECK_SCRIPT" --file "$file_path" >/dev/null || true
 exit 0

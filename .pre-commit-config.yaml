@@ -1,9 +1,10 @@
-# 阶段 1 最小集：ruff (lint+format) / basedpyright / import-linter / detect-secrets / semgrep
+# 阶段 1 最小集：ruff (lint+format) / basedpyright / import-linter / detect-secrets / semgrep / pip-audit(manual)
 # 设计原则：
 #   - ruff、detect-secrets 与项目依赖无关 → 用 pre-commit 隔离 env (repo: 模式)
 #   - basedpyright、import-linter 必须能 import 到 app/* 与 fastapi/pydantic 类型 → 用 language: system 跑项目 .venv 里的工具
-#   - semgrep 跑项目 .venv 里的固定 dev 依赖，避免 uvx 临时解析/缓存
-#   - ruff/detect-secrets 版本钉死(rev); basedpyright/import-linter/semgrep 走项目 venv
+#   - semgrep / pip-audit 跑项目 .venv 里的固定 dev 依赖，避免 uvx 临时解析/缓存
+#   - ruff/detect-secrets 版本钉死(rev); basedpyright/import-linter/semgrep/pip-audit 走项目 venv
+#   - pip-audit 需要解析依赖漏洞库，默认放 manual 阶段；CI 中固定执行
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
@@ -21,7 +22,8 @@ repos:
         exclude: |
           (?x)^(
             uv\.lock|
-            \.secrets\.baseline
+            \.secrets\.baseline|
+            \.ai-config/settings\.json\.template
           )$
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -54,10 +56,25 @@ repos:
         # 任何 .py 改动都跑一遍(架构契约级,不该被跳)
         types: [python]
 
+      - id: rule-tool-contracts
+        name: rule/tool contract check
+        entry: python3 .ai-config/check_rule_tool_contracts.py
+        language: system
+        pass_filenames: false
+        files: ^(\.ai-config/|\.ai-hooks/|\.semgrep/|\.github/workflows/ci\.yml|\.pre-commit-config\.yaml|pyproject\.toml|uv\.lock)$
+
       - id: semgrep
         name: semgrep (project static guardrails)
         entry: .venv/bin/semgrep
         language: system
         pass_filenames: false
-        types: [python]
+        files: ^(.+\.py|\.semgrep/.+\.ya?ml)$
         args: [--config, .semgrep]
+
+      - id: pip-audit
+        name: pip-audit (dependency vulnerabilities)
+        entry: .venv/bin/pip-audit
+        language: system
+        pass_filenames: false
+        stages: [manual]
+        args: [--strict]
