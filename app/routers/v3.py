@@ -1,20 +1,20 @@
 # Phase3: On-Call Agent SSE 接口
 
 import json
-from typing import Optional
+
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
 from pydantic import BaseModel
 
-from app.services.session_store import get_session_store
 from app.services.agent import AgentStateMachine, get_llm_provider
+from app.services.session_store import get_session_store
 
 router = APIRouter(prefix="/v3", tags=["Phase3-Agent"])
 
 
 class ChatRequest(BaseModel):
     message: str
-    session_id: Optional[str] = None
+    session_id: str | None = None
 
 
 def _sse_format(event: str, data: dict) -> str:
@@ -37,7 +37,8 @@ async def chat(req: ChatRequest, request: Request):
     try:
         provider = get_llm_provider()
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"LLM Provider 初始化失败: {e}")
+        print(f"[V3Error] LLM Provider 初始化失败: {e}")
+        raise HTTPException(status_code=503, detail="LLM Provider 初始化失败")
 
     history_raw = store.get_history(session_id)
     history = [
@@ -62,7 +63,8 @@ async def chat(req: ChatRequest, request: Request):
                     final_answer = ev.data.get("text", "")
                 yield _sse_format(ev.event, ev.data)
         except Exception as e:
-            yield _sse_format("error", {"message": f"Agent 异常: {e}"})
+            print(f"[V3Error] Agent 异常: {e}")
+            yield _sse_format("error", {"message": "Agent 异常"})
             yield _sse_format("done", {})
             return
 

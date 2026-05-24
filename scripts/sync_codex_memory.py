@@ -26,7 +26,7 @@ def build_index() -> str:
 - `{REPO_ROOT / ".ai-config" / "AGENTS.md"}`
 - `{REPO_ROOT / ".ai-config" / "rules"}`/**/*.md
 - `{REPO_ROOT / ".ai-hooks"}/*.sh`
-- `{REPO_ROOT / "docs" / "SYNC.md"}`
+- `{REPO_ROOT / "docs" / "TOOLING_CONTRACTS.md"}`
 - `{REPO_ROOT / "docs" / "PROJECT_MAP.md"}`
 - `{REPO_ROOT / "docs" / "AI_HANDOFF.md"}`
 
@@ -36,7 +36,7 @@ def build_index() -> str:
 
 1. 先读 `{REPO_ROOT / ".ai-config" / "AGENTS.md"}`。
 2. 再按任务类型读取 `{REPO_ROOT / ".ai-config" / "rules"}` 下的对应规则。
-3. 涉及同步、换机器、hook、settings 时读取 `{REPO_ROOT / "docs" / "SYNC.md"}`。
+3. 涉及同步、换机器、hook、settings 时读取 `{REPO_ROOT / "docs" / "TOOLING_CONTRACTS.md"}`。
 4. 涉及项目背景、入口、运行约束、架构图、架构边界或 source of truth 时读取 `{REPO_ROOT / "docs" / "PROJECT_MAP.md"}`。
 5. 涉及近期风险、未验证项或接力上下文时读取 `{REPO_ROOT / "docs" / "AI_HANDOFF.md"}`。
 
@@ -46,7 +46,6 @@ def build_index() -> str:
 - 流程专题：`.ai-config/rules/process/index.md`
 - 工程专题：`.ai-config/rules/engineering/index.md`
 - 交付专题：`.ai-config/rules/delivery/index.md`
-- 推理专题：`.ai-config/rules/reasoning/index.md`
 - 规则治理专题：`.ai-config/rules/rule_governance/index.md`
 - 规则、hook、settings、lint/CI 维护：`.ai-config/rules/rule_governance/flow_rule_maintenance.index.md`
 - 规则治理和静态下沉：`.ai-config/rules/rule_governance/governance.index.md`

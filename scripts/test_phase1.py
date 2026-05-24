@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # Phase1 功能测试脚本
 
-import sys
 import os
+import sys
 
 # Windows 控制台 GBK 编码不下 emoji，强制 stdout 用 UTF-8
 if sys.platform == "win32":
@@ -13,7 +13,8 @@ if sys.platform == "win32":
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from pathlib import Path
-from app.services import get_preprocessor, get_indexer, close_indexer
+
+from app.services import close_indexer, get_indexer, get_preprocessor
 
 
 def test_preprocessor():
@@ -24,7 +25,7 @@ def test_preprocessor():
 
     # 读取一个HTML文件测试
     raw_path = Path(__file__).parent.parent / "data" / "raw" / "sop-001.html"
-    with open(raw_path, "r", encoding="utf-8") as f:
+    with open(raw_path, encoding="utf-8") as f:
         html = f.read()
 
     processed = preprocessor.parse_html(html, "sop-001")
@@ -60,7 +61,7 @@ def test_indexer():
             print(f"⚠️ 文件不存在: {file_path}")
             continue
 
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             html = f.read()
 
         processed = preprocessor.parse_html(html, doc_id)

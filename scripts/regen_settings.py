@@ -37,9 +37,7 @@ TEMPLATE = REPO_ROOT / ".ai-config" / "settings.json.template"
 
 TOKEN_PLACEHOLDER = "REPLACE_ME_WITH_YOUR_TOKEN"  # noqa: S105
 SUPPORTED_HOOK_EVENTS = {
-    "UserPromptSubmit",
     "PreToolUse_Bash",
-    "PreToolUse_EditWriteMultiEdit",
     "PostToolUse_EditWriteMultiEdit",
 }
 
@@ -95,34 +93,29 @@ def build_settings(manifest: dict[str, Any], token: str) -> dict[str, Any]:
     }
     if manifest.get("base_url"):
         env["OPENAI_BASE_URL"] = manifest["base_url"]
+    hooks: dict[str, list[dict[str, Any]]] = {}
+    pre_tool_use = []
+    if h.get("PreToolUse_Bash"):
+        pre_tool_use.append(
+            {
+                "matcher": "Bash",
+                "hooks": [build_hook_entry(n) for n in h["PreToolUse_Bash"]],
+            },
+        )
+    if pre_tool_use:
+        hooks["PreToolUse"] = pre_tool_use
+    if h.get("PostToolUse_EditWriteMultiEdit"):
+        hooks["PostToolUse"] = [
+            {
+                "matcher": "Edit|Write|MultiEdit",
+                "hooks": [build_hook_entry(n) for n in h["PostToolUse_EditWriteMultiEdit"]],
+            },
+        ]
     return {
         "env": env,
         "model": manifest["model"],
         "permissions": manifest.get("permissions", {"allow": []}),
-        "hooks": {
-            "UserPromptSubmit": [
-                {
-                    "matcher": "",
-                    "hooks": [build_hook_entry(n) for n in h.get("UserPromptSubmit", [])],
-                }
-            ],
-            "PreToolUse": [
-                {
-                    "matcher": "Bash",
-                    "hooks": [build_hook_entry(n) for n in h.get("PreToolUse_Bash", [])],
-                },
-                {
-                    "matcher": "Edit|Write|MultiEdit",
-                    "hooks": [build_hook_entry(n) for n in h.get("PreToolUse_EditWriteMultiEdit", [])],
-                },
-            ],
-            "PostToolUse": [
-                {
-                    "matcher": "Edit|Write|MultiEdit",
-                    "hooks": [build_hook_entry(n) for n in h.get("PostToolUse_EditWriteMultiEdit", [])],
-                }
-            ],
-        },
+        "hooks": hooks,
         "enabledPlugins": manifest.get("enabledPlugins", {}),
     }
 
@@ -155,9 +148,7 @@ def main() -> int:
 
     hooks_count = sum(len(v) for v in manifest["hooks"].values())
     print(f"[regen_settings] OK — 写入 {SETTINGS.name} 和 {TEMPLATE.name},共注册 {hooks_count} 个 hook")
-    print(f"  UserPromptSubmit: {len(manifest['hooks'].get('UserPromptSubmit', []))}")
     print(f"  PreToolUse(Bash): {len(manifest['hooks'].get('PreToolUse_Bash', []))}")
-    print(f"  PreToolUse(Edit|Write|MultiEdit): {len(manifest['hooks'].get('PreToolUse_EditWriteMultiEdit', []))}")
     print(f"  PostToolUse(Edit|Write|MultiEdit): {len(manifest['hooks'].get('PostToolUse_EditWriteMultiEdit', []))}")
 
     if local_token == TOKEN_PLACEHOLDER:

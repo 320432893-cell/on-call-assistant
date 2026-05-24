@@ -13,7 +13,7 @@ except Exception:
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from app.services.report_pdf import parse_annual_report, chunks_to_jsonl
+from app.services.report_pdf import chunks_to_jsonl, parse_annual_report
 
 PDF = "data/raw/annual_reports/移远通信_2025.pdf"
 OUT = "data/processed/annual_reports/移远通信_2025/chunks.jsonl"

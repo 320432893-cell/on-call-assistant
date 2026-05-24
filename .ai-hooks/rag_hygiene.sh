@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # PostToolUse hook: BGE 双塔 embedding 语义检查
-# 仅保留成熟静态工具暂时表达不干净的 RAG 反模式:
-#   R2 — bge-m3 类双塔 embedder 调用 encode 时漏 is_query 参数(query/passage 必须区分)
-# R6/R7 已下放到 .semgrep/rag-hygiene.yml，避免 hook 与 semgrep 重复报告。
+# 只保留成熟静态工具暂时表达不干净的一项:
+# bge-m3 类双塔 embedder 调用 encode 时必须显式传 is_query 参数。
+# 其他稳定静态检查已下放到 .semgrep/rag-hygiene.yml，避免重复报告。
 
 set -u
 
@@ -58,7 +58,7 @@ for node in ast.walk(tree):
     elif isinstance(func, ast.Attribute):
         func_name = func.attr
 
-    # R2: encode(...) 漏 is_query
+    # encode(...) 漏 is_query
     if func_name == 'encode' and isinstance(func, ast.Attribute):
         parent = func.value
         parent_name = ''
@@ -74,7 +74,9 @@ for node in ast.walk(tree):
             )
             if not first_arg_is_literal and 'is_query' not in kw_names:
                 if any(k in src for k in ['bge', 'BGE', 'is_query', 'query_prefix']):
-                    issues.append(f"  line {node.lineno}: {parent_name}.encode(...) 缺 is_query= 参数(bge 双塔必须区分 query/passage)")
+                    issues.append(
+                        f"  line {node.lineno}: {parent_name}.encode(...) 缺 is_query= 参数(BGE 双塔必须区分 query/passage)"
+                    )
 
 for line in issues[:10]:
     print(line)
@@ -87,7 +89,7 @@ if [ -n "$violations" ]; then
   echo "$violations" >&2
   echo "" >&2
   echo "[rag_hygiene] 处置:" >&2
-  echo "    R2 — 双塔 embedder encode(text, is_query=True/False) 必须显式区分" >&2
+  echo "    双塔 embedder encode(text, is_query=True/False) 必须显式区分" >&2
 fi
 
 exit 0

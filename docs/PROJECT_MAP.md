@@ -152,7 +152,6 @@ docker run -d -p 6379:6379 redis:7-alpine
 | `.ai-config/` | Codex/AI 规则 source of truth |
 | `.ai-hooks/` | AI hook source of truth |
 | `docs/TOOLING_CONTRACTS.md` | 工具契约维护入口：说明 ruff、basedpyright、import-linter、semgrep、pip-audit、pre-commit、CI 和 AI hook 的职责、运行位置、维护流程 |
-| `docs/SYNC.md` | 新机启动、跨机器同步、工具链、AI hook/settings 同步手册 |
 
 ## 7. 数据和运行产物
 

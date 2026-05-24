@@ -3,7 +3,7 @@
 import json
 import time
 import uuid
-from typing import Optional, List
+from typing import Optional
 
 import redis
 
@@ -45,7 +45,7 @@ class SessionStore:
         """生成新 session_id"""
         return uuid.uuid4().hex
 
-    def get_history(self, session_id: str) -> List[dict]:
+    def get_history(self, session_id: str) -> list[dict]:
         """获取会话历史；不存在或损坏返回空列表"""
         raw = self._client.get(self._key(session_id))
         if not raw:
@@ -77,7 +77,7 @@ class SessionStore:
         self._client.delete(self._key(session_id))
 
 
-_store: Optional[SessionStore] = None
+_store: SessionStore | None = None
 
 
 def get_session_store() -> SessionStore:

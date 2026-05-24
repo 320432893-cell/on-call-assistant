@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
 # PostToolUse hook: RAG collection drift 提醒
-# 覆盖:
-#   R1 — EMBEDDING_MODEL 配置改了(切 embedder)→ 必须重灌 collection
-#   R3 — chunk 切分常量(chunk_size/overlap/MAX_CHARS 等)在 git 改动 → 提醒重灌
-#   R4 — VectorParams.size / Distance.* 改动 → schema 不兼容
-#
+# 覆盖 embedding model、chunk 参数、向量 schema 等 RAG 数据契约改动。
 # 触发:被改文件含相关关键字,且 git diff(未提交+最近一次 commit) 显示改动行有这些关键字
 # 输出:stderr 提醒,不阻断(改动可能合法,如重命名/重构)
 

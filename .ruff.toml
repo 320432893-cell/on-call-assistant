@@ -41,6 +41,9 @@ select = [
     "PLR0913", # 参数数
     "PLR2004", # 魔法数字
     "PLC0415", # 函数内动态 import
+    "FBT",     # 布尔位置参数坏味道: 调用处语义不清
+    "RET",     # 返回路径坏味道: 冗余变量/else 等
+    "ARG",     # 无用参数: 接口或实现漂移信号
     # ruff 特定 + 性能
     "RUF",
     "PERF",
@@ -53,7 +56,7 @@ select = [
 ]
 
 ignore = [
-    # Any 类型(由 mypy 兜底)
+    # Any 类型由 basedpyright 手动基线兜底
     "ANN401",
     # try/except 中"long messages in raise"过苛
     "TRY003",

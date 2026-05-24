@@ -12,7 +12,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
@@ -34,12 +33,12 @@ RAW_ROOT = Path("data/raw/annual_reports")
 class IngestRequest(BaseModel):
     company: str = Field(..., description="公司名，例：移远通信")
     year: int = Field(..., description="年报年度，例：2025")
-    pdf_path: Optional[str] = Field(
+    pdf_path: str | None = Field(
         None,
         description="PDF 绝对/相对路径；不传则用默认 data/raw/annual_reports/{company}_{year}.pdf；"
         "若对应 chunks.jsonl 已存在则直接复用，不重新解析",
     )
-    force_reparse: bool = Field(False, description="强制重新解析 PDF（即使 jsonl 已存在）")
+    force_reparse: bool = Field(default=False, description="强制重新解析 PDF（即使 jsonl 已存在）")
 
 
 class IngestResponse(BaseModel):
@@ -67,7 +66,7 @@ class ReportSearchHit(BaseModel):
 class ReportSearchResponse(BaseModel):
     query: str
     n_hits: int
-    results: List[ReportSearchHit]
+    results: list[ReportSearchHit]
 
 
 class CompanyInfo(BaseModel):
@@ -120,8 +119,8 @@ def ingest(req: IngestRequest):
 @router.get("/search", response_model=ReportSearchResponse)
 def search(
     q: str,
-    company: Optional[str] = None,
-    year: Optional[int] = None,
+    company: str | None = None,
+    year: int | None = None,
     limit: int = 10,
 ):
     """年报语义检索（可选 company/year 过滤）"""
@@ -166,7 +165,7 @@ def search(
     return ReportSearchResponse(query=q, n_hits=len(hits), results=hits)
 
 
-@router.get("/companies", response_model=List[CompanyInfo])
+@router.get("/companies", response_model=list[CompanyInfo])
 def companies():
     """列出已灌库的 (company, year) 组合"""
     vs = get_vectorstore()

@@ -1,13 +1,13 @@
 # Phase1: 关键词搜索 API
 
+
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
-from typing import List
 
 from app.config import get_settings
-from app.services import get_preprocessor, get_indexer
 from app.models import SearchResult
+from app.services import get_indexer, get_preprocessor
 
 settings = get_settings()
 
@@ -35,7 +35,7 @@ class SearchResponseV1(BaseModel):
     """搜索响应"""
 
     query: str
-    results: List[SearchResult]
+    results: list[SearchResult]
 
 
 @router.post("/documents", response_model=DocumentResponseV1, status_code=201)
@@ -79,7 +79,8 @@ async def create_document(doc_input: DocumentInputV1):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"处理失败: {e!s}")
+        print(f"[V1Error] document ingest failed: {e}")
+        raise HTTPException(status_code=500, detail="处理失败")
 
 
 @router.get("/search", response_model=SearchResponseV1)
@@ -120,13 +121,16 @@ async def search_documents(q: str, limit: int = 10):
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"搜索失败: {e!s}")
+        print(f"[V1Error] search failed: {e}")
+        raise HTTPException(status_code=500, detail="搜索失败")
 
 
 def _substring_fallback(q: str, limit: int = 10) -> list:
     """扫 data/raw/*.html，返回原文（去标签后）含 q 的文档"""
     from pathlib import Path
+
     from bs4 import BeautifulSoup
+
     from app.services.indexer import SearchResult as IndexerResult
 
     raw_dir = Path("data/raw")

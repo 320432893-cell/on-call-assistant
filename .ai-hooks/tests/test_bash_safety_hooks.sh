@@ -49,6 +49,34 @@ echo "--- dangerous_bash: allows harmless command ---"
 run_dangerous 'printf "git reset --hard"'
 assert_exit "dangerous_bash does not inspect quoted text as command" 0 "$RUN_RC"
 
+echo "--- dangerous_bash: blocks git add all ---"
+run_dangerous 'git add .'
+assert_exit "dangerous_bash blocks bulk git add" 2 "$RUN_RC"
+
+echo "--- dangerous_bash: blocks sudo rm -rf ---"
+run_dangerous 'sudo /bin/rm -rf /tmp/nope'
+assert_exit "dangerous_bash blocks wrapped rm -rf" 2 "$RUN_RC"
+
+echo "--- dangerous_bash: blocks plain git push ---"
+run_dangerous 'git push origin main'
+assert_exit "dangerous_bash blocks plain git push" 2 "$RUN_RC"
+
+echo "--- dangerous_bash: blocks git global option push ---"
+run_dangerous "git -C '$TMP_ROOT' push origin main"
+assert_exit "dangerous_bash blocks git -C push" 2 "$RUN_RC"
+
+echo "--- dangerous_bash: blocks git global option reset ---"
+run_dangerous "git -C '$TMP_ROOT' reset --hard"
+assert_exit "dangerous_bash blocks git -C reset --hard" 2 "$RUN_RC"
+
+echo "--- dangerous_bash: blocks dependency install ---"
+run_dangerous 'uv add pandas'
+assert_exit "dangerous_bash blocks dependency change" 2 "$RUN_RC"
+
+echo "--- dangerous_bash: blocks playwright install ---"
+run_dangerous 'node node_modules/playwright/cli.js install'
+assert_exit "dangerous_bash blocks browser download" 2 "$RUN_RC"
+
 repo="$TMP_ROOT/repo"
 mkdir -p "$repo"
 git -C "$repo" init -q

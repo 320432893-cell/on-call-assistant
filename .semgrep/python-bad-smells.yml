@@ -1,0 +1,192 @@
+rules:
+  - id: http-exception-leaks-exception-detail
+    message: "Do not expose raw exception text in HTTP responses; log internally and return a stable user-facing error."
+    severity: WARNING
+    languages: [python]
+    paths:
+      include:
+        - "**/app/routers/**/*.py"
+      exclude:
+        - "**/tests/**"
+        - "**/test/**"
+        - "**/test_*.py"
+        - "**/*_test.py"
+    patterns:
+      - pattern-either:
+          - pattern: HTTPException(..., detail=f"...{$ERR}...", ...)
+          - pattern: HTTPException(..., detail=str($ERR), ...)
+          - pattern: HTTPException(..., detail=repr($ERR), ...)
+      - metavariable-regex:
+          metavariable: $ERR
+          regex: (?i)^(e|err|exc|error|exception)$
+
+  - id: json-response-leaks-exception-detail
+    message: "Do not expose raw exception text in JSON responses; log internally and return a stable user-facing error."
+    severity: WARNING
+    languages: [python]
+    paths:
+      include:
+        - "**/app/routers/**/*.py"
+      exclude:
+        - "**/tests/**"
+        - "**/test/**"
+        - "**/test_*.py"
+        - "**/*_test.py"
+    patterns:
+      - pattern-either:
+          - pattern: 'JSONResponse(..., content={..., "error": f"...{$ERR}...", ...}, ...)'
+          - pattern: 'JSONResponse(..., content={..., "detail": f"...{$ERR}...", ...}, ...)'
+          - pattern: 'JSONResponse(..., content={..., "message": f"...{$ERR}...", ...}, ...)'
+      - metavariable-regex:
+          metavariable: $ERR
+          regex: (?i)^(e|err|exc|error|exception)$
+
+  - id: dict-response-leaks-exception-detail
+    message: "Do not return raw exception text from API handlers; log internally and return a stable user-facing error."
+    severity: WARNING
+    languages: [python]
+    paths:
+      include:
+        - "**/app/routers/**/*.py"
+      exclude:
+        - "**/tests/**"
+        - "**/test/**"
+        - "**/test_*.py"
+        - "**/*_test.py"
+    patterns:
+      - pattern-either:
+          - pattern: 'return {..., "error": f"...{$ERR}...", ...}'
+          - pattern: 'return {..., "detail": f"...{$ERR}...", ...}'
+          - pattern: 'return {..., "message": f"...{$ERR}...", ...}'
+          - pattern: 'return {..., "error": str($ERR), ...}'
+          - pattern: 'return {..., "detail": str($ERR), ...}'
+          - pattern: 'return {..., "message": str($ERR), ...}'
+      - metavariable-regex:
+          metavariable: $ERR
+          regex: (?i)^(e|err|exc|error|exception)$
+
+  - id: bare-asyncio-create-task
+    message: "asyncio.create_task should be assigned, tracked, awaited, or given an exception-reporting done callback."
+    severity: WARNING
+    languages: [python]
+    paths:
+      include:
+        - "**/app/**/*.py"
+        - "**/scripts/**/*.py"
+      exclude:
+        - "**/tests/**"
+        - "**/test/**"
+        - "**/test_*.py"
+        - "**/*_test.py"
+    patterns:
+      - pattern: asyncio.create_task(...)
+      - pattern-not-inside: $TASK = asyncio.create_task(...)
+      - pattern-not-inside: $TASKS.append(asyncio.create_task(...))
+      - pattern-not-inside: $TASKS.add(asyncio.create_task(...))
+      - pattern-not-inside: await asyncio.create_task(...)
+
+  - id: background-task-captures-request-scoped-object
+    message: "BackgroundTasks should not capture request-scoped objects such as request/response/session/db; pass stable IDs or plain data."
+    severity: WARNING
+    languages: [python]
+    paths:
+      include:
+        - "**/app/**/*.py"
+      exclude:
+        - "**/tests/**"
+        - "**/test/**"
+        - "**/test_*.py"
+        - "**/*_test.py"
+    patterns:
+      - pattern: $TASKS.add_task(..., $ARG, ...)
+      - metavariable-regex:
+          metavariable: $TASKS
+          regex: (?i).*(background|tasks|background_tasks).*
+      - metavariable-regex:
+          metavariable: $ARG
+          regex: (?i)^(request|response|session|db|conn|connection|cursor)$
+
+  - id: stringified-exception-control-flow
+    message: "Do not branch on str(exception); use typed exceptions, result codes, or explicit error categories."
+    severity: WARNING
+    languages: [python]
+    paths:
+      include:
+        - "**/app/**/*.py"
+        - "**/scripts/**/*.py"
+      exclude:
+        - "**/tests/**"
+        - "**/test/**"
+        - "**/test_*.py"
+        - "**/*_test.py"
+    patterns:
+      - pattern-either:
+          - pattern: 'if "..." in str($ERR): ...'
+          - pattern: 'if str($ERR) == "...": ...'
+          - pattern: 'if str($ERR) != "...": ...'
+      - metavariable-regex:
+          metavariable: $ERR
+          regex: (?i)^(e|err|exc|error|exception)$
+
+  - id: read-like-function-has-write-side-effect
+    message: "Read-like functions should not perform writes; consider command/query separation or rename the function if the side effect is intentional."
+    severity: WARNING
+    languages: [python]
+    paths:
+      include:
+        - "**/app/**/*.py"
+        - "**/scripts/**/*.py"
+      exclude:
+        - "**/tests/**"
+        - "**/test/**"
+        - "**/test_*.py"
+        - "**/*_test.py"
+    patterns:
+      - pattern-inside: |
+          def $FUNC(...):
+              ...
+      - metavariable-regex:
+          metavariable: $FUNC
+          regex: "^(get|list|read|search|fetch|load)($|_)"
+      - pattern-either:
+          - pattern: $OBJ.set(...)
+          - pattern: $OBJ.setex(...)
+          - pattern: $OBJ.delete(...)
+          - pattern: $OBJ.upsert(...)
+          - pattern: $OBJ.insert(...)
+          - pattern: $OBJ.update(...)
+          - pattern: $OBJ.commit(...)
+          - pattern: $OBJ.write(...)
+          - pattern: $OBJ.writelines(...)
+
+  - id: blocking-call-in-async-function
+    message: "Avoid obvious blocking calls inside async functions; use async clients, awaitable subprocess APIs, or move blocking work off the event loop."
+    severity: WARNING
+    languages: [python]
+    paths:
+      include:
+        - "**/app/**/*.py"
+        - "**/scripts/**/*.py"
+      exclude:
+        - "**/tests/**"
+        - "**/test/**"
+        - "**/test_*.py"
+        - "**/*_test.py"
+    patterns:
+      - pattern-inside: |
+          async def $FUNC(...):
+              ...
+      - pattern-either:
+          - pattern: time.sleep(...)
+          - pattern: requests.get(...)
+          - pattern: requests.post(...)
+          - pattern: requests.put(...)
+          - pattern: requests.delete(...)
+          - pattern: requests.patch(...)
+          - pattern: requests.request(...)
+          - pattern: urllib.request.urlopen(...)
+          - pattern: subprocess.run(...)
+          - pattern: subprocess.call(...)
+          - pattern: subprocess.check_call(...)
+          - pattern: subprocess.check_output(...)
+          - pattern: subprocess.Popen(...)

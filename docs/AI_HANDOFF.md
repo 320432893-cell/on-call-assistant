@@ -31,7 +31,6 @@ flowchart TD
 
     ROOT --> SSOT[先读的稳定来源]
     SSOT --> MAP[docs/PROJECT_MAP.md<br/>架构图、边界、入口]
-    SSOT --> SYNC[docs/SYNC.md<br/>环境、hook、settings 同步]
     SSOT --> CONFIG[.ai-config / .ai-hooks<br/>规则与 hook 主版本]
 
     ROOT --> RISK[接手风险]
@@ -55,7 +54,7 @@ flowchart TD
 
     class ROOT root
     class STATE,P1,P2,P3,P4,RULES state
-    class SSOT,MAP,SYNC,CONFIG ssot
+    class SSOT,MAP,CONFIG ssot
     class RISK,DRIFT,QLOCK,HASH,V4,LINT risk
     class NEXT,TEST,MILESTONE,PMAP,NO_MIX next
 ```
@@ -76,8 +75,8 @@ flowchart TD
 - 如果运行中的服务和进程内脚本同时使用嵌入式 Qdrant，可能竞争本地存储锁。uvicorn 正在运行时，优先走 HTTP 测试。
 - `QdrantService.upsert` / `upsert_batch` 对 SOP collection 仍使用 Python `hash()`，Phase4 通过 `upsert_batch_to` 使用稳定 ID。不要在未检查实现前假设 SOP point ID 跨进程稳定。
 - Phase4 当前暴露的是检索端点，不是最终生成式 `/v4/ask` RAG answer 端点。
-- `ruff check --no-cache .` 当前会在继承代码库上失败，主要是风格、类型注解、`print`、宽泛异常等问题。应视为代码质量 backlog，不是文档清理引入的回归。
-- 当前虚拟环境没有 `.venv/bin/basedpyright`。
+- `uv run ruff check .` 当前会在继承代码库上失败，主要是风格、类型注解、`print`、宽泛异常等问题。Ruff 已保留为 manual pre-commit 工具，不再伪装成 CI 阻塞基线。
+- `.venv/bin/basedpyright` 已存在，但 `uv run basedpyright` 当前仍有 app 类型错误。basedpyright 已保留为 manual pre-commit 工具，不再伪装成 CI 阻塞基线。
 - `market-impact-study/` 是相关规划工作流，不是核心 FastAPI 服务文档。
 
 ## 3. 下一步安全动作
@@ -87,7 +86,7 @@ flowchart TD
 3. 只有当测试可维护性成为当前重点时，才把脚本式测试迁移到 pytest。
 4. 如果 SOP collection 的向量 ID 稳定性变重要，检查并迁移 `upsert` / `upsert_batch` 到 `_stable_point_id`。
 5. route、service 或 source-of-truth store 变化时，保持 `docs/PROJECT_MAP.md` 的易懂架构图同步。
-6. 在把 `ruff` 设为阻塞 hook 前，先决定是否收紧当前 lint baseline。
+6. 在把 `ruff` / `basedpyright` 设为阻塞 hook 前，先清掉当前 lint/type baseline。
 
 ## 4. 已完成清理
 

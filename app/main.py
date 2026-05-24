@@ -1,9 +1,10 @@
 # On-Call Assistant FastAPI 入口
 
+import os
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.templating import Jinja2Templates
-from contextlib import asynccontextmanager
-import os
 
 from app.config import get_settings
 from app.routers import v1_router, v2_router, v3_router, v4_router
@@ -12,7 +13,7 @@ settings = get_settings()
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_app: FastAPI):
     # 启动时检查目录结构
     for path in ["./data/raw", "./data/processed", "./indexes/tantivy", "./indexes/qdrant"]:
         os.makedirs(path, exist_ok=True)

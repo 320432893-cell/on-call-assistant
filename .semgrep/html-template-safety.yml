@@ -1,0 +1,20 @@
+rules:
+  - id: html-innerhtml-template-expression
+    message: "Avoid assigning template expressions to innerHTML; build DOM nodes or escape untrusted fields first."
+    severity: WARNING
+    languages: [generic]
+    paths:
+      include:
+        - "**/app/templates/**/*.html"
+    patterns:
+      - pattern-regex: innerHTML\s*=\s*[^;\n]*`[^`\n]*\$\{
+
+  - id: html-insertadjacenthtml-template-expression
+    message: "Avoid insertAdjacentHTML with template expressions unless all interpolated fields are escaped."
+    severity: WARNING
+    languages: [generic]
+    paths:
+      include:
+        - "**/app/templates/**/*.html"
+    patterns:
+      - pattern-regex: insertAdjacentHTML\s*\([^`\n]*`[^`\n]*\$\{

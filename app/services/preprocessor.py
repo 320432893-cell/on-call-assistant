@@ -1,9 +1,9 @@
 # 数据预处理服务：HTML解析 + jieba分词
 
-from bs4 import BeautifulSoup
-from typing import Optional
-import jieba
 import re
+
+import jieba
+from bs4 import BeautifulSoup
 
 from app.config import get_settings
 
@@ -171,7 +171,7 @@ class DocumentPreprocessor:
             if name == "h1":
                 # 主标题：跳过（由 _extract_title 单独处理）
                 continue
-            elif name in ("h2", "h3"):
+            if name in ("h2", "h3"):
                 # h2 = 主章节；h3 = 子场景。都视为新 section，让正文跟在最近的标题后。
                 if current_section:
                     sections.append(current_section)
@@ -285,7 +285,7 @@ class DocumentPreprocessor:
 
 
 # 模块级单例
-_preprocessor: Optional[DocumentPreprocessor] = None
+_preprocessor: DocumentPreprocessor | None = None
 
 
 def get_preprocessor() -> DocumentPreprocessor:

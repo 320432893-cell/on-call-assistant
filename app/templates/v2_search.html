@@ -31,32 +31,53 @@
             if (e.key === 'Enter') search();
         });
 
+        function clearResults(container) {
+            while (container.firstChild) container.removeChild(container.firstChild);
+        }
+
+        function setText(container, tagName, text, className = '') {
+            const el = document.createElement(tagName);
+            if (className) el.className = className;
+            el.textContent = text;
+            container.appendChild(el);
+            return el;
+        }
+
+        function renderResults(container, results) {
+            clearResults(container);
+            for (const r of results) {
+                const item = document.createElement('div');
+                item.className = 'result';
+                setText(item, 'h3', `${r.id}: ${r.title}`);
+                setText(item, 'div', `相似度: ${Number(r.score).toFixed(4)}`, 'score');
+                setText(item, 'div', r.snippet || '', 'snippet');
+                container.appendChild(item);
+            }
+        }
+
         async function search() {
             const q = document.getElementById('query').value.trim();
             if (!q) return;
 
             const resultsDiv = document.getElementById('results');
-            resultsDiv.innerHTML = '<p>搜索中（首次需加载 bge-m3 模型，约 30 秒）...</p>';
+            clearResults(resultsDiv);
+            setText(resultsDiv, 'p', '搜索中（首次需加载 bge-m3 模型，约 30 秒）...');
 
             try {
                 const resp = await fetch(`/v2/search?q=${encodeURIComponent(q)}`);
                 const data = await resp.json();
 
                 if (!data.results || data.results.length === 0) {
-                    resultsDiv.innerHTML = '<p>未找到相关文档</p>';
+                    clearResults(resultsDiv);
+                    setText(resultsDiv, 'p', '未找到相关文档');
                     return;
                 }
 
-                resultsDiv.innerHTML = data.results.map(r => `
-                    <div class="result">
-                        <h3>${r.id}: ${r.title}</h3>
-                        <div class="score">相似度: ${r.score.toFixed(4)}</div>
-                        <div class="snippet">${r.snippet}</div>
-                    </div>
-                `).join('');
+                renderResults(resultsDiv, data.results);
 
             } catch (err) {
-                resultsDiv.innerHTML = `<div class="error">搜索失败: ${err.message}</div>`;
+                clearResults(resultsDiv);
+                setText(resultsDiv, 'div', `搜索失败: ${err.message}`, 'error');
             }
         }
     </script>

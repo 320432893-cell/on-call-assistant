@@ -1,9 +1,10 @@
 # Tantivy 全文索引服务
 
-from typing import Optional, List
-from pathlib import Path
-import tantivy
 import re
+from pathlib import Path
+from typing import Optional
+
+import tantivy
 
 from app.config import get_settings
 
@@ -38,8 +39,8 @@ class TantivyIndexer:
         self.index_path = Path(settings.TANTIVY_INDEX_PATH)
         self.index_path.mkdir(parents=True, exist_ok=True)
 
-        self.index: Optional[tantivy.Index] = None
-        self.writer: Optional[tantivy.IndexWriter] = None
+        self.index: tantivy.Index | None = None
+        self.writer: tantivy.IndexWriter | None = None
 
         self._schema = self._build_schema()
         self._init_index()
@@ -126,7 +127,7 @@ class TantivyIndexer:
         content: str,
         content_raw: str,
         department: str,
-        tags: List[str],
+        tags: list[str],
     ) -> bool:
         """添加文档到索引"""
         if not self.writer:
@@ -167,7 +168,7 @@ class TantivyIndexer:
         query: str,
         limit: int = 10,
         offset: int = 0,
-    ) -> List[SearchResult]:
+    ) -> list[SearchResult]:
         """搜索文档"""
         if not self.index:
             return []
@@ -239,7 +240,7 @@ class TantivyIndexer:
         # 未找到，返回开头
         return text[:max_length] + "..."
 
-    def get_document(self, doc_id: str) -> Optional[dict]:
+    def get_document(self, doc_id: str) -> dict | None:
         """根据ID获取文档"""
         if not self.index:
             return None
@@ -268,7 +269,7 @@ class TantivyIndexer:
 
 
 # 模块级单例
-_indexer: Optional[TantivyIndexer] = None
+_indexer: TantivyIndexer | None = None
 
 
 def get_indexer() -> TantivyIndexer:

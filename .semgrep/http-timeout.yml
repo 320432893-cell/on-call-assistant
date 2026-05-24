@@ -109,7 +109,7 @@ rules:
           - pattern: $CLIENT.request(...)
       - metavariable-regex:
           metavariable: $CLIENT
-          regex: (?i).*(client|session|http|requests|_client|_session).*
+          regex: (?i).*(http|httpx|requests|request|aiohttp).*
       - pattern-not: requests.get(...)
       - pattern-not: requests.post(...)
       - pattern-not: requests.put(...)

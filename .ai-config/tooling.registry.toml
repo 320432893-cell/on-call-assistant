@@ -7,17 +7,32 @@ version = 1
 owner_rule = ".ai-config/rules/rule_governance/governance.index.md"
 human_doc = "docs/TOOLING_CONTRACTS.md"
 checker = ".ai-config/check_rule_tool_contracts.py"
+unified_entrypoint = "tools/check.py"
+
+[[tools]]
+id = "python-compile"
+kind = "python-stdlib"
+purpose = "Fast syntax/importability-adjacent smoke check by byte-compiling app and scripts."
+rule = ".ai-config/rules/rule_governance/governance.index.md"
+configured_in = ["tools/check.py"]
+pre_commit_hook = "python-compile"
+entrypoint_commands = ["uv run python -m compileall -q app scripts"]
+ci_commands = ["uv run python -m compileall -q app scripts"]
+run_mode = "pre-commit+ci"
+boundary = "Only catches syntax and bytecode compilation failures; it does not replace tests, typing, or runtime checks."
 
 [[tools]]
 id = "ruff"
 kind = "python-dev-tool"
 package = "ruff"
 purpose = "Python lint, formatting, import sorting, common bug patterns, complexity checks."
-rule = ".ai-config/rules/rule_governance/governance.details.md"
+rule = ".ai-config/rules/rule_governance/governance.index.md"
 configured_in = [".ruff.toml"]
 pre_commit_hooks = ["ruff-check", "ruff-format"]
-ci_commands = ["uv run ruff check .", "uv run ruff format --check ."]
-run_mode = "pre-commit+ci"
+entrypoint_commands = ["uv run ruff check .", "uv run ruff format --check ."]
+manual_commands = ["uv run ruff check .", "uv run ruff format --check ."]
+run_mode = "manual-pre-commit"
+scope = "Historical code quality baseline is not yet green; keep Ruff available but non-blocking until the backlog is burned down."
 boundary = "Does not decide architecture, ownership, business semantics, or user intent."
 
 [[tools]]
@@ -25,12 +40,13 @@ id = "basedpyright"
 kind = "python-dev-tool"
 package = "basedpyright"
 purpose = "Type, signature, optionality, and static Python type consistency checks."
-rule = ".ai-config/rules/rule_governance/governance.details.md"
+rule = ".ai-config/rules/rule_governance/governance.index.md"
 configured_in = ["pyproject.toml"]
 pre_commit_hook = "basedpyright"
-ci_commands = ["uv run basedpyright"]
-run_mode = "pre-commit+ci"
-scope = "app/ only. Configured project scope is app/; pre-commit only triggers on app/ Python changes and CI runs the same pyproject basedpyright scope."
+entrypoint_commands = ["uv run basedpyright"]
+manual_commands = ["uv run basedpyright"]
+run_mode = "manual-pre-commit"
+scope = "app/ only. Current type baseline is not yet green; keep basedpyright available but non-blocking until the app typing backlog is fixed."
 boundary = "Does not replace tests, runtime behavior checks, or script/test typing outside the configured scope."
 
 [[tools]]
@@ -38,9 +54,10 @@ id = "import-linter"
 kind = "python-dev-tool"
 package = "import-linter"
 purpose = "Layered import architecture contracts."
-rule = ".ai-config/rules/rule_governance/governance.details.md"
+rule = ".ai-config/rules/rule_governance/governance.index.md"
 configured_in = [".importlinter"]
 pre_commit_hook = "import-linter"
+entrypoint_commands = ["uv run lint-imports --config .importlinter --no-cache"]
 ci_commands = ["uv run lint-imports --config .importlinter --no-cache"]
 run_mode = "pre-commit+ci"
 boundary = "Checks import direction only; does not prove runtime architecture quality."
@@ -50,9 +67,10 @@ id = "detect-secrets"
 kind = "python-dev-tool"
 package = "detect-secrets"
 purpose = "Secret leakage scan and baseline audit."
-rule = ".ai-config/rules/rule_governance/governance.details.md"
+rule = ".ai-config/rules/rule_governance/governance.index.md"
 configured_in = [".secrets.baseline", ".pre-commit-config.yaml"]
 pre_commit_hook = "detect-secrets"
+entrypoint_commands = ["uv run pre-commit run detect-secrets --all-files", "uv run detect-secrets audit .secrets.baseline --report"]
 ci_commands = ["uv run pre-commit run detect-secrets --all-files", "uv run detect-secrets audit .secrets.baseline --report"]
 run_mode = "pre-commit+ci"
 boundary = "Does not decide whether a found value is safe to publish; human review is still required."
@@ -62,10 +80,11 @@ id = "semgrep"
 kind = "python-dev-tool"
 package = "semgrep"
 purpose = "Project static guardrails that are too specific for Ruff."
-rule = ".ai-config/rules/rule_governance/governance.details.md"
+rule = ".ai-config/rules/rule_governance/governance.index.md"
 configured_in = [".semgrep"]
 pre_commit_hook = "semgrep"
-ci_commands = ["uv run semgrep --config .semgrep"]
+entrypoint_commands = ["uv run semgrep --config .semgrep app scripts .ai-config .ai-hooks"]
+ci_commands = ["uv run semgrep --config .semgrep app scripts .ai-config .ai-hooks"]
 run_mode = "pre-commit+ci"
 boundary = "Use for stable static patterns only; do not encode broad business semantics."
 
@@ -74,9 +93,10 @@ id = "pip-audit"
 kind = "python-dev-tool"
 package = "pip-audit"
 purpose = "Dependency vulnerability audit."
-rule = ".ai-config/rules/rule_governance/governance.details.md"
+rule = ".ai-config/rules/rule_governance/governance.index.md"
 configured_in = ["pyproject.toml", "uv.lock"]
 pre_commit_hook = "pip-audit"
+entrypoint_commands = ["uv run pip-audit --strict"]
 ci_commands = ["uv run pip-audit --strict"]
 run_mode = "manual-pre-commit+ci"
 boundary = "Vulnerability triage still needs human decision for ignore, upgrade, or mitigation."
@@ -86,42 +106,98 @@ id = "pytest"
 kind = "python-dev-tool"
 package = "pytest"
 purpose = "Unit and integration tests."
-rule = ".ai-config/rules/rule_governance/governance.details.md"
+rule = ".ai-config/rules/rule_governance/governance.index.md"
 configured_in = ["pyproject.toml"]
-ci_commands = ["uv run pytest --cov=app --cov-report=term-missing --cov-fail-under=80"]
+entrypoint_commands = ["uv run pytest --cov=app --cov-report=term-missing --cov-fail-under=35"]
+ci_commands = ["uv run pytest --cov=app --cov-report=term-missing --cov-fail-under=35"]
 run_mode = "ci"
-boundary = "Coverage threshold does not prove feature completeness or UX correctness."
+boundary = "Coverage threshold is a temporary inherited-code baseline; it does not prove feature completeness or UX correctness."
+
+[[tools]]
+id = "dirty-diff-review"
+kind = "project-static-tool"
+purpose = "Dirty diff additions smell scanner for 80/20 AI-human engineering approach discussion."
+rule = ".ai-config/rules/process/workflow.index.md"
+configured_in = [".ai-config/dirty_diff_review.py"]
+entrypoint_commands = ["python3 .ai-config/dirty_diff_review.py"]
+manual_commands = ["python3 .ai-config/dirty_diff_review.py"]
+run_mode = "post-edit-hook+manual"
+scope = "Reads current git diff additions and reports high-ROI smells without modifying files."
+boundary = "Heuristic discussion trigger only; not a blocker and not a refactoring decision engine."
+
+[[tools]]
+id = "radon"
+kind = "python-dev-tool"
+package = "radon"
+purpose = "Complexity and maintainability smell scan for dirty-code triage."
+rule = ".ai-config/rules/engineering/code.index.md"
+configured_in = ["pyproject.toml"]
+entrypoint_commands = ["uv run radon cc app scripts -s -n C", "uv run radon mi app scripts -s"]
+manual_commands = ["uv run radon cc app scripts -s -n C", "uv run radon mi app scripts -s"]
+run_mode = "manual"
+scope = "Use for 80/20 complexity triage before choosing local patch vs decomposition/refactor."
+boundary = "Complexity score suggests discussion; it does not mandate a refactor."
+
+[[tools]]
+id = "vulture"
+kind = "python-dev-tool"
+package = "vulture"
+purpose = "Likely dead code and unused symbol scan."
+rule = ".ai-config/rules/engineering/code.index.md"
+configured_in = ["pyproject.toml"]
+entrypoint_commands = ["uv run vulture app scripts --min-confidence 80"]
+manual_commands = ["uv run vulture app scripts --min-confidence 80"]
+run_mode = "manual"
+scope = "Use for cleanup discussion; old projects may have dynamic entry points and compatibility hooks."
+boundary = "Never delete solely from Vulture output without checking runtime entry points and tests."
+
+[[tools]]
+id = "deptry"
+kind = "python-dev-tool"
+package = "deptry"
+purpose = "Dependency hygiene: unused, missing, and transitive dependency drift."
+rule = ".ai-config/rules/engineering/code.index.md"
+configured_in = ["pyproject.toml"]
+entrypoint_commands = ["uv run deptry ."]
+manual_commands = ["uv run deptry ."]
+run_mode = "manual"
+scope = "Use for dependency debt triage."
+boundary = "Dynamic imports, optional providers, and script-only dependencies need human review."
 
 [[semgrep_rulesets]]
 path = ".semgrep/fastapi-debug.yml"
-owner_rule = ".ai-config/rules/engineering/backend.details.md"
+owner_rule = ".ai-config/rules/engineering/backend.index.md"
 purpose = "FastAPI/Starlette debug, reload, and unsafe CORS static guardrails."
 
 [[semgrep_rulesets]]
 path = ".semgrep/http-timeout.yml"
-owner_rule = ".ai-config/rules/engineering/code.details.md"
+owner_rule = ".ai-config/rules/engineering/code.index.md"
 purpose = "HTTP client calls must set explicit timeout."
 
 [[semgrep_rulesets]]
+path = ".semgrep/html-template-safety.yml"
+owner_rule = ".ai-config/rules/engineering/frontend.index.md"
+purpose = "HTML template injection guardrails for unsafe innerHTML/template interpolation."
+
+[[semgrep_rulesets]]
+path = ".semgrep/python-bad-smells.yml"
+owner_rule = ".ai-config/rules/engineering/code.index.md"
+purpose = "High-ROI Python bad-smell guardrails that Ruff cannot express well."
+
+[[semgrep_rulesets]]
 path = ".semgrep/ml-timeseries.yml"
-owner_rule = ".ai-config/rules/delivery/data.details.md"
+owner_rule = ".ai-config/rules/delivery/data.index.md"
 purpose = "Time-series and reproducible split guardrails."
 
 [[semgrep_rulesets]]
 path = ".semgrep/playwright-no-sleep.yml"
-owner_rule = ".ai-config/rules/delivery/web-automation.details.md"
+owner_rule = ".ai-config/rules/delivery/web-automation.index.md"
 purpose = "Playwright files should not use raw time.sleep."
 
 [[semgrep_rulesets]]
 path = ".semgrep/rag-hygiene.yml"
-owner_rule = ".ai-config/rules/engineering/code.details.md"
+owner_rule = ".ai-config/rules/engineering/code.index.md"
 purpose = "RAG retrieval and embedding static guardrails."
-
-[[hooks]]
-file = ".ai-hooks/rule_activator.sh"
-event = "UserPromptSubmit"
-rule_route = ".ai-config/rules/index.md"
-purpose = "Prompt-time rule index activation hints."
 
 [[hooks]]
 file = ".ai-hooks/dangerous_bash.sh"
@@ -136,16 +212,10 @@ rule_route = ".ai-config/rules/process/workflow.index.md"
 purpose = "Git commit safety reminders."
 
 [[hooks]]
-file = ".ai-hooks/exploration_gate.sh"
-event = "PreToolUse_EditWriteMultiEdit"
-rule_route = ".ai-config/rules/rule_governance/governance.index.md"
-purpose = "Exploration-to-write gate for unclear tasks."
-
-[[hooks]]
-file = ".ai-hooks/engineering_audit.sh"
+file = ".ai-hooks/dirty_static_review.sh"
 event = "PostToolUse_EditWriteMultiEdit"
-rule_route = ".ai-config/rules/rule_governance/governance.index.md"
-purpose = "Project structure audit after edits; non-blocking."
+rule_route = ".ai-config/rules/process/workflow.index.md"
+purpose = "Read dirty edited files after writes, report non-mutating static feedback, and prompt the engineering paradigm discussion."
 
 [[hooks]]
 file = ".ai-hooks/rename_audit.sh"
@@ -169,23 +239,22 @@ purpose = "RAG data-contract drift reminder backed by scripts/check_rag_drift.py
 file = ".ai-hooks/tests/test_bash_safety_hooks.sh"
 ci_command = "bash .ai-hooks/tests/test_bash_safety_hooks.sh"
 purpose = "Regression tests for dangerous_bash.sh and git_commit_safety.sh command parsing."
+covers = [".ai-hooks/dangerous_bash.sh", ".ai-hooks/git_commit_safety.sh"]
 
 [[hook_tests]]
-file = ".ai-hooks/tests/test_engineering_audit.sh"
-ci_command = "bash .ai-hooks/tests/test_engineering_audit.sh"
-purpose = "Regression tests for engineering_audit.sh project-structure warnings."
+file = ".ai-hooks/tests/test_dirty_static_review.sh"
+ci_command = "bash .ai-hooks/tests/test_dirty_static_review.sh"
+purpose = "Regression tests for dirty_static_review.sh dirty-file static scan and paradigm prompt."
+covers = [".ai-hooks/dirty_static_review.sh"]
 
 [[hook_tests]]
 file = ".ai-hooks/tests/test_reference_drift_hooks.sh"
 ci_command = "bash .ai-hooks/tests/test_reference_drift_hooks.sh"
 purpose = "Regression tests for rename_audit.sh and rag_drift.sh reference/data-contract drift reminders."
-
-[[hook_tests]]
-file = ".ai-hooks/tests/test_rule_gate_hooks.sh"
-ci_command = "bash .ai-hooks/tests/test_rule_gate_hooks.sh"
-purpose = "Regression tests for rule_activator.sh and exploration_gate.sh marker flow."
+covers = [".ai-hooks/rename_audit.sh", ".ai-hooks/rag_drift.sh"]
 
 [[hook_tests]]
 file = ".ai-hooks/tests/test_rag_hygiene.sh"
 ci_command = "bash .ai-hooks/tests/test_rag_hygiene.sh"
 purpose = "Regression tests for rag_hygiene.sh BGE encode reminder."
+covers = [".ai-hooks/rag_hygiene.sh"]

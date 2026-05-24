@@ -12,11 +12,11 @@
 """
 
 import argparse
-import sys
 import json
+import sys
 import urllib.parse
 import urllib.request
-from urllib.error import URLError, HTTPError
+from urllib.error import HTTPError, URLError
 
 try:
     sys.stdout.reconfigure(encoding="utf-8")

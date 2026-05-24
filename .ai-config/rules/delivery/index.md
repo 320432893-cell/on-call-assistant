@@ -44,14 +44,10 @@
 
 ## 文件分工
 
-- `interaction.index.md`: 用户可见交互的轻量路由。
-- `interaction.details.md`: 复杂交互、GUI 地基、诊断入口、协作取证细节。
-- `data.index.md`: 数据任务的轻量路由。
-- `data.details.md`: 数据契约、关联、脏数据、幂等、对账、失败模式细节。
-- `package.index.md`: 打包交付的轻量路由。
-- `package.details.md`: 依赖资源、构建环境、配置密钥、版本、验证、分发说明细节。
-- `web-automation.index.md`: 浏览器自动化的轻量路由。
-- `web-automation.details.md`: 登录态、等待、iframe、弹窗、取证、批量执行细节。
+- `interaction.index.md`: 用户可见交互、按钮四态、窗口承载、诊断取证。
+- `data.index.md`: 数据正确性、脏数据处理、复现稳定、长任务恢复和性能定位。
+- `package.index.md`: 打包交付、依赖资源、构建环境、配置密钥、版本、验证、分发说明。
+- `web-automation.index.md`: 浏览器自动化、登录态、等待、iframe、弹窗、取证、批量执行。
 
 ## 维护重点
 

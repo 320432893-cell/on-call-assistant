@@ -4,7 +4,6 @@
 import os
 from pathlib import Path
 
-
 # 工具描述（统一 schema，3 个 Provider 各自转换）
 READ_FILE_TOOL_SCHEMA = {
     "name": "readFile",

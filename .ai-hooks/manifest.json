@@ -6,23 +6,15 @@
     "ui-ux-pro-max@ui-ux-pro-max-skill": true
   },
   "permissions": {
-    "allow": [
-      "Bash(git push *)"
-    ]
+    "allow": []
   },
   "hooks": {
-    "UserPromptSubmit": [
-      "rule_activator.sh"
-    ],
     "PreToolUse_Bash": [
       "dangerous_bash.sh",
       "git_commit_safety.sh"
     ],
-    "PreToolUse_EditWriteMultiEdit": [
-      "exploration_gate.sh"
-    ],
     "PostToolUse_EditWriteMultiEdit": [
-      "engineering_audit.sh",
+      "dirty_static_review.sh",
       "rename_audit.sh",
       "rag_hygiene.sh",
       "rag_drift.sh"

@@ -15,6 +15,11 @@ from dataclasses import dataclass
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 REGISTRY = ROOT / ".ai-config" / "tooling.registry.toml"
+ALLOWED_DETAILS = {
+    ".ai-config/rules/engineering/frontend.details.md",
+    ".ai-config/rules/process/flow_legacy_project.details.md",
+    ".ai-config/rules/process/flow_new_project.details.md",
+}
 
 
 @dataclass
@@ -58,6 +63,12 @@ def manifest_hook_files(path: pathlib.Path) -> dict[str, str]:
     return files
 
 
+def manifest_permissions(path: pathlib.Path) -> list[str]:
+    data = json.loads(read_text(path))
+    allow = data.get("permissions", {}).get("allow", [])
+    return [item for item in allow if isinstance(item, str)]
+
+
 def check_path_exists(root: pathlib.Path, path_str: str, issues: list[Issue], field: str) -> None:
     path = root / path_str
     if not path.exists():
@@ -69,6 +80,7 @@ def check_tools(root: pathlib.Path, registry: dict, issues: list[Issue]) -> None
     dev_packages = parse_dev_packages(pyproject)
     pre_commit_hooks = parse_pre_commit_hooks(root / ".pre-commit-config.yaml")
     ci = read_text(root / ".github" / "workflows" / "ci.yml")
+    entrypoint = read_text(root / registry.get("metadata", {}).get("unified_entrypoint", "tools/check.py"))
 
     for tool in registry.get("tools", []):
         tool_id = tool["id"]
@@ -92,11 +104,15 @@ def check_tools(root: pathlib.Path, registry: dict, issues: list[Issue]) -> None
             if hook_id not in pre_commit_hooks
         )
 
-        issues.extend(
-            Issue("ERROR", f"tool {tool_id}: CI command missing: {command}")
-            for command in tool.get("ci_commands", [])
-            if command not in ci
-        )
+        for command in tool.get("ci_commands", []):
+            if command not in ci and command not in entrypoint:
+                issues.append(Issue("ERROR", f"tool {tool_id}: CI/entrypoint command missing: {command}"))
+        for command in tool.get("entrypoint_commands", []):
+            if command not in entrypoint:
+                issues.append(Issue("ERROR", f"tool {tool_id}: entrypoint command missing: {command}"))
+        for command in tool.get("manual_commands", []):
+            if command not in entrypoint:
+                issues.append(Issue("ERROR", f"tool {tool_id}: manual command is not available through entrypoint: {command}"))
 
 
 def check_ci_semantics(root: pathlib.Path, issues: list[Issue]) -> None:
@@ -107,6 +123,30 @@ def check_ci_semantics(root: pathlib.Path, issues: list[Issue]) -> None:
         issues.append(Issue("ERROR", "CI pytest only runs tests/ instead of project pytest configuration"))
     if re.search(r"if:\s*hashFiles\('tests/'\)", ci):
         issues.append(Issue("ERROR", "CI pytest can be skipped when tests/ is absent"))
+
+
+def check_enforcement_wiring(root: pathlib.Path, registry: dict, issues: list[Issue]) -> None:
+    pre_commit = read_text(root / ".pre-commit-config.yaml")
+    normalized_pre_commit = pre_commit.replace("\\", "")
+    ci = read_text(root / ".github" / "workflows" / "ci.yml")
+    entrypoint = registry.get("metadata", {}).get("unified_entrypoint", "tools/check.py")
+
+    required_pre_commit_patterns = [
+        r"id:\s*rule-tool-contracts",
+        r"entry:\s*python3 tools/check\.py rule-tool-contracts",
+        re.escape(entrypoint),
+        r"\.ai-hooks/",
+        r"\.semgrep/",
+    ]
+    for pattern in required_pre_commit_patterns:
+        if not re.search(pattern, pre_commit):
+            issues.append(Issue("ERROR", f"pre-commit enforcement wiring missing pattern: {pattern}"))
+    for path in (".github/workflows/ci.yml", ".pre-commit-config.yaml"):
+        if path not in normalized_pre_commit:
+            issues.append(Issue("ERROR", f"pre-commit enforcement wiring missing path: {path}"))
+
+    if f"uv run python {entrypoint} ci" not in ci:
+        issues.append(Issue("ERROR", f"CI must call unified entrypoint: uv run python {entrypoint} ci"))
 
 
 def check_semgrep_rulesets(root: pathlib.Path, registry: dict, issues: list[Issue]) -> None:
@@ -129,7 +169,8 @@ def check_semgrep_rulesets(root: pathlib.Path, registry: dict, issues: list[Issu
 
 
 def check_hooks(root: pathlib.Path, registry: dict, issues: list[Issue]) -> None:
-    manifest_files = manifest_hook_files(root / ".ai-hooks" / "manifest.json")
+    manifest_path = root / ".ai-hooks" / "manifest.json"
+    manifest_files = manifest_hook_files(manifest_path)
     registered = {hook["file"] for hook in registry.get("hooks", [])}
     actual = {rel(path) for path in (root / ".ai-hooks").glob("*.sh")}
 
@@ -163,11 +204,40 @@ def check_hooks(root: pathlib.Path, registry: dict, issues: list[Issue]) -> None
         if file not in registered:
             issues.append(Issue("ERROR", f"hook manifest registers {file} for {event}, but registry is missing it"))
 
+    high_impact_allow_patterns = (
+        "Bash(git push",
+        "Bash(git add .",
+        "Bash(git add -A",
+        "Bash(git add --all",
+        "Bash(git reset",
+        "Bash(git checkout",
+        "Bash(git switch",
+        "Bash(rm -rf",
+        "Bash(pip install",
+        "Bash(uv add",
+        "Bash(uv sync",
+        "Bash(npm install",
+        "Bash(pnpm install",
+        "Bash(yarn install",
+        "Bash(npx",
+        "Bash(docker run",
+    )
+    for permission in manifest_permissions(manifest_path):
+        if any(permission.startswith(pattern) for pattern in high_impact_allow_patterns):
+            issues.append(Issue("ERROR", f"manifest allow bypasses high-impact hook policy: {permission}"))
+
 
 def check_hook_tests(root: pathlib.Path, registry: dict, issues: list[Issue]) -> None:
     ci = read_text(root / ".github" / "workflows" / "ci.yml")
+    entrypoint = read_text(root / registry.get("metadata", {}).get("unified_entrypoint", "tools/check.py"))
     registered = {item["file"] for item in registry.get("hook_tests", [])}
     actual = {rel(path) for path in (root / ".ai-hooks" / "tests").glob("*.sh")}
+    covered_hooks = {
+        hook_file
+        for item in registry.get("hook_tests", [])
+        for hook_file in item.get("covers", [])
+    }
+    hook_files = {hook["file"] for hook in registry.get("hooks", [])}
 
     issues.extend(
         Issue("ERROR", f"hook test exists but is not registered in tooling registry: {missing}")
@@ -184,8 +254,16 @@ def check_hook_tests(root: pathlib.Path, registry: dict, issues: list[Issue]) ->
         if path.exists() and not os.access(path, os.X_OK):
             issues.append(Issue("ERROR", f"hook test {file}: file is not executable"))
         command = test.get("ci_command")
-        if command and command not in ci:
-            issues.append(Issue("ERROR", f"hook test {file}: CI command missing: {command}"))
+        if command and command not in ci and command not in entrypoint:
+            issues.append(Issue("ERROR", f"hook test {file}: CI/entrypoint command missing: {command}"))
+        for hook_file in test.get("covers", []):
+            check_path_exists(root, hook_file, issues, f"hook test {file}.covers")
+
+    missing_coverage = sorted(hook_files - covered_hooks)
+    issues.extend(
+        Issue("ERROR", f"hook {hook_file}: no registered hook_tests.covers entry")
+        for hook_file in missing_coverage
+    )
 
 
 def build_hook_entry(hook_name: str) -> dict[str, str]:
@@ -197,34 +275,29 @@ def expected_template_from_manifest(manifest: dict) -> dict:
     env = {"OPENAI_API_KEY": "REPLACE_ME_WITH_YOUR_TOKEN"}  # pragma: allowlist secret
     if manifest.get("base_url"):
         env["OPENAI_BASE_URL"] = manifest["base_url"]
+    settings_hooks: dict[str, list[dict]] = {}
+    pre_tool_use = []
+    if hooks.get("PreToolUse_Bash"):
+        pre_tool_use.append(
+            {
+                "matcher": "Bash",
+                "hooks": [build_hook_entry(name) for name in hooks["PreToolUse_Bash"]],
+            },
+        )
+    if pre_tool_use:
+        settings_hooks["PreToolUse"] = pre_tool_use
+    if hooks.get("PostToolUse_EditWriteMultiEdit"):
+        settings_hooks["PostToolUse"] = [
+            {
+                "matcher": "Edit|Write|MultiEdit",
+                "hooks": [build_hook_entry(name) for name in hooks["PostToolUse_EditWriteMultiEdit"]],
+            }
+        ]
     return {
         "env": env,
         "model": manifest["model"],
         "permissions": manifest.get("permissions", {"allow": []}),
-        "hooks": {
-            "UserPromptSubmit": [
-                {
-                    "matcher": "",
-                    "hooks": [build_hook_entry(name) for name in hooks.get("UserPromptSubmit", [])],
-                }
-            ],
-            "PreToolUse": [
-                {
-                    "matcher": "Bash",
-                    "hooks": [build_hook_entry(name) for name in hooks.get("PreToolUse_Bash", [])],
-                },
-                {
-                    "matcher": "Edit|Write|MultiEdit",
-                    "hooks": [build_hook_entry(name) for name in hooks.get("PreToolUse_EditWriteMultiEdit", [])],
-                },
-            ],
-            "PostToolUse": [
-                {
-                    "matcher": "Edit|Write|MultiEdit",
-                    "hooks": [build_hook_entry(name) for name in hooks.get("PostToolUse_EditWriteMultiEdit", [])],
-                }
-            ],
-        },
+        "hooks": settings_hooks,
         "enabledPlugins": manifest.get("enabledPlugins", {}),
     }
 
@@ -232,9 +305,7 @@ def expected_template_from_manifest(manifest: dict) -> dict:
 def check_settings_template(root: pathlib.Path, issues: list[Issue]) -> None:
     manifest = json.loads(read_text(root / ".ai-hooks" / "manifest.json"))
     supported_events = {
-        "UserPromptSubmit",
         "PreToolUse_Bash",
-        "PreToolUse_EditWriteMultiEdit",
         "PostToolUse_EditWriteMultiEdit",
     }
     unknown = sorted(set(manifest.get("hooks", {})) - supported_events)
@@ -284,6 +355,39 @@ def check_rule_references(root: pathlib.Path, issues: list[Issue]) -> None:
                 issues.append(Issue("ERROR", f"{rel(path)} contains {label}: {pattern}"))
 
 
+def check_rule_structure(root: pathlib.Path, issues: list[Issue]) -> None:
+    rules_dir = root / ".ai-config" / "rules"
+    details = {rel(path) for path in rules_dir.rglob("*.details.md")}
+    issues.extend(
+        Issue("ERROR", f"details file exists but is not in ALLOWED_DETAILS: {path}")
+        for path in sorted(details - ALLOWED_DETAILS)
+    )
+    issues.extend(
+        Issue("ERROR", f"ALLOWED_DETAILS points to missing file: {path}")
+        for path in sorted(ALLOWED_DETAILS - details)
+    )
+
+    for path in [root / ".ai-config" / "AGENTS.md", *rules_dir.rglob("*.md")]:
+        text = read_text(path)
+        relative_path = rel(path)
+        for match in re.finditer(r"[\w./-]+\.details\.md", text):
+            target = match.group(0)
+            if path.name.endswith(".index.md") and target in {pathlib.Path(item).name for item in ALLOWED_DETAILS}:
+                continue
+            if relative_path.endswith(".details.md"):
+                continue
+            issues.append(Issue("ERROR", f"{relative_path} directly references details file: {target}"))
+
+    for path in rules_dir.rglob("*.index.md"):
+        content_lines = [
+            line.strip()
+            for line in read_text(path).splitlines()
+            if line.strip() and not line.lstrip().startswith("#")
+        ]
+        if len(content_lines) < 3:
+            issues.append(Issue("ERROR", f"{rel(path)} appears to be an empty or placeholder index"))
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--registry", type=pathlib.Path, default=REGISTRY)
@@ -296,11 +400,13 @@ def main() -> int:
     check_metadata(ROOT, registry, issues)
     check_tools(ROOT, registry, issues)
     check_ci_semantics(ROOT, issues)
+    check_enforcement_wiring(ROOT, registry, issues)
     check_semgrep_rulesets(ROOT, registry, issues)
     check_hooks(ROOT, registry, issues)
     check_hook_tests(ROOT, registry, issues)
     check_settings_template(ROOT, issues)
     check_rule_references(ROOT, issues)
+    check_rule_structure(ROOT, issues)
 
     if issues:
         sys.stderr.write("Rule/tool contract check failed:\n")

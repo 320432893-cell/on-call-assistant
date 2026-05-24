@@ -14,10 +14,9 @@ import json
 import re
 import time
 from pathlib import Path
-from typing import List, Optional
 
-from app.services.report_pdf import ReportChunk, parse_annual_report, chunks_to_jsonl
 from app.services import get_embedder, get_vectorstore
+from app.services.report_pdf import ReportChunk, chunks_to_jsonl, parse_annual_report
 
 REPORT_COLLECTION = "annual_reports"
 
@@ -61,9 +60,9 @@ def _snippet(text: str, n: int = 200) -> str:
     return s[:n]
 
 
-def load_chunks_jsonl(jsonl_path: str | Path) -> List[ReportChunk]:
+def load_chunks_jsonl(jsonl_path: str | Path) -> list[ReportChunk]:
     """从 jsonl 反序列化为 ReportChunk 列表"""
-    out: List[ReportChunk] = []
+    out: list[ReportChunk] = []
     with Path(jsonl_path).open("r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
@@ -75,9 +74,9 @@ def load_chunks_jsonl(jsonl_path: str | Path) -> List[ReportChunk]:
 
 
 def ingest_chunks(
-    chunks: List[ReportChunk],
+    chunks: list[ReportChunk],
     batch_size: int = INGEST_BATCH,
-    on_progress: Optional[callable] = None,
+    on_progress: callable | None = None,
 ) -> int:
     """把 chunks 向量化后写入 Qdrant annual_reports collection
 
@@ -137,7 +136,7 @@ def ingest_from_pdf(
     pdf_path: str | Path,
     company: str,
     year: int,
-    out_jsonl: Optional[str | Path] = None,
+    out_jsonl: str | Path | None = None,
 ) -> dict:
     """端到端：PDF → chunks → (可选写 jsonl) → Qdrant
 

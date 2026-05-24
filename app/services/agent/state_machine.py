@@ -6,18 +6,20 @@
 #   S4_DONE     输出完成
 
 from __future__ import annotations
+
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
-from typing import AsyncIterator, Optional, List
 
 from app.config import get_settings
+
 from .llm_provider import BaseLLMProvider
+from .prompts import get_system_prompt
 from .tools import (
     READ_FILE_TOOL_SCHEMA,
     WRITE_FILE_TOOL_SCHEMA,
     read_file_tool,
     write_file_tool,
 )
-from .prompts import get_system_prompt
 
 settings = get_settings()
 
@@ -33,14 +35,14 @@ class AgentEvent:
 class AgentStateMachine:
     """单轮对话状态机"""
 
-    def __init__(self, provider: BaseLLMProvider, max_steps: Optional[int] = None):
+    def __init__(self, provider: BaseLLMProvider, max_steps: int | None = None):
         self._provider = provider
         self._max_steps = max_steps or settings.AGENT_MAX_STEPS
 
     async def run(
         self,
         user_message: str,
-        history: List[dict],
+        history: list[dict],
     ) -> AsyncIterator[AgentEvent]:
         """运行一轮对话
 
@@ -52,7 +54,7 @@ class AgentStateMachine:
             AgentEvent
         """
         # 初始化消息：历史 + 本轮
-        messages: List[dict] = list(history) + [{"role": "user", "content": user_message}]
+        messages: list[dict] = list(history) + [{"role": "user", "content": user_message}]
         tools = [READ_FILE_TOOL_SCHEMA, WRITE_FILE_TOOL_SCHEMA]
         system = get_system_prompt()
 
@@ -67,8 +69,8 @@ class AgentStateMachine:
 
             # ===== S1_PLAN：LLM 决策 =====
             assistant_text = ""
-            tool_calls: List[dict] = []
-            stop_reason: Optional[str] = None
+            tool_calls: list[dict] = []
+            stop_reason: str | None = None
 
             try:
                 async for ev in self._provider.stream_chat(

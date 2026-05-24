@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# rag_hygiene.sh 单测：hook 只保留 R2(BGE encode 缺 is_query)。
+# rag_hygiene.sh 单测：hook 只保留 BGE encode 缺 is_query。
 set -u
 
 HOOK="$(cd "$(dirname "$0")/.." && pwd)/rag_hygiene.sh"
@@ -61,7 +61,7 @@ PY
 out=$(run_hook "$TMP_ROOT/has_is_query.py")
 assert_empty "BGE encode with is_query" "$out"
 
-cat > "$TMP_ROOT/r6_r7_semgrep_owned.py" <<'PY'
+cat > "$TMP_ROOT/semgrep_owned.py" <<'PY'
 from qdrant_client.models import Distance, VectorParams
 
 def f(embedder, vs, text):
@@ -70,8 +70,8 @@ def f(embedder, vs, text):
     return vs.search(query_vector=[0.1], limit=1)
 PY
 
-out=$(run_hook "$TMP_ROOT/r6_r7_semgrep_owned.py")
-assert_empty "R6/R7 are not hook-owned" "$out"
+out=$(run_hook "$TMP_ROOT/semgrep_owned.py")
+assert_empty "semgrep-owned checks are not hook-owned" "$out"
 
 echo ""
 echo "========================================="

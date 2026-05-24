@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Phase2 功能测试：Embedding + Qdrant"""
 
-import sys
 import os
+import sys
 
 if sys.platform == "win32":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -11,7 +11,8 @@ if sys.platform == "win32":
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from pathlib import Path
-from app.services import get_preprocessor, get_embedder, get_vectorstore
+
+from app.services import get_embedder, get_preprocessor, get_vectorstore
 
 
 def test_embedding():
@@ -81,7 +82,7 @@ def test_vector_index_and_search():
             print(f"   [跳过] {doc_id} 文件不存在")
             continue
 
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             html = f.read()
 
         # 预处理

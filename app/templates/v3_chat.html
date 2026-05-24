@@ -105,11 +105,42 @@
             clearEmpty(trace);
             const div = document.createElement('div');
             div.className = 'trace ' + type;
-            div.innerHTML = content;
+            if (typeof content === 'string') {
+                div.textContent = content;
+            } else {
+                div.appendChild(content);
+            }
             trace.appendChild(div);
             trace.scrollTop = trace.scrollHeight;
             traceCount++;
             traceCountEl.textContent = traceCount + ' 步';
+        }
+
+        function addStateTrace(state) {
+            const span = document.createElement('span');
+            span.className = 'state-pill';
+            span.textContent = state || '';
+            addTrace(span, 'state');
+        }
+
+        function addToolCallTrace(payload) {
+            const fragment = document.createDocumentFragment();
+            fragment.append('🔧 调用 ');
+            const name = document.createElement('b');
+            name.textContent = payload.tool || '';
+            fragment.appendChild(name);
+            fragment.append(`(${JSON.stringify(payload.args || {})})`);
+            addTrace(fragment, 'tool');
+        }
+
+        function addToolResultTrace(payload) {
+            const fragment = document.createDocumentFragment();
+            fragment.append(`${payload.ok ? '✅' : '❌'} 返回 ${payload.length} 字节`);
+            const preview = document.createElement('div');
+            preview.className = 'preview';
+            preview.textContent = payload.preview || '';
+            fragment.appendChild(preview);
+            addTrace(fragment, 'result');
         }
 
         function clearChat() {
@@ -184,21 +215,20 @@
                             sessionId = payload.session_id;
                             document.getElementById('sid').textContent = 'session: ' + sessionId.slice(0, 8);
                         } else if (ev === 'state') {
-                            addTrace(`<span class="state-pill">${payload.state}</span>`, 'state');
+                            addStateTrace(payload.state);
                         } else if (ev === 'think') {
                             if (!answerDiv) answerDiv = addMsg('assistant', '');
                             currentAnswer += payload.text || '';
                             answerDiv.textContent = '🤖 ' + currentAnswer;
                         } else if (ev === 'tool_call') {
-                            addTrace(`🔧 调用 <b>${payload.tool}</b>(${escapeHtml(JSON.stringify(payload.args))})`, 'tool');
+                            addToolCallTrace(payload);
                         } else if (ev === 'tool_result') {
-                            const icon = payload.ok ? '✅' : '❌';
-                            addTrace(`${icon} 返回 ${payload.length} 字节<div class="preview">${escapeHtml(payload.preview)}</div>`, 'result');
+                            addToolResultTrace(payload);
                         } else if (ev === 'answer') {
                             if (!answerDiv) answerDiv = addMsg('assistant', payload.text || '');
                             else answerDiv.textContent = '🤖 ' + (payload.text || currentAnswer);
                         } else if (ev === 'error') {
-                            addTrace(`❌ ${escapeHtml(payload.message || '')}`, 'error');
+                            addTrace(`❌ ${payload.message || ''}`, 'error');
                             addMsg('system', '[错误] ' + (payload.message || ''));
                         } else if (ev === 'done') {
                             answerDiv = null;
@@ -216,10 +246,6 @@
                 setBusy(false);
                 abortController = null;
             }
-        }
-
-        function escapeHtml(s) {
-            return (s || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
         }
     </script>
 </body>

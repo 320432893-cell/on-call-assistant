@@ -6,7 +6,8 @@ import os
 # 注意：必须在 import sentence_transformers / transformers / huggingface_hub 之前设置
 os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
 
-from typing import Optional, List
+from typing import Optional
+
 import numpy as np
 
 from app.config import get_settings
@@ -57,9 +58,10 @@ class EmbeddingService:
 
     def encode(
         self,
-        texts: str | List[str],
+        texts: str | list[str],
+        *,
         is_query: bool = False,
-    ) -> Optional[np.ndarray]:
+    ) -> np.ndarray | None:
         """
         编码文本为向量
 
@@ -86,12 +88,11 @@ class EmbeddingService:
                 else:
                     texts = [f"{prefix}{t}" for t in texts]
 
-            embeddings = self._model.encode(
+            return self._model.encode(
                 texts,
                 normalize_embeddings=True,  # L2归一化
                 convert_to_numpy=True,
             )
-            return embeddings
 
         except Exception as e:
             print(f"[EmbeddingError] encode failed: {e}")
@@ -99,9 +100,9 @@ class EmbeddingService:
 
     def encode_batch(
         self,
-        texts: List[str],
+        texts: list[str],
         batch_size: int = 32,
-    ) -> Optional[List[np.ndarray]]:
+    ) -> list[np.ndarray] | None:
         """
         批量编码（分batch处理）
 
@@ -137,7 +138,7 @@ class EmbeddingService:
 
 
 # 模块级单例
-_embedder: Optional[EmbeddingService] = None
+_embedder: EmbeddingService | None = None
 
 
 def get_embedder() -> EmbeddingService:

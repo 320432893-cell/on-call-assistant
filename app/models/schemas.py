@@ -1,7 +1,6 @@
-from pydantic import BaseModel, Field
-from typing import Optional, List
 from datetime import datetime
 
+from pydantic import BaseModel, Field
 
 # ==================== Phase1: 文档入库 ====================
 
@@ -36,7 +35,7 @@ class SearchResponse(BaseModel):
     """搜索响应"""
 
     query: str
-    results: List[SearchResult]
+    results: list[SearchResult]
 
 
 # ==================== Phase3: Agent对话 ====================
@@ -46,8 +45,8 @@ class ChatRequest(BaseModel):
     """对话请求"""
 
     message: str = Field(..., min_length=1, description="用户消息")
-    session_id: Optional[str] = Field(None, description="会话ID，续接历史")
-    provider: Optional[str] = Field(None, description="LLM Provider，默认配置")
+    session_id: str | None = Field(None, description="会话ID，续接历史")
+    provider: str | None = Field(None, description="LLM Provider，默认配置")
 
 
 class ChatSession(BaseModel):
@@ -55,7 +54,7 @@ class ChatSession(BaseModel):
 
     session_id: str
     state: str = Field(default="S0_IDLE")
-    history: List[dict] = Field(default_factory=list)
+    history: list[dict] = Field(default_factory=list)
     context: dict = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
@@ -66,7 +65,7 @@ class ToolCall(BaseModel):
 
     tool: str
     args: dict
-    result: Optional[str] = None
+    result: str | None = None
     timestamp: datetime = Field(default_factory=datetime.now)
 
 
@@ -83,7 +82,7 @@ class AgentResponse(BaseModel):
 class ClarifyForm(BaseModel):
     """信息补充表单"""
 
-    problem_type: Optional[str] = Field(None, description="问题类型")
-    system_scope: Optional[List[str]] = Field(None, description="涉及系统")
-    severity: Optional[str] = Field(None, description="严重等级 P0-P3")
-    has_tried: Optional[str] = Field(None, description="已尝试步骤")
+    problem_type: str | None = Field(None, description="问题类型")
+    system_scope: list[str] | None = Field(None, description="涉及系统")
+    severity: str | None = Field(None, description="严重等级 P0-P3")
+    has_tried: str | None = Field(None, description="已尝试步骤")

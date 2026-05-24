@@ -1,13 +1,13 @@
 # Phase2: 语义搜索 API（章节级 chunk + lexical rerank）
 
+
 import jieba
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
-from typing import List
 
-from app.services import get_preprocessor, get_embedder, get_vectorstore
 from app.models import SearchResult
+from app.services import get_embedder, get_preprocessor, get_vectorstore
 
 router = APIRouter(prefix="/v2", tags=["Phase2-语义搜索"])
 
@@ -18,7 +18,7 @@ RERANK_ALPHA = 0.7
 
 class SearchResponseV2(BaseModel):
     query: str
-    results: List[SearchResult]
+    results: list[SearchResult]
 
 
 def _build_chunk_text(processed, section: dict) -> str:

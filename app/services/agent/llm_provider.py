@@ -5,7 +5,8 @@
 #   - GeminiProvider        → Google Gemini
 
 from __future__ import annotations
-from typing import AsyncIterator, Optional
+
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 
 from app.config import get_settings
@@ -27,11 +28,11 @@ class LLMEvent:
     """
 
     type: str
-    text: Optional[str] = None
-    tool_name: Optional[str] = None
-    tool_args: Optional[dict] = None
-    tool_call_id: Optional[str] = None
-    stop_reason: Optional[str] = None  # end_turn | tool_use | stop
+    text: str | None = None
+    tool_name: str | None = None
+    tool_args: dict | None = None
+    tool_call_id: str | None = None
+    stop_reason: str | None = None  # end_turn | tool_use | stop
 
 
 # ==================== 基类 ====================
@@ -46,7 +47,7 @@ class BaseLLMProvider:
         self,
         messages: list[dict],
         tools: list[dict],
-        system: Optional[str] = None,
+        system: str | None = None,
     ) -> AsyncIterator[LLMEvent]:
         """流式对话
 
@@ -131,7 +132,7 @@ class AnthropicProvider(BaseLLMProvider):
         self,
         messages: list[dict],
         tools: list[dict],
-        system: Optional[str] = None,
+        system: str | None = None,
     ) -> AsyncIterator[LLMEvent]:
         kwargs = {
             "model": self._model,
@@ -262,7 +263,7 @@ class OpenAICompatProvider(BaseLLMProvider):
         self,
         messages: list[dict],
         tools: list[dict],
-        system: Optional[str] = None,
+        system: str | None = None,
     ) -> AsyncIterator[LLMEvent]:
         msgs = self._to_openai_messages(messages)
         if system:
@@ -279,7 +280,7 @@ class OpenAICompatProvider(BaseLLMProvider):
 
         # 累积 tool_call deltas（OpenAI 流式按 index 分片）
         tool_calls_buf: dict[int, dict] = {}
-        stop_reason: Optional[str] = None
+        stop_reason: str | None = None
 
         stream = await self._client.chat.completions.create(**kwargs)
         async for chunk in stream:
@@ -389,7 +390,7 @@ class GeminiProvider(BaseLLMProvider):
         self,
         messages: list[dict],
         tools: list[dict],
-        system: Optional[str] = None,
+        system: str | None = None,
     ) -> AsyncIterator[LLMEvent]:
         from google.genai import types as gtypes
 
@@ -433,7 +434,7 @@ class GeminiProvider(BaseLLMProvider):
 
 # ==================== 工厂 ====================
 
-_provider: Optional[BaseLLMProvider] = None
+_provider: BaseLLMProvider | None = None
 
 
 def get_llm_provider() -> BaseLLMProvider:

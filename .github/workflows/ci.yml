@@ -12,7 +12,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
-        python-version: ["3.12"]
+        python-version: ["3.11", "3.12"]
 
     steps:
       - uses: actions/checkout@v4
@@ -28,43 +28,5 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen
 
-      - name: Ruff check
-        run: uv run ruff check .
-
-      - name: Ruff format check
-        run: uv run ruff format --check .
-
-      - name: Basedpyright
-        run: uv run basedpyright
-
-      - name: Import linter
-        run: uv run lint-imports --config .importlinter --no-cache
-
-      - name: Rule/tool contract check
-        run: uv run python .ai-config/check_rule_tool_contracts.py
-
-      - name: AI hook tests
-        run: |
-          bash .ai-hooks/tests/test_bash_safety_hooks.sh
-          bash .ai-hooks/tests/test_engineering_audit.sh
-          bash .ai-hooks/tests/test_reference_drift_hooks.sh
-          bash .ai-hooks/tests/test_rule_gate_hooks.sh
-          bash .ai-hooks/tests/test_rag_hygiene.sh
-
-      - name: Semgrep
-        run: uv run semgrep --config .semgrep
-
-      - name: Pip audit
-        run: uv run pip-audit --strict
-
-      - name: RAG drift check
-        run: uv run python scripts/check_rag_drift.py
-
-      - name: Detect secrets
-        run: |
-          uv run pre-commit run detect-secrets --all-files
-          uv run detect-secrets audit .secrets.baseline --report
-
-      - name: Tests + Coverage
-        run: |
-          uv run pytest --cov=app --cov-report=term-missing --cov-fail-under=80
+      - name: Static tools, hooks, and tests
+        run: uv run python tools/check.py ci

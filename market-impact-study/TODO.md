@@ -122,8 +122,8 @@ range:**移为通信(我们公司) × 1 个事件**(具体哪个事件待选,见
 
 ## 规则建设(与 demo 并行,**不提前写**)
 
-按 governance.md M1 四维过滤,规则等真实踩坑后再写:
+按 `.ai-config/rules/process/workflow.index.md` 和 `.ai-config/rules/rule_governance/governance.index.md` 的规则过滤原则,规则等真实踩坑后再写:
 
 - 每完成一天 demo,把当天踩的坑记录到本 TODO 末尾
-- 第一周结束后,提取真实痛点 → 写 `event_study.md` / `ml_training.md` / data.md 加 RAG 一节
+- 第一周结束后,提取真实痛点 → 更新 `.ai-config/rules/delivery/data.index.md`、`.ai-config/rules/engineering/code.index.md` 或新增已登记的专题规则
 - 预计 2-3 份规则更新,总强制 ≤ 12 条

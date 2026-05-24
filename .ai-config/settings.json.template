@@ -4,22 +4,9 @@
   },
   "model": "gpt-5-codex",
   "permissions": {
-    "allow": [
-      "Bash(git push *)"
-    ]
+    "allow": []
   },
   "hooks": {
-    "UserPromptSubmit": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash .ai-hooks/rule_activator.sh"
-          }
-        ]
-      }
-    ],
     "PreToolUse": [
       {
         "matcher": "Bash",
@@ -33,15 +20,6 @@
             "command": "bash .ai-hooks/git_commit_safety.sh"
           }
         ]
-      },
-      {
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash .ai-hooks/exploration_gate.sh"
-          }
-        ]
       }
     ],
     "PostToolUse": [
@@ -50,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .ai-hooks/engineering_audit.sh"
+            "command": "bash .ai-hooks/dirty_static_review.sh"
           },
           {
             "type": "command",

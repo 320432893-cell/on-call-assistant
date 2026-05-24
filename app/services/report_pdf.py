@@ -12,9 +12,8 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, asdict, field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import List, Optional, Tuple
 
 import pymupdf
 
@@ -52,7 +51,7 @@ class ReportChunk:
     page_start: int  # 1-based
     page_end: int  # 1-based, inclusive
     text: str  # 正文（已剔页眉/页码）
-    tables: List[str] = field(default_factory=list)  # 表格 markdown
+    tables: list[str] = field(default_factory=list)  # 表格 markdown
     n_chars: int = 0
 
     def to_dict(self) -> dict:
@@ -93,12 +92,12 @@ def _is_placeholder_only(text: str) -> bool:
     return len(cleaned) < 20
 
 
-def _table_to_markdown(rows: List[List[Optional[str]]]) -> str:
+def _table_to_markdown(rows: list[list[str | None]]) -> str:
     """二维表格转 markdown"""
     if not rows:
         return ""
 
-    def fmt(c: Optional[str]) -> str:
+    def fmt(c: str | None) -> str:
         if c is None:
             return ""
         return c.replace("\n", " ").replace("|", "\\|").strip()
@@ -114,13 +113,13 @@ def _table_to_markdown(rows: List[List[Optional[str]]]) -> str:
 # --------- 全文 + 标题定位 ---------
 
 
-def _build_full_text(doc: pymupdf.Document) -> Tuple[str, List[int]]:
+def _build_full_text(doc: pymupdf.Document) -> tuple[str, list[int]]:
     """全文拼接，返回 (full_text, page_starts)
     page_starts[i] 是第 i 页（0-based）在 full_text 中的起始 offset
     page_starts[len(pages)] = len(full_text)（哨兵）
     """
-    parts: List[str] = []
-    starts: List[int] = []
+    parts: list[str] = []
+    starts: list[int] = []
     cursor = 0
     for pg in range(doc.page_count):
         starts.append(cursor)
@@ -132,10 +131,10 @@ def _build_full_text(doc: pymupdf.Document) -> Tuple[str, List[int]]:
     return "".join(parts), starts
 
 
-def _build_norm_index(full_text: str) -> Tuple[str, List[int]]:
+def _build_norm_index(full_text: str) -> tuple[str, list[int]]:
     """构造去空白文本 + norm_idx -> orig_idx 映射，用于跨空白匹配标题"""
-    norm_chars: List[str] = []
-    mapping: List[int] = []
+    norm_chars: list[str] = []
+    mapping: list[int] = []
     for i, ch in enumerate(full_text):
         if ch.isspace():
             continue
@@ -144,7 +143,7 @@ def _build_norm_index(full_text: str) -> Tuple[str, List[int]]:
     return "".join(norm_chars), mapping
 
 
-def _offset_to_page(page_starts: List[int], offset: int) -> int:
+def _offset_to_page(page_starts: list[int], offset: int) -> int:
     """offset 反查页码（0-based）"""
     lo, hi = 0, len(page_starts) - 1
     while lo < hi - 1:
@@ -156,7 +155,7 @@ def _offset_to_page(page_starts: List[int], offset: int) -> int:
     return lo
 
 
-def _flatten_leaves(toc: List[List]) -> List[Tuple[str, str, int]]:
+def _flatten_leaves(toc: list[list]) -> list[tuple[str, str, int]]:
     """从 TOC 提取叶子节点
 
     Returns:
@@ -164,8 +163,8 @@ def _flatten_leaves(toc: List[List]) -> List[Tuple[str, str, int]]:
         toc_page_hint 是 TOC 给的起始页（1-based），用于校验/兜底
     """
     n = len(toc)
-    leaves: List[Tuple[str, str, int]] = []
-    ancestors: List[Tuple[int, str]] = []
+    leaves: list[tuple[str, str, int]] = []
+    ancestors: list[tuple[int, str]] = []
 
     for i, (level, title, page) in enumerate(toc):
         title = title.strip()
@@ -183,12 +182,12 @@ def _flatten_leaves(toc: List[List]) -> List[Tuple[str, str, int]]:
 # --------- 内容切片 ---------
 
 
-def _split_long_chunk(text: str, max_chars: int = MAX_CHUNK_CHARS) -> List[str]:
+def _split_long_chunk(text: str, max_chars: int = MAX_CHUNK_CHARS) -> list[str]:
     """超长 chunk 按段落软切，单段超长再按句切"""
     if len(text) <= max_chars:
         return [text]
 
-    parts: List[str] = []
+    parts: list[str] = []
     buf = ""
     for para in re.split(r"\n{2,}", text):
         if not para.strip():
@@ -223,8 +222,9 @@ def parse_annual_report(
     pdf_path: str | Path,
     company: str,
     year: int,
+    *,
     extract_tables: bool = True,
-) -> List[ReportChunk]:
+) -> list[ReportChunk]:
     """解析年报 PDF 为章节级 chunks"""
     pdf_path = Path(pdf_path)
     if not pdf_path.exists():
@@ -246,7 +246,7 @@ def parse_annual_report(
 
         # 1) 顺序定位每个叶子标题在 full_text 中的位置
         # 用单调指针 search_from_norm，确保后面的标题不会匹配到前面去
-        title_offsets: List[Optional[Tuple[int, int]]] = []  # 每个叶子: (orig_start, orig_end)
+        title_offsets: list[tuple[int, int] | None] = []  # 每个叶子: (orig_start, orig_end)
         search_from_norm = 0
         for sec_path, leaf_title, hint_page in leaves:
             # 优先匹配完整 section_path 的最后两层（"section_path 的叶子"），
@@ -280,7 +280,7 @@ def parse_annual_report(
             search_from_norm = end_pos  # 推进指针
 
         # 2) 计算每个叶子的内容范围 = [本叶子标题结束, 下一叶子标题起始)
-        chunks: List[ReportChunk] = []
+        chunks: list[ReportChunk] = []
         n_leaves = len(leaves)
 
         for idx, (sec_path, leaf_title, hint_page) in enumerate(leaves):
@@ -313,7 +313,7 @@ def parse_annual_report(
                 p_start = total_pages
 
             # 表格抽取（按页范围）
-            tables_md: List[str] = []
+            tables_md: list[str] = []
             if extract_tables:
                 seen_signatures = set()  # 跨页表格去重（同一表格在 find_tables 可能跨页时被重复抽）
                 for pg in range(p_start - 1, p_end):
@@ -365,7 +365,7 @@ def parse_annual_report(
         doc.close()
 
 
-def chunks_to_jsonl(chunks: List[ReportChunk], out_path: str | Path) -> int:
+def chunks_to_jsonl(chunks: list[ReportChunk], out_path: str | Path) -> int:
     """把 chunks 写成 jsonl"""
     import json
 

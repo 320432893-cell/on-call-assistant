@@ -1,18 +1,18 @@
 # Qdrant向量数据库服务
 
 import hashlib
-from typing import Optional, List
 from pathlib import Path
-import numpy as np
+from typing import Optional
 
+import numpy as np
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
     Distance,
-    VectorParams,
-    PointStruct,
-    Filter,
     FieldCondition,
+    Filter,
     MatchValue,
+    PointStruct,
+    VectorParams,
 )
 
 from app.config import get_settings
@@ -53,7 +53,7 @@ class QdrantService:
             return
 
         self.collection_name = settings.QDRANT_COLLECTION
-        self._client: Optional[QdrantClient] = None
+        self._client: QdrantClient | None = None
         self._dimension: int = 1024  # bge-m3 维度
 
         self._init_client()
@@ -164,7 +164,7 @@ class QdrantService:
 
     def upsert_batch(
         self,
-        items: List[dict],
+        items: list[dict],
     ) -> int:
         """
         批量插入
@@ -205,8 +205,8 @@ class QdrantService:
         query_vector: np.ndarray,
         limit: int = 10,
         score_threshold: float = 0.0,
-        department_filter: Optional[str] = None,
-    ) -> List[VectorSearchResult]:
+        department_filter: str | None = None,
+    ) -> list[VectorSearchResult]:
         """
         向量相似检索
 
@@ -255,7 +255,7 @@ class QdrantService:
             print(f"[QdrantError] search failed: {e}")
             return []
 
-    def get(self, doc_id: str) -> Optional[dict]:
+    def get(self, doc_id: str) -> dict | None:
         """根据ID获取文档"""
         if not self._client:
             return None
@@ -315,7 +315,7 @@ class QdrantService:
     def upsert_batch_to(
         self,
         collection: str,
-        items: List[dict],
+        items: list[dict],
     ) -> int:
         """批量插入到指定 collection（md5 稳定 point_id）
 
@@ -350,8 +350,8 @@ class QdrantService:
         query_vector: np.ndarray,
         limit: int = 10,
         score_threshold: float = 0.0,
-        filters: Optional[dict] = None,
-    ) -> List[VectorSearchResult]:
+        filters: dict | None = None,
+    ) -> list[VectorSearchResult]:
         """在指定 collection 检索，支持 payload 等值过滤
 
         Args:
@@ -399,9 +399,9 @@ class QdrantService:
     def scroll_distinct(
         self,
         collection: str,
-        fields: List[str],
+        fields: list[str],
         limit: int = 10000,
-    ) -> List[dict]:
+    ) -> list[dict]:
         """扫描 collection 所有 payload，返回指定 fields 的去重组合
 
         用于 /v4/companies 这种"已灌库公司列表"接口。
@@ -410,7 +410,7 @@ class QdrantService:
             return []
         try:
             seen = set()
-            out: List[dict] = []
+            out: list[dict] = []
             next_offset = None
             while True:
                 points, next_offset = self._client.scroll(
@@ -441,7 +441,7 @@ class QdrantService:
 
 
 # 模块级单例
-_vectorstore: Optional[QdrantService] = None
+_vectorstore: QdrantService | None = None
 
 
 def get_vectorstore() -> QdrantService:

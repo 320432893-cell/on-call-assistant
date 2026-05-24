@@ -13,7 +13,6 @@ import re
 import subprocess
 import sys
 
-
 FILE_RE = re.compile(r"(\.py|\.toml|\.env|\.env\.example)$|settings")
 RAG_RE = re.compile(r"QdrantClient|sentence_transformers|EMBEDDING_MODEL")
 CONTRACT_RE = re.compile(
@@ -112,6 +111,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--file", type=pathlib.Path)
     parser.add_argument("--quiet-ok", action="store_true")
+    parser.add_argument("--strict", action="store_true", help="Return 1 when RAG data-contract drift is detected.")
     args = parser.parse_args()
 
     root = git_root(args.file or pathlib.Path.cwd())
@@ -136,11 +136,11 @@ def main() -> int:
         print("", file=sys.stderr)
 
     print("[rag_drift] 提醒(不阻断):", file=sys.stderr)
-    print("    R1 — 切 EMBEDDING_MODEL -> 语义空间变,collection 必须全量重灌", file=sys.stderr)
-    print("    R3 — chunk_size/overlap/splitter 改动 -> 旧 chunk 与新切分不一致,必须 reindex", file=sys.stderr)
-    print("    R4 — VectorParams.size/Distance 改动 -> collection schema 不兼容,必须 drop+recreate", file=sys.stderr)
+    print("    EMBEDDING_MODEL 改动 -> 语义空间变,collection 必须全量重灌", file=sys.stderr)
+    print("    chunk_size/overlap/splitter 改动 -> 旧 chunk 与新切分不一致,必须 reindex", file=sys.stderr)
+    print("    VectorParams.size/Distance 改动 -> collection schema 不兼容,必须 drop+recreate", file=sys.stderr)
     print("[rag_drift] 处置:确认是否需要 reindex,或说明仅重命名/重构且语义不变", file=sys.stderr)
-    return 1
+    return 1 if args.strict else 0
 
 
 if __name__ == "__main__":

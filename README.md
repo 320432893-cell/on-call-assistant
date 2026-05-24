@@ -11,7 +11,7 @@
 
 - [项目地图](docs/PROJECT_MAP.md)：稳定入口、运行路径、数据路径、易懂架构图、模块边界和 source of truth。
 - [AI 接手](docs/AI_HANDOFF.md)：当前风险、未验证项和下一步安全动作。
-- [环境同步](docs/SYNC.md)：跨机器同步、工具链、AI hook/settings 的执行手册。
+- [工具契约](docs/TOOLING_CONTRACTS.md)：工具链、CI、pre-commit 和 AI hook/settings 的维护入口。
 
 ## 快速启动
 

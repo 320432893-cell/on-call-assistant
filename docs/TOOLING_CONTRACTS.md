@@ -1,4 +1,4 @@
-最后修改日期: 2026-05-23
+最后修改日期: 2026-05-24
 
 # 自动检查怎么看
 
@@ -15,8 +15,8 @@ flowchart TD
     ROOT[自动检查]
 
     ROOT --> CODE[写代码时]
-    CODE --> RUFF[Ruff<br/>格式 / import / 明显 bug]
-    CODE --> TYPE[basedpyright<br/>类型和接口]
+    CODE --> RUFF[Ruff<br/>手动基线:格式 / import / 明显 bug]
+    CODE --> TYPE[basedpyright<br/>手动基线:类型和接口]
     CODE --> LAYER[import-linter<br/>分层依赖]
 
     ROOT --> SAFE[安全]
@@ -24,10 +24,10 @@ flowchart TD
     SAFE --> AUDIT[pip-audit<br/>依赖漏洞]
 
     ROOT --> PROJECT[项目特殊规则]
-    PROJECT --> SEMGREP[semgrep<br/>timeout / debug / Playwright / RAG]
+    PROJECT --> SEMGREP[semgrep<br/>timeout / debug / bad smell / Playwright / RAG]
 
     ROOT --> AI[AI 操作安全带]
-    AI --> HOOKS[hooks<br/>危险命令 / 误提交 / 未确认写入 / RAG drift]
+    AI --> HOOKS[hooks<br/>危险命令 / 高影响 git / 依赖下载 / 误提交 / RAG drift]
 
     ROOT --> TEST[功能验证]
     TEST --> PYTEST[pytest<br/>测试和覆盖率]
@@ -53,7 +53,11 @@ flowchart TD
 
 交给 AI 修。
 
-常见来源：Ruff、basedpyright、import-linter。
+常见来源：import-linter、Ruff、basedpyright、radon、vulture、deptry。
+
+当前状态：`import-linter` 是阻塞检查；`Ruff` 和 `basedpyright` 已接入但历史基线未清零，暂时只作为手动基线工具运行，避免提交和 CI 被已知 backlog 持续阻塞。
+
+80/20 脏代码体检：`.ai-config/dirty_diff_review.py` 只看本次新增行；`radon` 看复杂度，`vulture` 看疑似死代码，`deptry` 看依赖脏账。它们用来触发人机讨论，不直接决定重构或删除。
 
 你只需要问：这是机械问题，还是会改变业务行为？
 
@@ -71,7 +75,7 @@ flowchart TD
 
 常见来源：semgrep。
 
-它通常管 timeout、debug、Playwright、RAG 这类项目约束。规则不合理时，应该改规则，不要在代码里硬绕。
+它通常管 timeout、debug、坏味道、Playwright、RAG 这类项目约束。规则不合理时，应该改规则，不要在代码里硬绕。
 
 ### 4. 看起来像 AI 操作提醒
 
@@ -79,7 +83,7 @@ flowchart TD
 
 常见来源：`.ai-hooks/`。
 
-它通常在提醒：命令危险、可能误提交、还没确认就写文件、改 RAG 后忘同步数据、改名后引用没跟上。
+它通常在提醒：命令危险、高影响 git 操作、依赖安装或下载需要确认、可能误提交、写后脏文件静态问题、改 RAG 后忘同步数据、改名后引用没跟上，以及本次改动应和用户确认采用的范式/思想。
 
 ### 5. 看起来像测试失败
 
@@ -95,6 +99,8 @@ flowchart TD
 
 - 哪个工具在 pre-commit 跑。
 - 哪个工具在 CI 跑。
+- 本地、pre-commit、CI 统一从 `tools/check.py` 调度，避免同一条命令散落多处。
+- 只要改工具、hook、CI、pre-commit 或 Semgrep，pre-commit 会强制跑工具契约检查。
 - hook 是否已注册。
 - semgrep 文件是否已登记。
 - registry 和文档是否漂移。
@@ -104,6 +110,7 @@ flowchart TD
 ## 给 AI 维护时看的文件
 
 - `.ai-config/tooling.registry.toml`：机器登记表。
+- `tools/check.py`：统一检查入口。
 - `.ai-config/check_rule_tool_contracts.py`：自动检查脚本。
 - `.ai-hooks/manifest.json`：hook 注册源。
 - `.pre-commit-config.yaml`：本地提交前检查。
