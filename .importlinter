@@ -1,4 +1,5 @@
 [importlinter]
+include_external_packages = True
 root_packages =
     app
 
@@ -14,3 +15,43 @@ layers =
     app.services
     app.models
     app.config
+
+[importlinter:contract:models-no-framework]
+name = Models stay independent from transport, UI, and external IO frameworks
+type = forbidden
+source_modules =
+    app.models
+forbidden_modules =
+    fastapi
+    starlette
+    jinja2
+    typer
+    click
+    requests
+    httpx
+    openai
+    anthropic
+    google
+    google_genai
+    qdrant_client
+    redis
+    tantivy
+
+[importlinter:contract:config-no-runtime-io]
+name = Config stays independent from transport, UI, and external IO clients
+type = forbidden
+source_modules =
+    app.config
+forbidden_modules =
+    fastapi
+    starlette
+    jinja2
+    requests
+    httpx
+    openai
+    anthropic
+    google
+    google_genai
+    qdrant_client
+    redis
+    tantivy

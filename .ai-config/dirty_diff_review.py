@@ -9,10 +9,13 @@ from __future__ import annotations
 
 import argparse
 import re
+import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+
+MAX_FINDINGS_TO_PRINT = 20
 
 
 @dataclass(frozen=True)
@@ -48,14 +51,22 @@ RULES: tuple[tuple[str, re.Pattern[str], str], ...] = (
         re.compile(r"(?i)(api[_-]?key|token|secret|password)\s*=\s*['\"][^'\"]{8,}['\"]"),
         "新增疑似密钥形态，确认是否应改环境变量或 secret store。",
     ),
+    (
+        "new-api-route-auth-marker",
+        re.compile(r"^\s*@\w+\.(get|post|put|patch|delete)\s*\("),
+        "新增 API 路由，确认已标明公开/登录/管理员/内部调用或接入项目鉴权。",
+    ),
 )
 
 
 def run_git_diff(root: Path, path: str | None) -> str:
-    command = ["git", "diff", "--unified=0", "--no-ext-diff", "--"]
+    git = shutil.which("git")
+    if git is None:
+        return ""
+    command = [git, "diff", "--unified=0", "--no-ext-diff", "--"]
     if path:
         command.append(path)
-    proc = subprocess.run(command, cwd=root, text=True, capture_output=True, check=False)
+    proc = subprocess.run(command, cwd=root, text=True, capture_output=True, check=False)  # noqa: S603
     if proc.returncode not in (0, 1):
         return ""
     return proc.stdout
@@ -102,15 +113,14 @@ def review(diff_text: str) -> list[Finding]:
 def print_findings(findings: list[Finding]) -> None:
     if not findings:
         return
-    print("[dirty_diff] 本次 diff 新增高 ROI 脏点:", file=sys.stderr)
-    for item in findings[:20]:
+    sys.stderr.write("[dirty_diff] 本次 diff 新增高 ROI 脏点:\n")
+    for item in findings[:MAX_FINDINGS_TO_PRINT]:
         loc = item.path if item.line is None else f"{item.path}:{item.line}"
-        print(f"  - {loc} [{item.label}] {item.detail}", file=sys.stderr)
-    if len(findings) > 20:
-        print(f"  ... 还有 {len(findings) - 20} 条", file=sys.stderr)
-    print(
-        "[dirty_diff] 建议先和用户确认处理范式:局部修补 / 分层重构 / 兼容优先 / 测试先行 / 安全优先。",
-        file=sys.stderr,
+        sys.stderr.write(f"  - {loc} [{item.label}] {item.detail}\n")
+    if len(findings) > MAX_FINDINGS_TO_PRINT:
+        sys.stderr.write(f"  ... 还有 {len(findings) - MAX_FINDINGS_TO_PRINT} 条\n")
+    sys.stderr.write(
+        "[dirty_diff] 建议先和用户确认处理范式:局部修补 / 分层重构 / 兼容优先 / 测试先行 / 安全优先。\n"
     )
 
 
@@ -122,8 +132,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 
 def main(argv: list[str]) -> int:
     args = parse_args(argv)
-    root_proc = subprocess.run(
-        ["git", "rev-parse", "--show-toplevel"],
+    git = shutil.which("git")
+    if git is None:
+        return 0
+    root_proc = subprocess.run(  # noqa: S603
+        [git, "rev-parse", "--show-toplevel"],
         text=True,
         capture_output=True,
         check=False,

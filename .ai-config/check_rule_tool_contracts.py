@@ -75,6 +75,12 @@ def check_path_exists(root: pathlib.Path, path_str: str, issues: list[Issue], fi
         issues.append(Issue("ERROR", f"{field} points to missing path: {path_str}"))
 
 
+def check_relative_path_literal(path_str: str, issues: list[Issue], field: str) -> None:
+    path = pathlib.PurePosixPath(path_str)
+    if path.is_absolute() or ".." in path.parts or not path_str.strip():
+        issues.append(Issue("ERROR", f"{field} must be a non-empty repository-relative path: {path_str}"))
+
+
 def check_tools(root: pathlib.Path, registry: dict, issues: list[Issue]) -> None:
     pyproject = load_toml(root / "pyproject.toml")
     dev_packages = parse_dev_packages(pyproject)
@@ -112,7 +118,9 @@ def check_tools(root: pathlib.Path, registry: dict, issues: list[Issue]) -> None
                 issues.append(Issue("ERROR", f"tool {tool_id}: entrypoint command missing: {command}"))
         for command in tool.get("manual_commands", []):
             if command not in entrypoint:
-                issues.append(Issue("ERROR", f"tool {tool_id}: manual command is not available through entrypoint: {command}"))
+                issues.append(
+                    Issue("ERROR", f"tool {tool_id}: manual command is not available through entrypoint: {command}")
+                )
 
 
 def check_ci_semantics(root: pathlib.Path, issues: list[Issue]) -> None:
@@ -137,6 +145,8 @@ def check_enforcement_wiring(root: pathlib.Path, registry: dict, issues: list[Is
         re.escape(entrypoint),
         r"\.ai-hooks/",
         r"\.semgrep/",
+        r"id:\s*ruff-staged",
+        r"id:\s*dependency-change-approval",
     ]
     for pattern in required_pre_commit_patterns:
         if not re.search(pattern, pre_commit):
@@ -147,6 +157,12 @@ def check_enforcement_wiring(root: pathlib.Path, registry: dict, issues: list[Is
 
     if f"uv run python {entrypoint} ci" not in ci:
         issues.append(Issue("ERROR", f"CI must call unified entrypoint: uv run python {entrypoint} ci"))
+
+    entrypoint_text = read_text(root / entrypoint)
+    if "ONCALL_ALLOW_DEPENDENCY_CHANGE" not in entrypoint_text:
+        issues.append(Issue("ERROR", "dependency-change approval env gate missing from unified entrypoint"))
+    if "ruff-staged" not in entrypoint_text:
+        issues.append(Issue("ERROR", "ruff-staged changed-file check missing from unified entrypoint"))
 
 
 def check_semgrep_rulesets(root: pathlib.Path, registry: dict, issues: list[Issue]) -> None:
@@ -232,11 +248,7 @@ def check_hook_tests(root: pathlib.Path, registry: dict, issues: list[Issue]) ->
     entrypoint = read_text(root / registry.get("metadata", {}).get("unified_entrypoint", "tools/check.py"))
     registered = {item["file"] for item in registry.get("hook_tests", [])}
     actual = {rel(path) for path in (root / ".ai-hooks" / "tests").glob("*.sh")}
-    covered_hooks = {
-        hook_file
-        for item in registry.get("hook_tests", [])
-        for hook_file in item.get("covers", [])
-    }
+    covered_hooks = {hook_file for item in registry.get("hook_tests", []) for hook_file in item.get("covers", [])}
     hook_files = {hook["file"] for hook in registry.get("hooks", [])}
 
     issues.extend(
@@ -261,9 +273,27 @@ def check_hook_tests(root: pathlib.Path, registry: dict, issues: list[Issue]) ->
 
     missing_coverage = sorted(hook_files - covered_hooks)
     issues.extend(
-        Issue("ERROR", f"hook {hook_file}: no registered hook_tests.covers entry")
-        for hook_file in missing_coverage
+        Issue("ERROR", f"hook {hook_file}: no registered hook_tests.covers entry") for hook_file in missing_coverage
     )
+
+
+def check_path_triggers(root: pathlib.Path, registry: dict, issues: list[Issue]) -> None:
+    entrypoint = read_text(root / registry.get("metadata", {}).get("unified_entrypoint", "tools/check.py"))
+    tools = {tool["id"] for tool in registry.get("tools", [])}
+    registry_text = read_text(REGISTRY)
+    for trigger in registry.get("path_triggers", []):
+        trigger_id = trigger.get("id", "<missing>")
+        tool_id = trigger.get("tool")
+        if not trigger.get("paths"):
+            issues.append(Issue("ERROR", f"path trigger {trigger_id}: paths missing"))
+        if tool_id not in tools:
+            issues.append(Issue("ERROR", f"path trigger {trigger_id}: tool is not registered: {tool_id}"))
+        if f'id = "{trigger_id}"' not in registry_text:
+            issues.append(Issue("ERROR", f"path trigger {trigger_id}: registry id not found"))
+        for required_path in trigger.get("required_paths", []):
+            check_relative_path_literal(required_path, issues, f"path trigger {trigger_id}.required_paths")
+    if registry.get("path_triggers", []) and "path_triggers" not in entrypoint:
+        issues.append(Issue("ERROR", "unified entrypoint does not evaluate path_triggers"))
 
 
 def build_hook_entry(hook_name: str) -> dict[str, str]:
@@ -338,6 +368,16 @@ def check_metadata(root: pathlib.Path, registry: dict, issues: list[Issue]) -> N
             check_path_exists(root, value, issues, f"metadata.{key}")
 
 
+def check_agents_mirror(root: pathlib.Path, issues: list[Issue]) -> None:
+    root_agents = root / "AGENTS.md"
+    config_agents = root / ".ai-config" / "AGENTS.md"
+    if not root_agents.exists():
+        issues.append(Issue("ERROR", "AGENTS.md mirror is missing at repository root"))
+        return
+    if read_text(root_agents) != read_text(config_agents):
+        issues.append(Issue("ERROR", "AGENTS.md must mirror .ai-config/AGENTS.md exactly"))
+
+
 def check_rule_references(root: pathlib.Path, issues: list[Issue]) -> None:
     targets = [
         root / ".ai-config" / "AGENTS.md",
@@ -363,8 +403,7 @@ def check_rule_structure(root: pathlib.Path, issues: list[Issue]) -> None:
         for path in sorted(details - ALLOWED_DETAILS)
     )
     issues.extend(
-        Issue("ERROR", f"ALLOWED_DETAILS points to missing file: {path}")
-        for path in sorted(ALLOWED_DETAILS - details)
+        Issue("ERROR", f"ALLOWED_DETAILS points to missing file: {path}") for path in sorted(ALLOWED_DETAILS - details)
     )
 
     for path in [root / ".ai-config" / "AGENTS.md", *rules_dir.rglob("*.md")]:
@@ -380,9 +419,7 @@ def check_rule_structure(root: pathlib.Path, issues: list[Issue]) -> None:
 
     for path in rules_dir.rglob("*.index.md"):
         content_lines = [
-            line.strip()
-            for line in read_text(path).splitlines()
-            if line.strip() and not line.lstrip().startswith("#")
+            line.strip() for line in read_text(path).splitlines() if line.strip() and not line.lstrip().startswith("#")
         ]
         if len(content_lines) < 3:
             issues.append(Issue("ERROR", f"{rel(path)} appears to be an empty or placeholder index"))
@@ -398,12 +435,14 @@ def main() -> int:
     issues: list[Issue] = []
 
     check_metadata(ROOT, registry, issues)
+    check_agents_mirror(ROOT, issues)
     check_tools(ROOT, registry, issues)
     check_ci_semantics(ROOT, issues)
     check_enforcement_wiring(ROOT, registry, issues)
     check_semgrep_rulesets(ROOT, registry, issues)
     check_hooks(ROOT, registry, issues)
     check_hook_tests(ROOT, registry, issues)
+    check_path_triggers(ROOT, registry, issues)
     check_settings_template(ROOT, issues)
     check_rule_references(ROOT, issues)
     check_rule_structure(ROOT, issues)

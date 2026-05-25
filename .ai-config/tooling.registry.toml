@@ -12,14 +12,39 @@ unified_entrypoint = "tools/check.py"
 [[tools]]
 id = "python-compile"
 kind = "python-stdlib"
-purpose = "Fast syntax/importability-adjacent smoke check by byte-compiling app and scripts."
+purpose = "Fast syntax/importability-adjacent smoke check by byte-compiling app, scripts, market-impact-study, tests, and tools."
 rule = ".ai-config/rules/rule_governance/governance.index.md"
 configured_in = ["tools/check.py"]
 pre_commit_hook = "python-compile"
-entrypoint_commands = ["uv run python -m compileall -q app scripts"]
-ci_commands = ["uv run python -m compileall -q app scripts"]
+entrypoint_commands = ["uv run python -m compileall -q app scripts market-impact-study tests tools"]
+ci_commands = ["uv run python -m compileall -q app scripts market-impact-study tests tools"]
 run_mode = "pre-commit+ci"
+scope = "app, scripts, market-impact-study, tests, and tools Python files."
 boundary = "Only catches syntax and bytecode compilation failures; it does not replace tests, typing, or runtime checks."
+
+[[tools]]
+id = "coverage-audit"
+kind = "project-static-tool"
+purpose = "Detect new Python code directories that are not mapped to the unified quality gate."
+rule = ".ai-config/rules/rule_governance/governance.index.md"
+configured_in = ["tools/check.py"]
+pre_commit_hook = "coverage-audit"
+entrypoint_commands = ["python3 tools/check.py coverage-audit"]
+run_mode = "pre-commit+manual"
+scope = "Top-level Python code directories, excluding caches, virtualenvs, generated data, and support files."
+boundary = "Reports missing tool coverage; it does not decide whether a new directory should become production code or support code."
+
+[[tools]]
+id = "changed"
+kind = "project-static-tool"
+purpose = "Automatically run fixed static checks and registered path triggers for changed, staged, and untracked code files."
+rule = ".ai-config/rules/process/workflow.index.md"
+configured_in = ["tools/check.py"]
+entrypoint_commands = ["python3 tools/check.py changed"]
+manual_commands = ["python3 tools/check.py changed"]
+run_mode = "manual"
+scope = "Changed, staged, and untracked code files; path triggers decide special checks."
+boundary = "Uses local git state and may run broader fixed checks such as Semgrep/import-linter. Rule/tooling/hook changes force contract or hook regression checks; expensive or data-dependent checks stay path-triggered."
 
 [[tools]]
 id = "ruff"
@@ -28,11 +53,11 @@ package = "ruff"
 purpose = "Python lint, formatting, import sorting, common bug patterns, complexity checks."
 rule = ".ai-config/rules/rule_governance/governance.index.md"
 configured_in = [".ruff.toml"]
-pre_commit_hooks = ["ruff-check", "ruff-format"]
-entrypoint_commands = ["uv run ruff check .", "uv run ruff format --check ."]
+pre_commit_hooks = ["ruff-check", "ruff-format", "ruff-staged"]
+entrypoint_commands = ["uv run ruff check .", "uv run ruff format --check .", "uv run ruff check --no-fix --force-exclude"]
 manual_commands = ["uv run ruff check .", "uv run ruff format --check ."]
-run_mode = "manual-pre-commit"
-scope = "Historical code quality baseline is not yet green; keep Ruff available but non-blocking until the backlog is burned down."
+run_mode = "changed-file-pre-commit+manual"
+scope = "Staged Python files are checked without autofix before commit. Full check and format remain manual until the historical backlog is green."
 boundary = "Does not decide architecture, ownership, business semantics, or user intent."
 
 [[tools]]
@@ -83,10 +108,23 @@ purpose = "Project static guardrails that are too specific for Ruff."
 rule = ".ai-config/rules/rule_governance/governance.index.md"
 configured_in = [".semgrep"]
 pre_commit_hook = "semgrep"
-entrypoint_commands = ["uv run semgrep --config .semgrep app scripts .ai-config .ai-hooks"]
-ci_commands = ["uv run semgrep --config .semgrep app scripts .ai-config .ai-hooks"]
+entrypoint_commands = ["uv run semgrep --disable-version-check --metrics=off --config .semgrep --no-git-ignore app scripts market-impact-study tests tools .ai-config .ai-hooks"]
+ci_commands = ["uv run semgrep --disable-version-check --metrics=off --config .semgrep --no-git-ignore app scripts market-impact-study tests tools .ai-config .ai-hooks"]
 run_mode = "pre-commit+ci"
+scope = "app, scripts, market-impact-study, tests, tools, .ai-config, and .ai-hooks."
 boundary = "Use for stable static patterns only; do not encode broad business semantics."
+
+[[tools]]
+id = "dependency-change-approval"
+kind = "project-static-tool"
+purpose = "Block staged dependency or lock-file changes until the user has explicitly approved the dependency/toolchain impact."
+rule = ".ai-config/AGENTS.md"
+configured_in = [".pre-commit-config.yaml", "tools/check.py"]
+pre_commit_hook = "dependency-change-approval"
+entrypoint_commands = ["python3 tools/check.py dependency-change-approval"]
+run_mode = "pre-commit"
+scope = "Only pyproject.toml and uv.lock staged changes. Override after discussion with ONCALL_ALLOW_DEPENDENCY_CHANGE=1."
+boundary = "Checks that approval was made explicit; it cannot judge whether the dependency decision is good."
 
 [[tools]]
 id = "pip-audit"
@@ -114,6 +152,55 @@ run_mode = "ci"
 boundary = "Coverage threshold is a temporary inherited-code baseline; it does not prove feature completeness or UX correctness."
 
 [[tools]]
+id = "rag-drift"
+kind = "project-static-tool"
+purpose = "Detect RAG data-contract drift for embedding model, chunking, and vector schema changes."
+rule = ".ai-config/rules/engineering/code.index.md"
+configured_in = ["scripts/check_rag_drift.py", "tools/check.py"]
+entrypoint_commands = ["uv run python scripts/check_rag_drift.py"]
+manual_commands = ["uv run python scripts/check_rag_drift.py"]
+run_mode = "manual+path-trigger"
+scope = "RAG-adjacent code and settings; changed-file trigger is registered in path_triggers."
+boundary = "Warns about index/schema drift risk; it does not reindex data or decide whether a semantic migration is required."
+
+[[tools]]
+id = "market-impact-validation"
+kind = "project-static-tool"
+purpose = "Rebuild-independent data quality and CAR spot checks for the market-impact study outputs."
+rule = ".ai-config/rules/delivery/data.index.md"
+configured_in = ["market-impact-study/validate_market_outputs.py", "tools/check.py"]
+entrypoint_commands = ["uv run python market-impact-study/validate_market_outputs.py"]
+manual_commands = ["uv run python market-impact-study/validate_market_outputs.py"]
+run_mode = "manual"
+scope = "Requires collected market-impact-study/data files, so it is not part of CI by default."
+boundary = "Validates generated data consistency and CAR spot calculations; it does not prove event causality or CFO narrative correctness."
+
+[[path_triggers]]
+id = "market-impact-study-data-validation"
+tool = "market-impact-validation"
+paths = ["market-impact-study/**"]
+run_mode = "changed-data-present"
+required_paths = [
+    "market-impact-study/data/raw/tushare/daily",
+    "market-impact-study/data/processed/event_candidates.csv",
+    "market-impact-study/data/processed/event_analysis_groups_scored.csv",
+]
+purpose = "Run market-impact data consistency checks when study code changes and local collected data exists."
+
+[[path_triggers]]
+id = "rag-data-contract-drift"
+tool = "rag-drift"
+paths = [
+    "app/config/**",
+    "app/routers/**",
+    "app/services/**",
+    "pyproject.toml",
+    "scripts/**",
+]
+run_mode = "changed"
+purpose = "Run RAG embedding/chunk/vector-schema drift detection when RAG-adjacent code or settings change."
+
+[[tools]]
 id = "dirty-diff-review"
 kind = "project-static-tool"
 purpose = "Dirty diff additions smell scanner for 80/20 AI-human engineering approach discussion."
@@ -132,10 +219,10 @@ package = "radon"
 purpose = "Complexity and maintainability smell scan for dirty-code triage."
 rule = ".ai-config/rules/engineering/code.index.md"
 configured_in = ["pyproject.toml"]
-entrypoint_commands = ["uv run radon cc app scripts -s -n C", "uv run radon mi app scripts -s"]
-manual_commands = ["uv run radon cc app scripts -s -n C", "uv run radon mi app scripts -s"]
+entrypoint_commands = ["uv run radon cc app scripts market-impact-study -s -n C", "uv run radon mi app scripts market-impact-study -s"]
+manual_commands = ["uv run radon cc app scripts market-impact-study -s -n C", "uv run radon mi app scripts market-impact-study -s"]
 run_mode = "manual"
-scope = "Use for 80/20 complexity triage before choosing local patch vs decomposition/refactor."
+scope = "Use for 80/20 complexity triage in app, scripts, and market-impact-study before choosing local patch vs decomposition/refactor."
 boundary = "Complexity score suggests discussion; it does not mandate a refactor."
 
 [[tools]]
@@ -145,10 +232,10 @@ package = "vulture"
 purpose = "Likely dead code and unused symbol scan."
 rule = ".ai-config/rules/engineering/code.index.md"
 configured_in = ["pyproject.toml"]
-entrypoint_commands = ["uv run vulture app scripts --min-confidence 80"]
-manual_commands = ["uv run vulture app scripts --min-confidence 80"]
+entrypoint_commands = ["uv run vulture app scripts market-impact-study --min-confidence 80"]
+manual_commands = ["uv run vulture app scripts market-impact-study --min-confidence 80"]
 run_mode = "manual"
-scope = "Use for cleanup discussion; old projects may have dynamic entry points and compatibility hooks."
+scope = "Use for cleanup discussion in app, scripts, and market-impact-study; old projects may have dynamic entry points and compatibility hooks."
 boundary = "Never delete solely from Vulture output without checking runtime entry points and tests."
 
 [[tools]]
@@ -163,6 +250,11 @@ manual_commands = ["uv run deptry ."]
 run_mode = "manual"
 scope = "Use for dependency debt triage."
 boundary = "Dynamic imports, optional providers, and script-only dependencies need human review."
+
+[[semgrep_rulesets]]
+path = ".semgrep/backend-contracts.yml"
+owner_rule = ".ai-config/rules/engineering/backend.index.md"
+purpose = "Backend API auth markers, transaction IO, sensitive response details, and traceback-preserving logs."
 
 [[semgrep_rulesets]]
 path = ".semgrep/fastapi-debug.yml"
@@ -193,6 +285,11 @@ purpose = "Time-series and reproducible split guardrails."
 path = ".semgrep/playwright-no-sleep.yml"
 owner_rule = ".ai-config/rules/delivery/web-automation.index.md"
 purpose = "Playwright files should not use raw time.sleep."
+
+[[semgrep_rulesets]]
+path = ".semgrep/playwright-robustness.yml"
+owner_rule = ".ai-config/rules/delivery/web-automation.index.md"
+purpose = "Playwright download, dialog, and long wait robustness guardrails."
 
 [[semgrep_rulesets]]
 path = ".semgrep/rag-hygiene.yml"

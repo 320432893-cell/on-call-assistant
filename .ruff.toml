@@ -80,6 +80,22 @@ ignore = [
 "__init__.py" = ["F401"]
 # scripts/ 一次性脚本,放宽
 "scripts/**" = ["T20", "ANN", "S603", "S607"]
+# 统一检查入口需要输出命令状态并调度固定工具命令。
+"tools/check.py" = ["T20", "S603", "S607"]
+# 规则契约检查脚本偏重可读性和显式错误拼装，允许少量性能风格和阈值常量例外。
+".ai-config/check_rule_tool_contracts.py" = ["PERF401", "PLR2004"]
+# market-impact-study 是采集/分析脚本目录,允许命令行输出和外部公开数据抓取; 仍保留 Ruff 基础、import、常见 bug 和数据泄漏类检查。
+"market-impact-study/**" = [
+    "T20",
+    "ANN",
+    "S310",
+    "DTZ",
+    "PLR0912",
+    "PLR0913",
+    "PLR2004",
+    "PERF401",
+    "E402",
+]
 
 [lint.flake8-annotations]
 suppress-dummy-args = true

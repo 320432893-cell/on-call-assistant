@@ -15,12 +15,13 @@ flowchart TD
     ROOT[自动检查]
 
     ROOT --> CODE[写代码时]
-    CODE --> RUFF[Ruff<br/>手动基线:格式 / import / 明显 bug]
+    CODE --> RUFF[Ruff<br/>提交阻塞:staged Python<br/>手动基线:全量格式 / import / 明显 bug]
     CODE --> TYPE[basedpyright<br/>手动基线:类型和接口]
     CODE --> LAYER[import-linter<br/>分层依赖]
 
     ROOT --> SAFE[安全]
     SAFE --> SECRET[detect-secrets<br/>密钥泄漏]
+    SAFE --> DEPAPPROVAL[dependency approval<br/>依赖 / lock 变更确认]
     SAFE --> AUDIT[pip-audit<br/>依赖漏洞]
 
     ROOT --> PROJECT[项目特殊规则]
@@ -55,19 +56,21 @@ flowchart TD
 
 常见来源：import-linter、Ruff、basedpyright、radon、vulture、deptry。
 
-当前状态：`import-linter` 是阻塞检查；`Ruff` 和 `basedpyright` 已接入但历史基线未清零，暂时只作为手动基线工具运行，避免提交和 CI 被已知 backlog 持续阻塞。
+当前状态：`import-linter` 是阻塞检查；`Ruff` 会默认检查本次 staged Python 文件，全量 Ruff 和格式检查仍是手动基线；`basedpyright` 已接入但历史基线未清零，暂时只作为手动基线工具运行，避免提交和 CI 被已知 backlog 持续阻塞。`market-impact-study` 已纳入编译、Ruff、Semgrep、radon、vulture 和项目数据校验命令；其中数据校验依赖本地采集文件，默认手动运行。
 
 80/20 脏代码体检：`.ai-config/dirty_diff_review.py` 只看本次新增行；`radon` 看复杂度，`vulture` 看疑似死代码，`deptry` 看依赖脏账。它们用来触发人机讨论，不直接决定重构或删除。
 
 你只需要问：这是机械问题，还是会改变业务行为？
 
+自动发现入口：`python3 tools/check.py changed` 会读取 staged、unstaged 和 untracked 变更，代码文件自动运行编译、Ruff、格式检查、Semgrep、相关测试和登记过的路径触发检查；规则、工具链、hook、CI 配置变化会强制跑工具契约或 hook 回归测试。`python3 tools/check.py coverage-audit` 会发现新 Python 代码目录是否漏接统一质量门。特殊检查通过 `.ai-config/tooling.registry.toml` 的 `path_triggers` 登记。
+
 ### 2. 看起来像安全问题
 
 先当真，不要直接提交。
 
-常见来源：detect-secrets、pip-audit。
+常见来源：detect-secrets、dependency-change-approval、pip-audit。
 
-你只需要拍板：能不能升级依赖、能不能接受风险、这个值是不是敏感。
+你只需要拍板：能不能升级依赖、能不能接受风险、这个值是不是敏感。依赖或 lock 文件变更在提交前默认阻塞；确认用途、下载/安装范围、lock/CI/pre-commit 影响和轻量替代后，才允许用 `ONCALL_ALLOW_DEPENDENCY_CHANGE=1` 放行。
 
 ### 3. 看起来像项目特殊规则
 

@@ -18,3 +18,43 @@ rules:
         - "**/app/templates/**/*.html"
     patterns:
       - pattern-regex: insertAdjacentHTML\s*\([^`\n]*`[^`\n]*\$\{
+
+  - id: jinja-safe-filter
+    message: "Jinja |safe disables escaping; only use it with already-sanitized content and document that boundary."
+    severity: WARNING
+    languages: [generic]
+    paths:
+      include:
+        - "**/app/templates/**/*.html"
+    patterns:
+      - pattern-regex: \{\{[^}]+\|\s*safe\b
+
+  - id: jinja-autoescape-disabled
+    message: "Do not disable Jinja autoescape in templates unless the whole rendering path is trusted and documented."
+    severity: WARNING
+    languages: [generic]
+    paths:
+      include:
+        - "**/app/templates/**/*.html"
+    patterns:
+      - pattern-regex: \{%\s*autoescape\s+false\s*%\}
+
+  - id: frontend-console-sensitive-value
+    message: "Do not log sensitive values such as token/password/secret/apiKey in browser console output."
+    severity: WARNING
+    languages: [generic]
+    paths:
+      include:
+        - "**/app/templates/**/*.html"
+    patterns:
+      - pattern-regex: (?i)console\.(log|debug|info|warn|error)\([^;\n]*(token|password|secret|api[_-]?key|authorization|cookie)
+
+  - id: frontend-storage-sensitive-value
+    message: "Do not persist token/password/secret/apiKey values in localStorage or sessionStorage without an explicit security design."
+    severity: WARNING
+    languages: [generic]
+    paths:
+      include:
+        - "**/app/templates/**/*.html"
+    patterns:
+      - pattern-regex: (?i)(localStorage|sessionStorage)\.setItem\([^;\n]*(token|password|secret|api[_-]?key|authorization|cookie)

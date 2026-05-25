@@ -1,0 +1,93 @@
+rules:
+  - id: transaction-block-contains-external-io
+    message: "Avoid external HTTP/file IO, sleeps, or background task scheduling inside transaction blocks."
+    severity: WARNING
+    languages: [python]
+    paths:
+      include:
+        - "**/app/**/*.py"
+        - "**/scripts/**/*.py"
+      exclude:
+        - "**/tests/**"
+        - "**/test/**"
+        - "**/test_*.py"
+        - "**/*_test.py"
+    patterns:
+      - pattern-either:
+          - pattern-inside: |
+              with $SESSION.begin(...):
+                  ...
+          - pattern-inside: |
+              async with $SESSION.begin(...):
+                  ...
+      - pattern-either:
+          - pattern: requests.$METHOD(...)
+          - pattern: httpx.$METHOD(...)
+          - pattern: urllib.request.urlopen(...)
+          - pattern: open(...)
+          - pattern: Path(...).write_text(...)
+          - pattern: Path(...).write_bytes(...)
+          - pattern: time.sleep(...)
+          - pattern: asyncio.sleep(...)
+          - pattern: $TASKS.add_task(...)
+
+  - id: raw-sensitive-detail-in-api-response
+    message: "API responses should not expose traceback, environment, settings, filesystem paths, SQL, or raw third-party details."
+    severity: WARNING
+    languages: [python]
+    paths:
+      include:
+        - "**/app/routers/**/*.py"
+      exclude:
+        - "**/tests/**"
+        - "**/test/**"
+        - "**/test_*.py"
+        - "**/*_test.py"
+    patterns:
+      - pattern-either:
+          - pattern: HTTPException(..., detail=traceback.format_exc(), ...)
+          - pattern: HTTPException(..., detail=os.environ, ...)
+          - pattern: HTTPException(..., detail=$SETTINGS.$FIELD, ...)
+          - pattern: 'JSONResponse(..., content={..., "traceback": ..., ...}, ...)'
+          - pattern: 'JSONResponse(..., content={..., "stack": ..., ...}, ...)'
+          - pattern: 'JSONResponse(..., content={..., "sql": ..., ...}, ...)'
+          - pattern: 'JSONResponse(..., content={..., "path": ..., ...}, ...)'
+          - pattern: 'return {..., "traceback": ..., ...}'
+          - pattern: 'return {..., "stack": ..., ...}'
+          - pattern: 'return {..., "sql": ..., ...}'
+          - pattern: 'return {..., "path": ..., ...}'
+
+  - id: logger-error-loses-traceback
+    message: "Use logger.exception(...) inside except blocks, or pass exc_info=True, so traceback is preserved."
+    severity: WARNING
+    languages: [python]
+    paths:
+      include:
+        - "**/app/**/*.py"
+        - "**/scripts/**/*.py"
+      exclude:
+        - "**/tests/**"
+        - "**/test/**"
+        - "**/test_*.py"
+        - "**/*_test.py"
+    patterns:
+      - pattern-either:
+          - pattern: |
+              try:
+                  ...
+              except Exception as $ERR:
+                  ...
+                  $LOGGER.error($ERR)
+          - pattern: |
+              try:
+                  ...
+              except Exception as $ERR:
+                  ...
+                  $LOGGER.error(str($ERR))
+          - pattern: |
+              try:
+                  ...
+              except Exception as $ERR:
+                  ...
+                  $LOGGER.error(repr($ERR))
+      - pattern-not: $LOGGER.error(..., exc_info=True, ...)
