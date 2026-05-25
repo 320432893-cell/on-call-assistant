@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # PostToolUse hook (Edit/MultiEdit): 幽灵引用扫描
-# 对应 process/flow_legacy_project.index.md 老项目红线 — 改名/删除后 grep 旧名
+# 对应 AGENTS.md 和 engineering/code.index.md 的改名/删除后引用漂移体检
 #
 # 工作原理:
 #   - 从 tool_input 解析出本次 Edit 的 old_string / new_string
@@ -136,7 +136,7 @@ done <<< "$removed_names"
 
 if [ -n "$ghost_refs" ]; then
   echo "" >&2
-  echo "[rename_audit] 检测到幽灵引用 — process/flow_legacy_project.index.md" >&2
+  echo "[rename_audit] 检测到幽灵引用 — AGENTS.md / engineering/code.index.md" >&2
   echo "[rename_audit] 本次 Edit 删除/改名了符号,但项目其他文件仍在引用:" >&2
   printf '%b\n' "$ghost_refs" >&2
   echo "" >&2

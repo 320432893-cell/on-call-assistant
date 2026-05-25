@@ -13,7 +13,6 @@ repos:
     rev: v0.15.13
     hooks:
       - id: ruff-check
-        args: [--fix]
         stages: [manual]
       - id: ruff-format
         stages: [manual]
@@ -58,8 +57,8 @@ repos:
         types: [python]
 
       - id: basedpyright
-        name: basedpyright (project venv)
-        entry: .venv/bin/basedpyright
+        name: basedpyright (manual baseline)
+        entry: python3 tools/check.py basedpyright
         language: system
         stages: [manual]
         types: [python]
@@ -87,7 +86,7 @@ repos:
         entry: python3 tools/check.py rule-tool-contracts
         language: system
         pass_filenames: false
-        files: ^(\.ai-config/|\.ai-hooks/|\.semgrep/|\.github/workflows/ci\.yml|\.pre-commit-config\.yaml|tools/check\.py|pyproject\.toml|uv\.lock)$
+        files: ^(\.ai-config/.*|\.ai-hooks/.*|\.semgrep/.*|\.github/workflows/ci\.yml|\.pre-commit-config\.yaml|\.ruff\.toml|\.importlinter|AGENTS\.md|tools/check\.py|pyproject\.toml|uv\.lock)$
 
       - id: dependency-change-approval
         name: dependency/lock change approval gate

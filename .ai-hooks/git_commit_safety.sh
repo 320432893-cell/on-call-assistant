@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # PreToolUse hook on Bash: git commit 前体检暂存区
-# 对应 process/workflow.index.md 的开局体检 + git 仓库治理
+# 对应 AGENTS.md 的工作区体检和 git 协作边界
 # 退出码 2 = 阻断
 set -u
 
@@ -117,7 +117,7 @@ done <<< "$staged"
 if [ -n "$risky" ]; then
   echo "[git_commit_safety] 阻断: 暂存区含风险文件:" >&2
   printf "$risky\n" >&2
-  echo "[git_commit_safety] 按 process/workflow.index.md, 必须先 git rm --cached 撤出 + 补 .gitignore 后再 commit" >&2
+  echo "[git_commit_safety] 按 AGENTS.md, 必须先 git rm --cached 撤出 + 补 .gitignore 后再 commit" >&2
   exit 2
 fi
 

@@ -27,28 +27,25 @@ def build_index() -> str:
 - `{REPO_ROOT / ".ai-config" / "rules"}`/**/*.md
 - `{REPO_ROOT / ".ai-hooks"}/*.sh`
 - `{REPO_ROOT / "docs" / "TOOLING_CONTRACTS.md"}`
-- `{REPO_ROOT / "docs" / "PROJECT_MAP.md"}`
-- `{REPO_ROOT / "docs" / "AI_HANDOFF.md"}`
 
 `~/.codex/memories` 只保存本索引，不复制规则全文。不要把 memory 副本当作规则主版本。
 
 ## 任务前读取顺序
 
 1. 先读 `{REPO_ROOT / ".ai-config" / "AGENTS.md"}`。
-2. 再按任务类型读取 `{REPO_ROOT / ".ai-config" / "rules"}` 下的对应规则。
+2. 新项目 / 新模块读取 `{REPO_ROOT / ".ai-config" / "rules" / "process" / "flow_new_project.index.md"}`。
+3. 写代码后按 `{REPO_ROOT / ".ai-config" / "AGENTS.md"}` 的代码审查门禁，必要时读取 `{REPO_ROOT / ".ai-config" / "rules" / "engineering" / "code.index.md"}`。
+4. 其他工程 / 交付规则仅在用户声明体检、审查、复盘或验收时读取对应规则。
 3. 涉及同步、换机器、hook、settings 时读取 `{REPO_ROOT / "docs" / "TOOLING_CONTRACTS.md"}`。
-4. 涉及项目背景、入口、运行约束、架构图、架构边界或 source of truth 时读取 `{REPO_ROOT / "docs" / "PROJECT_MAP.md"}`。
-5. 涉及近期风险、未验证项或接力上下文时读取 `{REPO_ROOT / "docs" / "AI_HANDOFF.md"}`。
 
 ## 常用规则入口
 
 - 总入口：`.ai-config/rules/index.md`
-- 流程专题：`.ai-config/rules/process/index.md`
-- 工程专题：`.ai-config/rules/engineering/index.md`
-- 交付专题：`.ai-config/rules/delivery/index.md`
-- 规则治理专题：`.ai-config/rules/rule_governance/index.md`
-- 规则、hook、settings、lint/CI 维护：`.ai-config/rules/rule_governance/flow_rule_maintenance.index.md`
-- 规则治理和静态下沉：`.ai-config/rules/rule_governance/governance.index.md`
+- 新项目流程：`.ai-config/rules/process/flow_new_project.index.md`
+- 代码审查细则：`.ai-config/rules/engineering/code.index.md`
+- 工程体检专题：`.ai-config/rules/engineering/index.md`
+- 交付体检专题：`.ai-config/rules/delivery/index.md`
+- 规则、hook、settings、lint/CI 维护：`.ai-config/AGENTS.md`
 
 ## 项目检查命令
 

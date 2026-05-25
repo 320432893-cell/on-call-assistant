@@ -12,14 +12,10 @@ import subprocess
 import sys
 import tomllib
 from dataclasses import dataclass
+from typing import Any
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 REGISTRY = ROOT / ".ai-config" / "tooling.registry.toml"
-ALLOWED_DETAILS = {
-    ".ai-config/rules/engineering/frontend.details.md",
-    ".ai-config/rules/process/flow_legacy_project.details.md",
-    ".ai-config/rules/process/flow_new_project.details.md",
-}
 
 
 @dataclass
@@ -51,6 +47,31 @@ def parse_dev_packages(pyproject: dict) -> set[str]:
 def parse_pre_commit_hooks(path: pathlib.Path) -> set[str]:
     text = read_text(path)
     return set(re.findall(r"^\s*-\s+id:\s*([A-Za-z0-9_.-]+)\s*$", text, flags=re.MULTILINE))
+
+
+def load_pre_commit_config(path: pathlib.Path) -> dict[str, Any]:
+    try:
+        import yaml
+    except Exception as exc:  # pragma: no cover - PyYAML is provided by pre-commit.
+        raise RuntimeError("PyYAML is required to validate pre-commit hook wiring") from exc
+    data = yaml.safe_load(read_text(path))
+    return data if isinstance(data, dict) else {}
+
+
+def find_pre_commit_hook(config: dict[str, Any], hook_id: str) -> dict[str, Any] | None:
+    for repo in config.get("repos", []):
+        for hook in repo.get("hooks", []):
+            if hook.get("id") == hook_id:
+                return hook
+    return None
+
+
+def parse_entrypoint_profile_items(entrypoint: str, profile: str) -> set[str]:
+    pattern = rf'"{re.escape(profile)}":\s*\[(.*?)\]'
+    match = re.search(pattern, entrypoint, flags=re.DOTALL)
+    if not match:
+        return set()
+    return set(re.findall(r'"([A-Za-z0-9_.-]+)"', match.group(1)))
 
 
 def manifest_hook_files(path: pathlib.Path) -> dict[str, str]:
@@ -123,6 +144,44 @@ def check_tools(root: pathlib.Path, registry: dict, issues: list[Issue]) -> None
                 )
 
 
+def check_rule_tool_contracts_trigger(root: pathlib.Path, issues: list[Issue]) -> None:
+    config = load_pre_commit_config(root / ".pre-commit-config.yaml")
+    hook = find_pre_commit_hook(config, "rule-tool-contracts")
+    if not hook:
+        issues.append(Issue("ERROR", "pre-commit rule-tool-contracts hook is missing"))
+        return
+    pattern = hook.get("files")
+    if not isinstance(pattern, str) or not pattern:
+        issues.append(Issue("ERROR", "pre-commit rule-tool-contracts hook must define a files regex"))
+        return
+
+    samples = [
+        ".ai-config/check_rule_tool_contracts.py",
+        ".ai-config/rules/delivery/index.md",
+        ".ai-hooks/rag_hygiene.sh",
+        ".semgrep/rag-hygiene.yml",
+        ".github/workflows/ci.yml",
+        ".pre-commit-config.yaml",
+        ".ruff.toml",
+        ".importlinter",
+        "AGENTS.md",
+        "tools/check.py",
+        "pyproject.toml",
+        "uv.lock",
+    ]
+    try:
+        compiled = re.compile(pattern)
+    except re.error as exc:
+        issues.append(Issue("ERROR", f"pre-commit rule-tool-contracts files regex is invalid: {exc}"))
+        return
+
+    for sample in samples:
+        if not compiled.search(sample):
+            issues.append(
+                Issue("ERROR", f"pre-commit rule-tool-contracts files regex does not match required path: {sample}")
+            )
+
+
 def check_ci_semantics(root: pathlib.Path, issues: list[Issue]) -> None:
     ci = read_text(root / ".github" / "workflows" / "ci.yml")
     if "detect-secrets scan --list-all-plugins" in ci:
@@ -154,6 +213,11 @@ def check_enforcement_wiring(root: pathlib.Path, registry: dict, issues: list[Is
     for path in (".github/workflows/ci.yml", ".pre-commit-config.yaml"):
         if path not in normalized_pre_commit:
             issues.append(Issue("ERROR", f"pre-commit enforcement wiring missing path: {path}"))
+    if "AGENTS.md" not in normalized_pre_commit:
+        issues.append(Issue("ERROR", "pre-commit rule-tool-contracts trigger missing path: AGENTS.md"))
+    for path in (".ruff.toml", ".importlinter"):
+        if path not in normalized_pre_commit:
+            issues.append(Issue("ERROR", f"pre-commit rule-tool-contracts trigger missing path: {path}"))
 
     if f"uv run python {entrypoint} ci" not in ci:
         issues.append(Issue("ERROR", f"CI must call unified entrypoint: uv run python {entrypoint} ci"))
@@ -163,6 +227,16 @@ def check_enforcement_wiring(root: pathlib.Path, registry: dict, issues: list[Is
         issues.append(Issue("ERROR", "dependency-change approval env gate missing from unified entrypoint"))
     if "ruff-staged" not in entrypoint_text:
         issues.append(Issue("ERROR", "ruff-staged changed-file check missing from unified entrypoint"))
+    if '".importlinter"' not in entrypoint_text:
+        issues.append(Issue("ERROR", ".importlinter missing from unified entrypoint contract triggers"))
+
+    ci_items = parse_entrypoint_profile_items(entrypoint_text, "ci")
+    tools_by_id = {tool["id"]: tool for tool in registry.get("tools", [])}
+    for tool_id, tool in tools_by_id.items():
+        if tool.get("ci_commands") and tool_id not in ci_items:
+            issues.append(
+                Issue("ERROR", f"tool {tool_id}: registry declares CI commands but tool is not in ci profile")
+            )
 
 
 def check_semgrep_rulesets(root: pathlib.Path, registry: dict, issues: list[Issue]) -> None:
@@ -379,16 +453,50 @@ def check_agents_mirror(root: pathlib.Path, issues: list[Issue]) -> None:
 
 
 def check_rule_references(root: pathlib.Path, issues: list[Issue]) -> None:
-    targets = [
-        root / ".ai-config" / "AGENTS.md",
-        *list((root / ".ai-config" / "rules").rglob("*.md")),
+    target_roots = [
+        root / ".ai-config",
+        root / ".ai-hooks",
+        root / ".semgrep",
+        root / "docs",
+        root / "scripts",
+        root / "tools",
     ]
+    targets = [root / "AGENTS.md", root / "README.md"]
+    checker_path = root / ".ai-config" / "check_rule_tool_contracts.py"
+    for target_root in target_roots:
+        if target_root.exists():
+            targets.extend(
+                path
+                for path in target_root.rglob("*")
+                if path.is_file()
+                and path.suffix.lower() in {".md", ".py", ".sh", ".toml", ".yaml", ".yml", ".json", ".template"}
+            )
     stale_patterns = {
         "../../AGENTS.md": "old AGENTS.md relative rule entry",
         "rules/workflow.md": "old flat rules path",
         "rules/governance.md": "old flat rules path",
+        "*.details.md": "deleted details rule routing",
+        ".details.md": "deleted details rule routing",
+        "process/workflow.index.md": "deleted workflow rule",
+        "process/flow_legacy_project.index.md": "deleted legacy-project rule",
+        "rules/process/workflow.index.md": "deleted workflow rule",
+        "rules/process/flow_legacy_project.index.md": "deleted legacy-project rule",
+        "rules/rule_governance/": "deleted rule_governance rule directory",
+        "rule_governance/": "deleted rule_governance rule directory",
+        "rules/engineering/backend.index.md": "moved backend rule",
+        "rules/engineering/frontend.index.md": "moved frontend rule",
+        "rules/engineering/architecture.index.md": "moved architecture rule",
+        "rules/engineering/gui.md": "moved GUI rule",
+        "engineering/backend.index.md": "moved backend rule",
+        "engineering/frontend.index.md": "moved frontend rule",
+        "engineering/architecture.index.md": "moved architecture rule",
+        "engineering/gui.md": "moved GUI rule",
     }
     for path in targets:
+        if not path.exists():
+            continue
+        if path == checker_path:
+            continue
         text = read_text(path)
         for pattern, label in stale_patterns.items():
             if pattern in text:
@@ -398,23 +506,13 @@ def check_rule_references(root: pathlib.Path, issues: list[Issue]) -> None:
 def check_rule_structure(root: pathlib.Path, issues: list[Issue]) -> None:
     rules_dir = root / ".ai-config" / "rules"
     details = {rel(path) for path in rules_dir.rglob("*.details.md")}
-    issues.extend(
-        Issue("ERROR", f"details file exists but is not in ALLOWED_DETAILS: {path}")
-        for path in sorted(details - ALLOWED_DETAILS)
-    )
-    issues.extend(
-        Issue("ERROR", f"ALLOWED_DETAILS points to missing file: {path}") for path in sorted(ALLOWED_DETAILS - details)
-    )
+    issues.extend(Issue("ERROR", f"details file must be merged into index: {path}") for path in sorted(details))
 
     for path in [root / ".ai-config" / "AGENTS.md", *rules_dir.rglob("*.md")]:
         text = read_text(path)
         relative_path = rel(path)
         for match in re.finditer(r"[\w./-]+\.details\.md", text):
             target = match.group(0)
-            if path.name.endswith(".index.md") and target in {pathlib.Path(item).name for item in ALLOWED_DETAILS}:
-                continue
-            if relative_path.endswith(".details.md"):
-                continue
             issues.append(Issue("ERROR", f"{relative_path} directly references details file: {target}"))
 
     for path in rules_dir.rglob("*.index.md"):
@@ -439,6 +537,7 @@ def main() -> int:
     check_tools(ROOT, registry, issues)
     check_ci_semantics(ROOT, issues)
     check_enforcement_wiring(ROOT, registry, issues)
+    check_rule_tool_contracts_trigger(ROOT, issues)
     check_semgrep_rulesets(ROOT, registry, issues)
     check_hooks(ROOT, registry, issues)
     check_hook_tests(ROOT, registry, issues)

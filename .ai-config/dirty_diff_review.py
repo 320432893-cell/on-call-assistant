@@ -28,14 +28,22 @@ class Finding:
 
 RULES: tuple[tuple[str, re.Pattern[str], str], ...] = (
     ("debug-print", re.compile(r"\bprint\s*\("), "新增 print，确认是临时调试还是要换成日志/稳定错误响应。"),
-    ("broad-except", re.compile(r"\bexcept\s+Exception\b"), "新增宽泛异常，确认是边界兜底、兼容修补，还是应该捕获具体异常。"),
+    (
+        "broad-except",
+        re.compile(r"\bexcept\s+Exception\b"),
+        "新增宽泛异常，确认是边界兜底、兼容修补，还是应该捕获具体异常。",
+    ),
     ("raw-sleep", re.compile(r"\btime\.sleep\s*\("), "新增固定 sleep，确认是外部节流，还是应改成条件等待/重试。"),
     (
         "http-without-timeout",
         re.compile(r"\b(requests\.(get|post|put|patch|delete)|httpx\.(get|post|put|patch|delete))\s*\("),
         "新增 HTTP 调用，确认是否显式 timeout，以及失败策略。",
     ),
-    ("inner-html", re.compile(r"\.innerHTML\s*=|insertAdjacentHTML\s*\("), "新增 HTML 注入入口，确认转义/DOM 构造策略。"),
+    (
+        "inner-html",
+        re.compile(r"\.innerHTML\s*=|insertAdjacentHTML\s*\("),
+        "新增 HTML 注入入口，确认转义/DOM 构造策略。",
+    ),
     (
         "shell-subprocess",
         re.compile(r"\bsubprocess\.(run|Popen|call|check_call|check_output)\s*\("),
@@ -119,9 +127,7 @@ def print_findings(findings: list[Finding]) -> None:
         sys.stderr.write(f"  - {loc} [{item.label}] {item.detail}\n")
     if len(findings) > MAX_FINDINGS_TO_PRINT:
         sys.stderr.write(f"  ... 还有 {len(findings) - MAX_FINDINGS_TO_PRINT} 条\n")
-    sys.stderr.write(
-        "[dirty_diff] 建议先和用户确认处理范式:局部修补 / 分层重构 / 兼容优先 / 测试先行 / 安全优先。\n"
-    )
+    sys.stderr.write("[dirty_diff] 建议先和用户确认处理范式:局部修补 / 分层重构 / 兼容优先 / 测试先行 / 安全优先。\n")
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:

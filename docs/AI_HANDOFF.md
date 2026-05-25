@@ -65,7 +65,7 @@ flowchart TD
 - Phase2 SOP 语义检索已存在。
 - Phase3 流式 Agent 对话已存在，使用 Redis session 和 `readFile` / `writeFile`。
 - Phase4 年报 PDF 解析、入库、语义检索 API 已存在。
-- 根 AI 规则已迁移到 `.ai-config/rules/**`，使用 `*.index.md` / `*.details.md` 路由。
+- 根 AI 规则已迁移到 `.ai-config/rules/**`，使用 index 路由；旧分层详情文件内容已合并进对应 index。
 - Codex/AI 现在是规则和 hook 的所有者；`.claude/` 只保留本机历史兼容。
 
 ## 2. 重要风险

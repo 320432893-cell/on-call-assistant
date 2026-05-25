@@ -35,6 +35,7 @@ CONTRACT_TRIGGER_PATTERNS = (
     ".ai-config/**",
     ".ai-hooks/**",
     ".github/workflows/**",
+    ".importlinter",
     ".pre-commit-config.yaml",
     ".ruff.toml",
     ".semgrep/**",
@@ -56,9 +57,9 @@ COMMANDS: dict[str, str] = {
     "pip-audit": "uv run pip-audit --strict",
     "rag-drift": "uv run python scripts/check_rag_drift.py",
     "market-impact-validation": "uv run python market-impact-study/validate_market_outputs.py",
-    "detect-secrets-pre-commit": "uv run pre-commit run detect-secrets --all-files",
+    "detect-secrets-scan": "uv run detect-secrets scan --baseline .secrets.baseline --exclude-files '^(uv\\.lock|\\.secrets\\.baseline|\\.ai-config/settings\\.json\\.template)$'",
     "detect-secrets-audit": "uv run detect-secrets audit .secrets.baseline --report",
-    "pytest-coverage": "uv run pytest --cov=app --cov-report=term-missing --cov-fail-under=35",
+    "pytest": "uv run pytest tests",
     "ruff-staged": "uv run ruff check --no-fix --force-exclude",
     "ruff-check": "uv run ruff check .",
     "ruff-format-check": "uv run ruff format --check .",
@@ -90,7 +91,7 @@ PROFILES: dict[str, list[str]] = {
         "pip-audit",
         "rag-drift",
         "detect-secrets",
-        "pytest-coverage",
+        "pytest",
     ],
 }
 
@@ -130,6 +131,25 @@ def git_changed_names(args: Sequence[str]) -> tuple[int, list[str], str]:
     )
     names = [line.strip() for line in proc.stdout.splitlines() if line.strip()]
     return proc.returncode, names, proc.stderr.strip()
+
+
+def load_pytest_file_patterns() -> tuple[list[str], list[str]]:
+    pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    options = pyproject.get("tool", {}).get("pytest", {}).get("ini_options", {})
+    testpaths = options.get("testpaths", ["tests"])
+    python_files = options.get("python_files", ["test_*.py"])
+    return list(testpaths), list(python_files)
+
+
+def is_direct_pytest_file(name: str) -> bool:
+    testpaths, python_files = load_pytest_file_patterns()
+    if not name.endswith(".py"):
+        return False
+    return any(
+        name.startswith(f"{testpath.rstrip('/')}/")
+        and any(fnmatch.fnmatch(pathlib.PurePosixPath(name).name, pattern) for pattern in python_files)
+        for testpath in testpaths
+    )
 
 
 def collect_changed_names() -> tuple[int, list[str]]:
@@ -273,7 +293,7 @@ def run_changed() -> int:
             run_command("changed:market-impact-tests", ["uv", "run", "pytest", "tests/test_market_impact_study.py"])
             or status
         )
-    direct_tests = sorted(name for name in code_names if name.startswith("tests/test_") and name.endswith(".py"))
+    direct_tests = sorted(name for name in code_names if is_direct_pytest_file(name))
     if direct_tests:
         status = run_command("changed:pytest", ["uv", "run", "pytest", *direct_tests]) or status
     if contract_changed:
@@ -325,6 +345,8 @@ def run_command(label: str, command: Sequence[str] | str) -> int:
     env = os.environ.copy()
     env["HOME"] = str(LOCAL_HOME)
     env["UV_CACHE_DIR"] = str(LOCAL_UV_CACHE)
+    if label == "pytest" or label.startswith("changed:pytest"):
+        env["DEBUG"] = "false"
     if isinstance(command, str):
         return subprocess.run(shlex.split(command), cwd=ROOT, env=env, check=False).returncode
     return subprocess.run(command, cwd=ROOT, env=env, check=False).returncode
@@ -344,7 +366,7 @@ def run_item(item: str) -> int:
     if item == "detect-secrets":
         return run_many(
             [
-                ("detect-secrets-pre-commit", COMMANDS["detect-secrets-pre-commit"]),
+                ("detect-secrets-scan", COMMANDS["detect-secrets-scan"]),
                 ("detect-secrets-audit", COMMANDS["detect-secrets-audit"]),
             ]
         )

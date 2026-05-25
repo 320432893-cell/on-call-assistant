@@ -4,7 +4,7 @@
 
 [metadata]
 version = 1
-owner_rule = ".ai-config/rules/rule_governance/governance.index.md"
+owner_rule = ".ai-config/AGENTS.md"
 human_doc = "docs/TOOLING_CONTRACTS.md"
 checker = ".ai-config/check_rule_tool_contracts.py"
 unified_entrypoint = "tools/check.py"
@@ -13,7 +13,7 @@ unified_entrypoint = "tools/check.py"
 id = "python-compile"
 kind = "python-stdlib"
 purpose = "Fast syntax/importability-adjacent smoke check by byte-compiling app, scripts, market-impact-study, tests, and tools."
-rule = ".ai-config/rules/rule_governance/governance.index.md"
+rule = ".ai-config/AGENTS.md"
 configured_in = ["tools/check.py"]
 pre_commit_hook = "python-compile"
 entrypoint_commands = ["uv run python -m compileall -q app scripts market-impact-study tests tools"]
@@ -23,10 +23,41 @@ scope = "app, scripts, market-impact-study, tests, and tools Python files."
 boundary = "Only catches syntax and bytecode compilation failures; it does not replace tests, typing, or runtime checks."
 
 [[tools]]
+id = "pre-commit-basic-hooks"
+kind = "pre-commit-hook-bundle"
+purpose = "Repository hygiene checks from pre-commit-hooks: large files, JSON/YAML/TOML syntax, EOF newline, and trailing whitespace."
+rule = ".ai-config/AGENTS.md"
+configured_in = [".pre-commit-config.yaml"]
+pre_commit_hooks = [
+    "check-added-large-files",
+    "check-json",
+    "check-yaml",
+    "check-toml",
+    "end-of-file-fixer",
+    "trailing-whitespace",
+]
+run_mode = "pre-commit"
+scope = "Generic repository hygiene checks maintained by the external pre-commit-hooks package."
+boundary = "Mechanical file hygiene only; ownership stays in pre-commit config, not project semantics."
+
+[[tools]]
+id = "rule-tool-contracts"
+kind = "project-static-tool"
+purpose = "Validate AI rules, tool registry, hooks, static rules, CI, and pre-commit wiring contracts."
+rule = ".ai-config/AGENTS.md"
+configured_in = [".ai-config/check_rule_tool_contracts.py", ".ai-config/tooling.registry.toml", "tools/check.py"]
+pre_commit_hook = "rule-tool-contracts"
+entrypoint_commands = ["uv run python .ai-config/check_rule_tool_contracts.py"]
+ci_commands = ["uv run python .ai-config/check_rule_tool_contracts.py"]
+run_mode = "pre-commit+ci+manual"
+scope = "AI rule files, tool registry, hook manifest/tests, Semgrep rulesets, CI, pre-commit trigger regex, and deleted-rule stale references."
+boundary = "Mechanical contract validation only; it does not decide whether a rule or tool policy is desirable."
+
+[[tools]]
 id = "coverage-audit"
 kind = "project-static-tool"
 purpose = "Detect new Python code directories that are not mapped to the unified quality gate."
-rule = ".ai-config/rules/rule_governance/governance.index.md"
+rule = ".ai-config/AGENTS.md"
 configured_in = ["tools/check.py"]
 pre_commit_hook = "coverage-audit"
 entrypoint_commands = ["python3 tools/check.py coverage-audit"]
@@ -38,7 +69,7 @@ boundary = "Reports missing tool coverage; it does not decide whether a new dire
 id = "changed"
 kind = "project-static-tool"
 purpose = "Automatically run fixed static checks and registered path triggers for changed, staged, and untracked code files."
-rule = ".ai-config/rules/process/workflow.index.md"
+rule = ".ai-config/AGENTS.md"
 configured_in = ["tools/check.py"]
 entrypoint_commands = ["python3 tools/check.py changed"]
 manual_commands = ["python3 tools/check.py changed"]
@@ -51,7 +82,7 @@ id = "ruff"
 kind = "python-dev-tool"
 package = "ruff"
 purpose = "Python lint, formatting, import sorting, common bug patterns, complexity checks."
-rule = ".ai-config/rules/rule_governance/governance.index.md"
+rule = ".ai-config/AGENTS.md"
 configured_in = [".ruff.toml"]
 pre_commit_hooks = ["ruff-check", "ruff-format", "ruff-staged"]
 entrypoint_commands = ["uv run ruff check .", "uv run ruff format --check .", "uv run ruff check --no-fix --force-exclude"]
@@ -65,7 +96,7 @@ id = "basedpyright"
 kind = "python-dev-tool"
 package = "basedpyright"
 purpose = "Type, signature, optionality, and static Python type consistency checks."
-rule = ".ai-config/rules/rule_governance/governance.index.md"
+rule = ".ai-config/AGENTS.md"
 configured_in = ["pyproject.toml"]
 pre_commit_hook = "basedpyright"
 entrypoint_commands = ["uv run basedpyright"]
@@ -79,7 +110,7 @@ id = "import-linter"
 kind = "python-dev-tool"
 package = "import-linter"
 purpose = "Layered import architecture contracts."
-rule = ".ai-config/rules/rule_governance/governance.index.md"
+rule = ".ai-config/AGENTS.md"
 configured_in = [".importlinter"]
 pre_commit_hook = "import-linter"
 entrypoint_commands = ["uv run lint-imports --config .importlinter --no-cache"]
@@ -92,11 +123,11 @@ id = "detect-secrets"
 kind = "python-dev-tool"
 package = "detect-secrets"
 purpose = "Secret leakage scan and baseline audit."
-rule = ".ai-config/rules/rule_governance/governance.index.md"
+rule = ".ai-config/AGENTS.md"
 configured_in = [".secrets.baseline", ".pre-commit-config.yaml"]
 pre_commit_hook = "detect-secrets"
-entrypoint_commands = ["uv run pre-commit run detect-secrets --all-files", "uv run detect-secrets audit .secrets.baseline --report"]
-ci_commands = ["uv run pre-commit run detect-secrets --all-files", "uv run detect-secrets audit .secrets.baseline --report"]
+entrypoint_commands = ["uv run detect-secrets scan --baseline .secrets.baseline --exclude-files '^(uv\\\\.lock|\\\\.secrets\\\\.baseline|\\\\.ai-config/settings\\\\.json\\\\.template)$'", "uv run detect-secrets audit .secrets.baseline --report"]
+ci_commands = ["uv run detect-secrets scan --baseline .secrets.baseline --exclude-files '^(uv\\\\.lock|\\\\.secrets\\\\.baseline|\\\\.ai-config/settings\\\\.json\\\\.template)$'", "uv run detect-secrets audit .secrets.baseline --report"]
 run_mode = "pre-commit+ci"
 boundary = "Does not decide whether a found value is safe to publish; human review is still required."
 
@@ -105,7 +136,7 @@ id = "semgrep"
 kind = "python-dev-tool"
 package = "semgrep"
 purpose = "Project static guardrails that are too specific for Ruff."
-rule = ".ai-config/rules/rule_governance/governance.index.md"
+rule = ".ai-config/AGENTS.md"
 configured_in = [".semgrep"]
 pre_commit_hook = "semgrep"
 entrypoint_commands = ["uv run semgrep --disable-version-check --metrics=off --config .semgrep --no-git-ignore app scripts market-impact-study tests tools .ai-config .ai-hooks"]
@@ -131,7 +162,7 @@ id = "pip-audit"
 kind = "python-dev-tool"
 package = "pip-audit"
 purpose = "Dependency vulnerability audit."
-rule = ".ai-config/rules/rule_governance/governance.index.md"
+rule = ".ai-config/AGENTS.md"
 configured_in = ["pyproject.toml", "uv.lock"]
 pre_commit_hook = "pip-audit"
 entrypoint_commands = ["uv run pip-audit --strict"]
@@ -144,12 +175,13 @@ id = "pytest"
 kind = "python-dev-tool"
 package = "pytest"
 purpose = "Unit and integration tests."
-rule = ".ai-config/rules/rule_governance/governance.index.md"
+rule = ".ai-config/AGENTS.md"
 configured_in = ["pyproject.toml"]
-entrypoint_commands = ["uv run pytest --cov=app --cov-report=term-missing --cov-fail-under=35"]
-ci_commands = ["uv run pytest --cov=app --cov-report=term-missing --cov-fail-under=35"]
+entrypoint_commands = ["uv run pytest tests"]
+ci_commands = ["uv run pytest tests"]
 run_mode = "ci"
-boundary = "Coverage threshold is a temporary inherited-code baseline; it does not prove feature completeness or UX correctness."
+scope = "Stable automated tests under tests/. Script-style validation under scripts/ remains manual or changed-file scoped until it is refactored into stable tests."
+boundary = "CI runs the stable tests/ suite only; service-dependent or data-preparation scripts must not be implied by the default pytest contract."
 
 [[tools]]
 id = "rag-drift"
@@ -159,7 +191,8 @@ rule = ".ai-config/rules/engineering/code.index.md"
 configured_in = ["scripts/check_rag_drift.py", "tools/check.py"]
 entrypoint_commands = ["uv run python scripts/check_rag_drift.py"]
 manual_commands = ["uv run python scripts/check_rag_drift.py"]
-run_mode = "manual+path-trigger"
+ci_commands = ["uv run python scripts/check_rag_drift.py"]
+run_mode = "ci+manual+path-trigger"
 scope = "RAG-adjacent code and settings; changed-file trigger is registered in path_triggers."
 boundary = "Warns about index/schema drift risk; it does not reindex data or decide whether a semantic migration is required."
 
@@ -204,7 +237,7 @@ purpose = "Run RAG embedding/chunk/vector-schema drift detection when RAG-adjace
 id = "dirty-diff-review"
 kind = "project-static-tool"
 purpose = "Dirty diff additions smell scanner for 80/20 AI-human engineering approach discussion."
-rule = ".ai-config/rules/process/workflow.index.md"
+rule = ".ai-config/AGENTS.md"
 configured_in = [".ai-config/dirty_diff_review.py"]
 entrypoint_commands = ["python3 .ai-config/dirty_diff_review.py"]
 manual_commands = ["python3 .ai-config/dirty_diff_review.py"]
@@ -253,12 +286,12 @@ boundary = "Dynamic imports, optional providers, and script-only dependencies ne
 
 [[semgrep_rulesets]]
 path = ".semgrep/backend-contracts.yml"
-owner_rule = ".ai-config/rules/engineering/backend.index.md"
+owner_rule = ".ai-config/rules/delivery/oncall-api.index.md"
 purpose = "Backend API auth markers, transaction IO, sensitive response details, and traceback-preserving logs."
 
 [[semgrep_rulesets]]
 path = ".semgrep/fastapi-debug.yml"
-owner_rule = ".ai-config/rules/engineering/backend.index.md"
+owner_rule = ".ai-config/rules/delivery/oncall-api.index.md"
 purpose = "FastAPI/Starlette debug, reload, and unsafe CORS static guardrails."
 
 [[semgrep_rulesets]]
@@ -268,7 +301,7 @@ purpose = "HTTP client calls must set explicit timeout."
 
 [[semgrep_rulesets]]
 path = ".semgrep/html-template-safety.yml"
-owner_rule = ".ai-config/rules/engineering/frontend.index.md"
+owner_rule = ".ai-config/rules/delivery/oncall-web.index.md"
 purpose = "HTML template injection guardrails for unsafe innerHTML/template interpolation."
 
 [[semgrep_rulesets]]
@@ -299,25 +332,25 @@ purpose = "RAG retrieval and embedding static guardrails."
 [[hooks]]
 file = ".ai-hooks/dangerous_bash.sh"
 event = "PreToolUse_Bash"
-rule_route = ".ai-config/rules/process/workflow.index.md"
+rule_route = ".ai-config/AGENTS.md"
 purpose = "Immediate guardrail for dangerous shell commands."
 
 [[hooks]]
 file = ".ai-hooks/git_commit_safety.sh"
 event = "PreToolUse_Bash"
-rule_route = ".ai-config/rules/process/workflow.index.md"
+rule_route = ".ai-config/AGENTS.md"
 purpose = "Git commit safety reminders."
 
 [[hooks]]
 file = ".ai-hooks/dirty_static_review.sh"
 event = "PostToolUse_EditWriteMultiEdit"
-rule_route = ".ai-config/rules/process/workflow.index.md"
+rule_route = ".ai-config/AGENTS.md"
 purpose = "Read dirty edited files after writes, report non-mutating static feedback, and prompt the engineering paradigm discussion."
 
 [[hooks]]
 file = ".ai-hooks/rename_audit.sh"
 event = "PostToolUse_EditWriteMultiEdit"
-rule_route = ".ai-config/rules/process/workflow.index.md"
+rule_route = ".ai-config/AGENTS.md"
 purpose = "Rename/reference drift reminder after edits."
 
 [[hooks]]

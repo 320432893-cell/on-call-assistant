@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # PreToolUse hook on Bash: 拦截高风险命令
 # 退出码 2 = 阻断,把理由写到 stderr 让 AI 看到
-# 对应 process/workflow.index.md 的回滚方案 + 不确定即问
+# 对应 AGENTS.md 的高风险操作协作边界
 set -u
 
 input=$(cat)
@@ -162,7 +162,7 @@ for raw_words in command_words(command):
 
 block() {
   echo "[dangerous_bash] 阻断: $match" >&2
-  echo "[dangerous_bash] 按 process/workflow.index.md,执行高影响操作前必须说明影响、回滚或替代方案并取得用户确认" >&2
+  echo "[dangerous_bash] 按 AGENTS.md,执行高影响操作前必须说明影响、回滚或替代方案并取得用户确认" >&2
   exit 2
 }
 
