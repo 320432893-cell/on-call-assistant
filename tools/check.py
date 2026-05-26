@@ -64,6 +64,7 @@ COMMANDS: dict[str, str] = {
     "ruff-check": "uv run ruff check .",
     "ruff-format-check": "uv run ruff format --check .",
     "basedpyright": "uv run basedpyright",
+    "market-impact-basedpyright": "uv run basedpyright market-impact-study/build_management_signal_tables.py --baselinefile market-impact-study/.basedpyright-baseline.json",
     "dirty-diff-review": "python3 .ai-config/dirty_diff_review.py",
     "radon-cc": "uv run radon cc app scripts market-impact-study -s -n C",
     "radon-mi": "uv run radon mi app scripts market-impact-study -s",
@@ -293,6 +294,7 @@ def run_changed() -> int:
             run_command("changed:market-impact-tests", ["uv", "run", "pytest", "tests/test_market_impact_study.py"])
             or status
         )
+        status = run_item("market-impact-basedpyright") or status
     direct_tests = sorted(name for name in code_names if is_direct_pytest_file(name))
     if direct_tests:
         status = run_command("changed:pytest", ["uv", "run", "pytest", *direct_tests]) or status

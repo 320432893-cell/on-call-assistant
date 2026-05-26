@@ -29,7 +29,7 @@
 
 ## 当前进度
 
-截至 2026-05-25，已完成第一轮数据采集。
+截至 2026-05-26，已完成第一轮数据采集、事件/CAR 辅助底表、RAG 证据候选、中文 Top 表、数据质量校验和管理层信号台账初版。
 
 ### 已搭建脚本
 
@@ -43,6 +43,8 @@
 | `collect_akshare_sources.py` | 通过 AKShare 采集公告、研报、新闻、互动易等 |
 | `download_eastmoney_notice_pdfs.py` | 按关键词下载东方财富公告 PDF |
 | `summarize_collected_data.py` | 汇总已采集数据清单 |
+| `build_management_signal_tables.py` | 生成管理层信号台账和来源覆盖缺口 |
+| `build_rag_event_group_evidence.py` | 将候选事件级 RAG 命中增强到分析事件组和市值变化主表 |
 
 ### 已采集数据
 
@@ -79,6 +81,14 @@
 | `data/summary/collection_rollup.json` | 数据源汇总 |
 | `data/tushare_probe/` | Tushare 探测和质量快照 |
 | `data/public_source_probe/` | 公开源探测矩阵 |
+| `data/processed/top_events/` | Top 事件、竞品动作、客观市值变化和异常影响榜单 |
+| `data/processed/validation/validation_report.md` | 数据质量和 CAR 抽样复算报告 |
+| `data/processed/preview_report.html` | CFO 可视化报告静态预览初版 |
+| `data/processed/management/management_signal_ledger.csv` | 管理层/投关/卖方/公告信号台账，5557 行数据记录 |
+| `data/processed/management/management_signal_coverage_gaps.csv` | 管理层信号来源覆盖缺口，54 行来源/公司缺口记录 |
+| `data/processed/rag_event_group_evidence_enhanced.csv` | 事件组级 RAG 证据增强表，覆盖 6550 个分析事件组 |
+| `data/processed/rag_event_group_evidence_coverage.csv` | RAG 证据覆盖统计，按全局、公司、分类和公司-分类汇总 |
+| `data/processed/rag_event_group_evidence_gaps.csv` | RAG 证据缺口诊断，按优先级列出缺口原因 |
 
 ### 已确认的技术事实
 
@@ -110,11 +120,21 @@
 - [x] 竞品事件对移为的外溢底表已生成：`data/processed/peer_spillover_to_yiwei.csv`。
 - [x] RAG ingest 清单已生成：`data/processed/rag_ingest_manifest.csv`。
 - [x] 公告 PDF 文本切块已生成：`data/processed/rag_notice_chunks.jsonl`。
+- [x] 数据质量校验和 CAR 抽样复算已生成：`data/processed/validation/validation_report.md`。
+- [x] 面向 CFO 的可视化报告静态预览初版已生成：`data/processed/preview_report.html`。
+- [x] 中文字段 Top 表已生成，覆盖自身事件、竞品动作、客观市值变化、异常市值影响和 IPO 初期事件。
+- [x] 管理层信号台账已生成：`data/processed/management/management_signal_ledger.csv`。
+- [x] 管理层信号来源覆盖缺口已生成：`data/processed/management/management_signal_coverage_gaps.csv`。
+- [x] RAG 证据已增强到事件组级市值变化主表：`data/processed/rag_event_group_evidence_enhanced.csv`。
+- [x] RAG 事件组覆盖统计已生成：`data/processed/rag_event_group_evidence_coverage.csv`。
+- [x] RAG 证据缺口诊断已生成：`data/processed/rag_event_group_evidence_gaps.csv`。
 - [ ] 事件分类仍是规则初版，“其他”占比高，PPT 前需人工/LLM 辅助复核 Top 事件。
-- [ ] 面向 CFO 的数据验收页尚未生成：需要说明数据覆盖、缺失、PDF 挂接率、事件数量、CAR 抽查复核结果和口径限制。
-- [ ] 面向 CFO 的可视化报告初版尚未生成：不能停留在 Excel，需要静态 HTML/截图级页面先跑通叙事。
-- [ ] 当前输出表字段偏工程化，需生成中文字段版本和指标口径说明，方便管理层直接阅读。
+- [ ] 管理层信号台账仍是自动整合初版，需围绕管理层动作、投关表达、战略表达、卖方认知和市场反应做人工/LLM 复核。
+- [ ] RAG 覆盖率仍偏低：第一轮规则增强后，6550 个分析事件组中 756 组有 RAG 证据命中，覆盖率约 11.54%；主要缺口是近日期 chunk 不存在。
+- [ ] 第二轮 RAG 覆盖率提升要先补“文本来源覆盖”，不要继续堆匹配规则；`rag_event_group_evidence_gaps.csv` 显示 5794 个未覆盖事件组中 5472 个缺少近日期 chunks。
+- [ ] 面向 CFO 的数据验收 HTML 页尚未生成；当前已有 Markdown/CSV 校验报告，但不是管理层可直接浏览的 dashboard。
 - [ ] 报告主线需从“CAR 解释事件”调整为“客观市值变化 + 同期竞品/行业对照 + 证据链”，CAR 放到辅助列。
+- [ ] 管理层信息主线需从“有多少数据”推进到“哪些管理动作/披露方式/投关节奏与市场认知变化相关”。
 - [ ] 当前 CAR 使用剔除自身的竞品等权组合做基准，尚未加入指数基准、滚动 beta、市值加权和显著性检验。
 - [ ] 竞品外溢已排除移为上市前事件，但早期上市初期高波动仍需在报告中单独标注。
 - [ ] 事件重叠窗口尚未系统标记，分类权重只能作为候选排序和解释入口，不能直接当因果贡献。
@@ -124,29 +144,49 @@
 
 ## 下一步任务
 
-### 0. 立即任务：数据验收页和 CFO 可视化初版
+### 0. 立即任务：RAG 全量增强和事件-市值证据链
 
-- [ ] 生成数据验收页，输出建议：
+- [x] 将候选事件级 RAG 命中增强到分析事件组和市值变化主表：
+  - `data/processed/rag_event_group_evidence_enhanced.csv`
+  - `data/processed/rag_event_group_evidence_coverage.csv`
+- [x] 第一轮提升事件组 RAG 覆盖率：
+  - 方法：标题归一化、事件组多标题扩展、同公司近日期公告 chunk 规则挂接。
+  - 结果：覆盖从 666/6550 提升到 756/6550，覆盖率约 11.54%。
+  - 新增匹配方法：`direct_title_date`、`expanded_group_title`、`weak_category_date`。
+  - 缺口诊断：5794 个未覆盖事件组中，5472 个缺少近日期 chunks，说明下一步应优先扩充文档来源或 manifest 挂接。
+- [ ] 第二轮提升事件组 RAG 覆盖率：
+  - [ ] 诊断输入：
+    - 使用 `data/processed/rag_event_group_evidence_gaps.csv`，优先处理 `gap_reason=no_nearby_chunks` 且 `event_priority_score` / `objective_change_score` 高的事件组。
+    - 按公司、事件分类、年份、source_type 汇总缺口，判断是 PDF 未下载、公告正文未抽取、研报/调研未入库，还是互动问答缺源。
+  - [ ] 扩充文本来源，不改变 RAG 策略：
+    - 已有公告 PDF 继续作为强证据来源。
+    - 无 PDF 或 PDF 未下载事件，优先用东方财富公告页面/API 文本兜底。
+    - 研报先纳入标题、摘要、评级、机构和 PDF 链接；有 PDF 再抽正文。
+    - 调研/业绩说明会先纳入结构化纪要字段，保留接待对象、接待人、披露日和活动日。
+    - 互动问答先纳入问答正文和更新时间，沪市/科创板缺源单独标注。
+  - [ ] 生成第二轮 RAG 文本 manifest / chunks：
+    - 建议新增 `data/processed/rag_text_source_manifest.csv`，统一记录来源、公司、日期、标题、文本来源强度和原始链接。
+    - 建议新增或扩展 `data/processed/rag_notice_chunks.jsonl`，但必须保留 `text_source` 区分 `pdf`、`notice_api`、`research_report`、`ir_record`、`irm_qa`。
+    - 不改变 embedding、chunk 策略、索引结构；如需改变必须先讨论。
+  - [ ] 重新生成事件组证据增强表：
+    - 重跑 `build_rag_event_group_evidence.py`。
+    - 对比覆盖率、强证据占比、弱证据占比和 Top 事件覆盖率。
+    - 输出覆盖变化说明，避免只追覆盖率导致误挂。
+  - [ ] 验收标准：
+    - 优先看 Top 事件覆盖率，而不是只看全量覆盖率。
+    - 证据分级必须保留：PDF/公告原文为强证据，研报/调研/互动问答为辅助证据，弱规则命中不能直接写入结论。
+    - 抽样检查新增证据，确认不会把同公司同日无关公告误挂到事件。
+- [ ] 生成“事件-市值变化-证据链”CFO 主表：
+  - 每个事件组保留事件日期、公司、分类、标题、事件前市值、5/20/60 日客观市值变化、相对竞品变化、CAR 辅助列、RAG 证据状态和最佳证据摘要。
+  - 按客观市值变化、优先级评分和证据状态筛出 Top 正/负事件。
+  - 管理层信号复核清单只作为辅助，不作为主线。
+- [ ] 更新 CFO 预览报告：
+  - 在 `data/processed/preview_report.html` 增加管理层信号页或管理层专题区。
+  - CAR 保持辅助列，主线改成事件、客观市值变化、竞品对照和 RAG 证据链。
+- [ ] 仍需生成管理层可直接浏览的数据验收 HTML 页，输出建议：
   - `data/processed/validation/data_quality_dashboard.html`
   - `data/processed/validation/data_quality_summary.csv`
-- [ ] 数据验收页至少包含：
-  - 9 家公司行情、市值、公告、研报、调研、PDF 覆盖情况。
-  - 事件候选池、分析事件组、竞品外溢底表的行数和时间覆盖。
-  - PDF 有效率、无效 PDF 清单、缺失互动问答来源。
-  - CAR 抽查复核结果和异常市值影响单位说明。
-  - 明确写出哪些结论可用，哪些只能作为候选排序。
-- [ ] 生成 CFO 可视化报告初版，优先静态 HTML，输出建议：
-  - `reports/cfo_market_impact_preview.html`
-  - `reports/assets/`
-- [ ] CFO 可视化报告第一版页面：
-  - 市值全景：移为通信 vs 竞品上市以来总市值曲线。
-  - 阶段拆解：移为市值高点、低点、关键拐点和同期事件。
-  - 事件总览：按业绩、资本动作、管理层信号、产品创新、客户订单、风险事件、竞品动作分组。
-  - 客观变化主表：事件前市值、事件后 1/5/20/60 日市值变化、相对竞品变化、是否跑赢。
-  - CAR 辅助列：CAR、异常市值影响、状态标记，不作为主标题结论。
-  - 竞品动作页：展示竞品重大动作及市场反应，不使用“可学习”作为正式页标题。
-  - 证据链页：Top 事件对应公告/PDF/研报/调研来源链接。
-- [ ] 生成中文字段版本，至少覆盖：
+- [x] 中文字段版本已覆盖主要 Top 表，字段包括：
 
   ```text
   event_date -> 事件日期
@@ -266,8 +306,12 @@
   event_candidate_id
   ```
 
-- [ ] 将公告 PDF、研报 PDF、调研纪要纳入现有 RAG 项目。
-- [ ] 支持按事件返回原文段落和相似竞品案例。
+- [x] 将候选事件级 RAG 命中增强到分析事件组和市值变化主表：
+  - `data/processed/rag_event_group_evidence_enhanced.csv`
+  - `data/processed/rag_event_group_evidence_coverage.csv`
+  - `data/processed/rag_event_group_evidence_gaps.csv`
+- [ ] 将公告页面/API 文本、研报、调研纪要和互动问答正文纳入现有 RAG 文本来源。
+- [ ] 支持按事件返回原文段落、证据强弱等级和相似竞品案例。
 
 ### 5. 可视化报告原型
 

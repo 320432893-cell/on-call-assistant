@@ -106,6 +106,19 @@ scope = "app/ only. Current type baseline is not yet green; keep basedpyright av
 boundary = "Does not replace tests, runtime behavior checks, or script/test typing outside the configured scope."
 
 [[tools]]
+id = "market-impact-basedpyright"
+kind = "python-dev-tool"
+package = "basedpyright"
+purpose = "Type, signature, optionality, and pandas-script type regression checks for selected market-impact study scripts."
+rule = ".ai-config/AGENTS.md"
+configured_in = ["tools/check.py", "market-impact-study/.basedpyright-baseline.json"]
+entrypoint_commands = ["uv run basedpyright market-impact-study/build_management_signal_tables.py --baselinefile market-impact-study/.basedpyright-baseline.json"]
+manual_commands = ["uv run basedpyright market-impact-study/build_management_signal_tables.py --baselinefile market-impact-study/.basedpyright-baseline.json"]
+run_mode = "changed-file+manual"
+scope = "Currently covers market-impact-study/build_management_signal_tables.py with a baseline for existing pandas typing backlog."
+boundary = "Blocks newly introduced typing regressions for covered scripts; the baseline must be reduced over time and does not prove data semantics."
+
+[[tools]]
 id = "import-linter"
 kind = "python-dev-tool"
 package = "import-linter"
