@@ -90,6 +90,9 @@ manual_commands = ["uv run ruff check .", "uv run ruff format --check ."]
 run_mode = "changed-file-pre-commit+manual"
 scope = "Staged Python files are checked without autofix before commit. Full check and format remain manual until the historical backlog is green."
 boundary = "Does not decide architecture, ownership, business semantics, or user intent."
+relaxed = true
+relaxed_reason = "全量 ruff check/format 在历史代码上仍有 backlog；先用 ruff-staged 只卡新增改动，避免全量门禁淹没提交。"
+reopen_when = "历史 ruff backlog 清零后，把全量 `uv run ruff check .` / `ruff format --check .` 从 manual 升为 pre-commit+ci 阻塞。"
 
 [[tools]]
 id = "basedpyright"
@@ -104,6 +107,9 @@ manual_commands = ["uv run basedpyright"]
 run_mode = "manual-pre-commit"
 scope = "app/ only. Current type baseline is not yet green; keep basedpyright available but non-blocking until the app typing backlog is fixed."
 boundary = "Does not replace tests, runtime behavior checks, or script/test typing outside the configured scope."
+relaxed = true
+relaxed_reason = "项目中期开 blocking 会因历史 typing backlog 每次提交喷大量警示、淹没新问题；阶段策略为先跑通再精致维护。"
+reopen_when = "app/ 的 basedpyright 类型 backlog 烧绿（无残留 error）后，run_mode 转 pre-commit blocking。"
 
 [[tools]]
 id = "market-impact-basedpyright"
@@ -117,6 +123,9 @@ manual_commands = ["uv run basedpyright market-impact-study/build_management_sig
 run_mode = "changed-file+manual"
 scope = "Currently covers market-impact-study/build_management_signal_tables.py with a baseline for existing pandas typing backlog."
 boundary = "Blocks newly introduced typing regressions for covered scripts; the baseline must be reduced over time and does not prove data semantics."
+relaxed = true
+relaxed_reason = "pandas 脚本存在历史 typing backlog，用 baseline 文件冻结存量、只卡新增回归；非全量 blocking。"
+reopen_when = "baseline 逐步缩减到 0 后移除 --baselinefile，使该脚本类型检查转为全量阻塞。"
 
 [[tools]]
 id = "import-linter"
