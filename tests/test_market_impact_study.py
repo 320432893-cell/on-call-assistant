@@ -24,7 +24,12 @@ calculate_event_car = load_module("calculate_event_car", "calculate_event_car.py
 build_event_candidates = load_module("build_event_candidates", "build_event_candidates.py")
 validate_market_outputs = load_module("validate_market_outputs", "validate_market_outputs.py")
 build_management_signal_tables = load_module("build_management_signal_tables", "build_management_signal_tables.py")
+build_rag_text_source_manifest = load_module("build_rag_text_source_manifest", "build_rag_text_source_manifest.py")
+extract_rag_notice_texts = load_module("extract_rag_notice_texts", "extract_rag_notice_texts.py")
+enrich_rag_query = load_module("enrich_rag_query", "enrich_rag_query.py")
+compare_rag_chunk_experiments = load_module("compare_rag_chunk_experiments", "compare_rag_chunk_experiments.py")
 build_rag_event_group_evidence = load_module("build_rag_event_group_evidence", "build_rag_event_group_evidence.py")
+build_ml_readiness_tables = load_module("build_ml_readiness_tables", "build_ml_readiness_tables.py")
 
 
 def test_normalize_date_handles_common_public_source_formats():
@@ -183,3 +188,229 @@ def test_rag_rule_match_prefers_direct_same_day_title():
     assert match is not None
     assert match["rag_match_method"] == "direct_title_date"
     assert match["rag_match_strength"] == "strong"
+
+
+def test_rag_text_source_manifest_skips_notice_api_when_pdf_exists(tmp_path):
+    pdf_path = tmp_path / "AN202605151822350865.pdf"
+    pdf_path.write_bytes(b"%PDF-1.7")
+    events = [
+        {
+            "event_id": "event-1",
+            "company": "移为通信",
+            "symbol": "300590",
+            "event_date": "2026-05-15",
+            "source_type": "announcement",
+            "title": "投资者关系管理信息",
+            "source_url": "https://data.eastmoney.com/notices/detail/300590/AN202605151822350865.html",
+        },
+        {
+            "event_id": "event-2",
+            "company": "移为通信",
+            "symbol": "300590",
+            "event_date": "2026-05-19",
+            "source_type": "irm_qa",
+            "title": "订单是否饱满",
+            "summary": "目前在手订单饱满。",
+        },
+    ]
+    pdf_manifest = [
+        {
+            "company": "移为通信",
+            "symbol": "300590",
+            "announcement_code": "AN202605151822350865",
+            "title": "投资者关系管理信息",
+            "notice_date": "2026-05-15",
+            "source_url": "https://data.eastmoney.com/notices/detail/300590/AN202605151822350865.html",
+            "pdf_url": "https://pdf.dfcfw.com/pdf/H2_AN202605151822350865_1.pdf",
+            "local_path": str(pdf_path),
+            "status": "ok",
+        }
+    ]
+    rows, stats = build_rag_text_source_manifest.build_manifest(events, pdf_manifest)
+
+    assert stats["pdf_rows"] == 1
+    assert stats["notice_api_rows"] == 0
+    assert stats["structured_rows"] == 1
+    assert [row["text_source"] for row in rows] == ["pdf", "irm_qa"]
+    assert rows[1]["evidence_strength"] == "auxiliary"
+
+
+def test_structured_rag_chunks_preserve_source_and_strength():
+    rows = [
+        {
+            "document_id": "irm_qa:300590:event-2",
+            "company": "移为通信",
+            "symbol": "300590",
+            "source_type": "irm_qa",
+            "title": "订单是否饱满",
+            "publish_date": "2026-05-19",
+            "source_text": (
+                "标题：订单是否饱满\n摘要：目前在手订单饱满，产能能够满足业务交付需求。"
+                "传统业务领域需求保持稳健，其他市场产品反馈良好，公司可动态调整订单分配。"
+                "公司生产环节采用委外加工形式，国内外均布局生产基地，产能结构与订单规模匹配。"
+            ),
+            "text_source": "irm_qa",
+            "evidence_strength": "auxiliary",
+            "event_candidate_id": "event-2",
+        }
+    ]
+    chunks, stats = extract_rag_notice_texts.extract_chunks(rows)
+
+    assert stats["documents_structured_text"] == 1
+    assert chunks[0]["text_source"] == "irm_qa"
+    assert chunks[0]["evidence_strength"] == "auxiliary"
+    assert chunks[0]["event_candidate_id"] == "event-2"
+
+
+def test_rag_experiment_chunks_add_prefix_and_keep_metadata():
+    rows = [
+        {
+            "document_id": "irm_qa:300590:event-2",
+            "company": "移为通信",
+            "symbol": "300590",
+            "source_type": "irm_qa",
+            "title": "订单是否饱满",
+            "publish_date": "2026-05-19",
+            "source_text": (
+                "标题：订单是否饱满\n摘要：目前在手订单饱满，产能能够满足业务交付需求。"
+                "传统业务领域需求保持稳健，其他市场产品反馈良好，公司可动态调整订单分配。"
+                "公司生产环节采用委外加工形式，国内外均布局生产基地，产能结构与订单规模匹配。"
+            ),
+            "text_source": "irm_qa",
+            "evidence_strength": "auxiliary",
+            "event_candidate_id": "event-2",
+        }
+    ]
+    chunks, stats = extract_rag_notice_texts.extract_experiment_chunks(rows, max_chars=120, overlap=40)
+
+    assert stats["documents_structured_text"] == 1
+    assert len(chunks) >= 2
+    assert chunks[0]["has_prefix"] == "1"
+    assert chunks[0]["preprocess"] == "enhanced"
+    assert chunks[0]["text"].startswith("公司：移为通信")
+    assert chunks[0]["text"].count("标题：订单是否饱满") == 1
+
+
+def test_enhanced_clean_text_removes_complete_legal_boilerplate():
+    text = (
+        "本公司及董事会全体成员保证信息披露内容的真实、准确和完整，没有虚假记载、\n"
+        "误导性陈述或者重大遗漏。\n"
+        "日海智能科技股份有限公司收到深圳证券交易所问询函。"
+    )
+
+    cleaned = extract_rag_notice_texts.enhanced_clean_text(text)
+
+    assert "虚假记载" not in cleaned
+    assert "误导性陈述" not in cleaned
+    assert "重大遗漏" not in cleaned
+    assert "问询函" in cleaned
+
+
+def test_rag_query_enrichment_expands_company_intent_and_metrics():
+    result = enrich_rag_query.enrich_query("移为回购市场反应如何")
+
+    assert "移为通信" in result["companies"]
+    assert "回购" in result["intents"]
+    assert "300590" in result["expanded_query"]
+    assert "股份回购" in result["expanded_query"]
+    assert "市值变化" in result["expanded_query"]
+    assert result["filters"]["symbol"] == ["300590"]
+
+
+def test_rag_chunk_experiment_summary_reports_growth():
+    chunks = [
+        {"text": "公司：移为通信 正文：回购事项", "n_chars": 18, "document_id": "doc-1"},
+        {"text": "后续市场反应", "n_chars": 6, "document_id": "doc-1"},
+    ]
+    stats = {"input_rows": 1, "documents_with_chunks": 1, "documents_failed": 0}
+    strategy = {
+        "strategy": "enhanced_prefix_1200_240",
+        "preprocess": "enhanced",
+        "has_prefix": True,
+        "max_chars": 1200,
+        "overlap": 240,
+    }
+
+    summary = compare_rag_chunk_experiments.chunk_summary(strategy, stats, chunks)
+
+    assert summary["chunks"] == 2
+    assert summary["total_chars"] == 24
+    assert summary["chunks_per_document"] == 2
+    assert summary["has_prefix"] == "1"
+
+
+def test_rag_rule_match_marks_structured_sources_as_auxiliary():
+    event = pd.Series(
+        {
+            "analysis_group_id": "300590|2026-05-19|管理层/投关信号",
+            "event_id": "event-2",
+            "event_date": "2026-05-19",
+            "title": "订单是否饱满",
+            "group_titles_sample": "订单是否饱满",
+            "primary_category": "管理层/投关信号",
+        }
+    )
+    chunks = [
+        {
+            "title": "订单是否饱满",
+            "normalized_title": build_rag_event_group_evidence.normalize_title("订单是否饱满"),
+            "haystack": "订单是否饱满目前在手订单饱满投资者互动",
+            "publish_date": "2026-05-19",
+            "page_start": "",
+            "text": "目前在手订单饱满，产能能够满足业务交付需求。",
+            "pdf_url": "",
+            "local_path": "",
+            "date_diff_days": 0,
+            "chunk_index": 1,
+            "text_source": "irm_qa",
+        }
+    ]
+    match = build_rag_event_group_evidence.best_rule_match(chunks, event)
+
+    assert match is not None
+    assert match["rag_best_text_source"] == "irm_qa"
+    assert match["rag_best_evidence_strength"] == "auxiliary"
+    assert match["rag_match_strength"] == "auxiliary"
+
+
+def test_capital_action_subtype_avoids_false_share_repurchase():
+    assert (
+        build_ml_readiness_tables.classify_capital_action_subtype(
+            {"title": "关于以集中竞价交易方式回购公司股份的进展公告"}
+        )
+        == "股份回购"
+    )
+    assert (
+        build_ml_readiness_tables.classify_capital_action_subtype({"title": "关于控股股东进行质押式回购交易的公告"})
+        == "股权质押/解押"
+    )
+    assert (
+        build_ml_readiness_tables.classify_capital_action_subtype(
+            {"title": "关于回购注销部分限制性股票暨通知债权人的公告"}
+        )
+        == "股权激励/员工持股"
+    )
+
+
+def test_same_company_overlap_marks_short_window_contamination():
+    events = pd.DataFrame(
+        {
+            "ts_code": ["300590.SZ", "300590.SZ", "300590.SZ", "300638.SZ"],
+            "aligned_trade_date": ["2026-01-02", "2026-01-05", "2026-01-20", "2026-01-03"],
+            "pre_trade_date": ["2026-01-01", "2026-01-02", "2026-01-19", "2026-01-02"],
+            "end_trade_date_m1_p1": ["2026-01-05", "2026-01-06", "2026-01-21", "2026-01-04"],
+            "end_trade_date_p0_p5": ["2026-01-09", "2026-01-12", "2026-01-27", "2026-01-10"],
+            "end_trade_date_p0_p20": ["2026-02-01", "2026-02-04", "2026-02-19", "2026-02-03"],
+            "end_trade_date_p0_p60": ["2026-04-01", "2026-04-04", "2026-04-19", "2026-04-03"],
+            "primary_category": ["资本动作", "业绩信号", "风险事件", "资本动作"],
+            "title": ["回购公告", "业绩预告", "风险提示", "定增公告"],
+        }
+    )
+
+    result = build_ml_readiness_tables.add_same_company_overlap(events)
+
+    assert result.loc[0, "overlap_event_count_p0_p5"] == 1
+    assert result.loc[0, "overlap_categories_p0_p5"] == "业绩信号"
+    assert not result.loc[0, "is_overlap_clean_p0_p5"]
+    assert result.loc[2, "overlap_event_count_p0_p5"] == 0
+    assert result.loc[2, "is_overlap_clean_p0_p5"]

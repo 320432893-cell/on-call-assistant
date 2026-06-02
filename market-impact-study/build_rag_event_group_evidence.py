@@ -88,6 +88,8 @@ RAG_OUTPUT_FIELDS = [
     "rag_best_date_diff_days",
     "rag_best_publish_date",
     "rag_best_title",
+    "rag_best_text_source",
+    "rag_best_evidence_strength",
     "rag_best_pdf_url",
     "rag_best_local_path",
     "rag_best_page_start",
@@ -105,6 +107,9 @@ COVERAGE_FIELDS = [
     "event_group_without_rag",
     "rag_coverage_rate",
     "rag_evidence_hit_count",
+    "strong_evidence_group_count",
+    "auxiliary_evidence_group_count",
+    "weak_evidence_group_count",
 ]
 GAP_FIELDS = [
     "analysis_group_id",
@@ -239,6 +244,12 @@ def candidate_chunks(
 def chunk_to_rag_row(chunk: dict[str, object], event: pd.Series, *, method: str, score: float) -> dict[str, object]:
     page = chunk.get("page_start", "")
     snippet = " ".join(str(chunk.get("text", "")).split())[:220]
+    text_source = str(chunk.get("text_source", ""))
+    evidence_strength = "strong" if text_source in {"pdf", "notice_api"} else "auxiliary"
+    if method == "weak_category_date":
+        evidence_strength = "weak"
+    if not text_source and method in {"direct_title_date", "expanded_group_title"}:
+        evidence_strength = "strong"
     return {
         "analysis_group_id": event.get("analysis_group_id", ""),
         "rag_event_count": 1,
@@ -247,13 +258,15 @@ def chunk_to_rag_row(chunk: dict[str, object], event: pd.Series, *, method: str,
         "rag_best_date_diff_days": chunk.get("date_diff_days", ""),
         "rag_best_publish_date": chunk.get("publish_date", ""),
         "rag_best_title": chunk.get("title", ""),
+        "rag_best_text_source": text_source,
+        "rag_best_evidence_strength": evidence_strength,
         "rag_best_pdf_url": chunk.get("pdf_url", ""),
         "rag_best_local_path": chunk.get("local_path", ""),
         "rag_best_page_start": page,
         "rag_evidence_refs": f"{chunk.get('publish_date', '')}《{chunk.get('title', '')}》p{page}: {snippet}",
         "rag_matched_event_ids": event.get("event_id", ""),
         "rag_match_method": method,
-        "rag_match_strength": "strong" if method in {"existing_summary", "direct_title_date"} else "weak",
+        "rag_match_strength": evidence_strength,
     }
 
 
@@ -322,6 +335,8 @@ def load_grouped_rag(candidates_path: Path, rag_summary_path: Path) -> pd.DataFr
                 "rag_best_date_diff_days": best.get("best_date_diff_days", ""),
                 "rag_best_publish_date": best.get("best_publish_date", ""),
                 "rag_best_title": best.get("best_title", ""),
+                "rag_best_text_source": "",
+                "rag_best_evidence_strength": "strong",
                 "rag_best_pdf_url": best.get("best_pdf_url", ""),
                 "rag_best_local_path": best.get("best_local_path", ""),
                 "rag_best_page_start": best.get("best_page_start", ""),
@@ -383,6 +398,11 @@ def build_enhanced_table(
 
 def build_coverage(enhanced: pd.DataFrame) -> pd.DataFrame:
     rows: list[dict[str, object]] = []
+    if "rag_best_evidence_strength" not in enhanced.columns:
+        enhanced = enhanced.copy()
+        enhanced["rag_best_evidence_strength"] = enhanced["rag_evidence_hit_count"].map(
+            lambda value: "strong" if float(value or 0) > 0 else ""
+        )
     dimensions = [
         ("overall", []),
         ("company", ["company"]),
@@ -404,6 +424,9 @@ def build_coverage(enhanced: pd.DataFrame) -> pd.DataFrame:
                 "event_group_without_rag": total - with_rag,
                 "rag_coverage_rate": round(with_rag / total, 6) if total else 0,
                 "rag_evidence_hit_count": int(numeric(group["rag_evidence_hit_count"]).fillna(0).sum()),
+                "strong_evidence_group_count": int((group["rag_best_evidence_strength"] == "strong").sum()),
+                "auxiliary_evidence_group_count": int((group["rag_best_evidence_strength"] == "auxiliary").sum()),
+                "weak_evidence_group_count": int((group["rag_best_evidence_strength"] == "weak").sum()),
             }
             row.update(dict(zip(columns, key_values, strict=False)))
             rows.append(row)

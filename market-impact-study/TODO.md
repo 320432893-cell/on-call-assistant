@@ -44,7 +44,10 @@
 | `download_eastmoney_notice_pdfs.py` | 按关键词下载东方财富公告 PDF |
 | `summarize_collected_data.py` | 汇总已采集数据清单 |
 | `build_management_signal_tables.py` | 生成管理层信号台账和来源覆盖缺口 |
+| `build_rag_text_source_manifest.py` | 生成第二轮统一 RAG 文本来源清单，区分 PDF、公告 API、研报、调研、互动问答和新闻 |
+| `compare_rag_chunk_experiments.py` | 对比 RAG 预处理、前缀和滑动窗口实验组合的 chunk 体积和样本文本 |
 | `build_rag_event_group_evidence.py` | 将候选事件级 RAG 命中增强到分析事件组和市值变化主表 |
+| `build_ml_readiness_tables.py` | 生成统计/ML 建模准入诊断表，检查事件重叠、资本动作子类样本量和竞品外溢污染 |
 
 ### 已采集数据
 
@@ -89,6 +92,12 @@
 | `data/processed/rag_event_group_evidence_enhanced.csv` | 事件组级 RAG 证据增强表，覆盖 6550 个分析事件组 |
 | `data/processed/rag_event_group_evidence_coverage.csv` | RAG 证据覆盖统计，按全局、公司、分类和公司-分类汇总 |
 | `data/processed/rag_event_group_evidence_gaps.csv` | RAG 证据缺口诊断，按优先级列出缺口原因 |
+| `data/processed/rag_text_source_manifest.csv` | 第二轮统一 RAG 文本来源清单，14406 条，含 697 条 PDF、12757 条公告 API 候选和 952 条结构化辅助来源 |
+| `data/processed/rag_chunk_experiment_summary.csv` | RAG 预处理实验对比汇总，记录不同清洗/前缀/窗口组合的 chunk 数、字符数和膨胀比例 |
+| `data/processed/rag_chunk_experiment_samples.csv` | RAG 预处理实验样本文本，便于人工检查前缀和清洗是否误伤 |
+| `data/processed/ml_readiness/ml_readiness_summary.md` | 统计/ML 建模准入诊断摘要，记录资本动作子类、短窗干净样本和竞品外溢重叠污染 |
+| `data/processed/ml_readiness/capital_action_subtype_counts.csv` | 资本动作子类样本量、公司覆盖、短窗干净样本和建模准入标签 |
+| `data/processed/ml_readiness/event_overlap_summary.csv` | 事件重叠窗口汇总，覆盖全事件、CAR 成功事件、资本动作、移为自身和竞品外溢 |
 
 ### 已确认的技术事实
 
@@ -130,14 +139,15 @@
 - [x] RAG 证据缺口诊断已生成：`data/processed/rag_event_group_evidence_gaps.csv`。
 - [ ] 事件分类仍是规则初版，“其他”占比高，PPT 前需人工/LLM 辅助复核 Top 事件。
 - [ ] 管理层信号台账仍是自动整合初版，需围绕管理层动作、投关表达、战略表达、卖方认知和市场反应做人工/LLM 复核。
-- [ ] RAG 覆盖率仍偏低：第一轮规则增强后，6550 个分析事件组中 756 组有 RAG 证据命中，覆盖率约 11.54%；主要缺口是近日期 chunk 不存在。
-- [ ] 第二轮 RAG 覆盖率提升要先补“文本来源覆盖”，不要继续堆匹配规则；`rag_event_group_evidence_gaps.csv` 显示 5794 个未覆盖事件组中 5472 个缺少近日期 chunks。
+- [ ] RAG 覆盖率仍偏低：第二轮结构化文本来源补入后，6550 个分析事件组中 1167 组有 RAG 证据命中，覆盖率约 17.82%；Top 优先级事件覆盖仍低，主要缺口是公告 API 候选尚未分批抓取正文。
+- [ ] 第二轮 RAG 覆盖率提升要继续补“文本来源覆盖”，不要继续堆匹配规则；当前 `rag_text_source_manifest.csv` 已生成 12757 条 `notice_api` 候选，但为避免上万次网络请求，尚未全量抓取公告页面/API 正文。
 - [ ] 面向 CFO 的数据验收 HTML 页尚未生成；当前已有 Markdown/CSV 校验报告，但不是管理层可直接浏览的 dashboard。
 - [ ] 报告主线需从“CAR 解释事件”调整为“客观市值变化 + 同期竞品/行业对照 + 证据链”，CAR 放到辅助列。
 - [ ] 管理层信息主线需从“有多少数据”推进到“哪些管理动作/披露方式/投关节奏与市场认知变化相关”。
 - [ ] 当前 CAR 使用剔除自身的竞品等权组合做基准，尚未加入指数基准、滚动 beta、市值加权和显著性检验。
 - [ ] 竞品外溢已排除移为上市前事件，但早期上市初期高波动仍需在报告中单独标注。
-- [ ] 事件重叠窗口尚未系统标记，分类权重只能作为候选排序和解释入口，不能直接当因果贡献。
+- [x] 事件重叠窗口首轮诊断已生成：`data/processed/ml_readiness/event_overlap_summary.csv`。
+- [ ] 事件重叠污染很高，分类权重只能作为候选排序和解释入口，不能直接当因果贡献；下一步需重做事件簇合并/剔除规则后再建模。
 - [ ] 沪市/科创板互动问答数据不完整：移远通信、有方科技在 `cninfo_irm_questions` 采集失败，后续需用上证 e 互动或其他源补。
 - [ ] 新浪评级接口全部失败，暂不作为主数据源；东方财富研报已足够支撑第一版。
 - [ ] 23 条无效公告 PDF 可后续用 Playwright 或页面正文兜底，不阻塞主流程。
@@ -159,19 +169,19 @@
     - 使用 `data/processed/rag_event_group_evidence_gaps.csv`，优先处理 `gap_reason=no_nearby_chunks` 且 `event_priority_score` / `objective_change_score` 高的事件组。
     - 按公司、事件分类、年份、source_type 汇总缺口，判断是 PDF 未下载、公告正文未抽取、研报/调研未入库，还是互动问答缺源。
   - [ ] 扩充文本来源，不改变 RAG 策略：
-    - 已有公告 PDF 继续作为强证据来源。
-    - 无 PDF 或 PDF 未下载事件，优先用东方财富公告页面/API 文本兜底。
-    - 研报先纳入标题、摘要、评级、机构和 PDF 链接；有 PDF 再抽正文。
-    - 调研/业绩说明会先纳入结构化纪要字段，保留接待对象、接待人、披露日和活动日。
-    - 互动问答先纳入问答正文和更新时间，沪市/科创板缺源单独标注。
+    - [x] 已有公告 PDF 继续作为强证据来源。
+    - [ ] 无 PDF 或 PDF 未下载事件，优先用东方财富公告页面/API 文本兜底；已生成 `notice_api` 候选，尚未全量抓取正文。
+    - [x] 研报先纳入标题、摘要、评级、机构和 PDF 链接；有 PDF 再抽正文。
+    - [x] 调研/业绩说明会先纳入结构化纪要字段，保留接待对象、接待人、披露日和活动日。
+    - [x] 互动问答先纳入问答正文和更新时间，沪市/科创板缺源单独标注。
   - [ ] 生成第二轮 RAG 文本 manifest / chunks：
-    - 建议新增 `data/processed/rag_text_source_manifest.csv`，统一记录来源、公司、日期、标题、文本来源强度和原始链接。
-    - 建议新增或扩展 `data/processed/rag_notice_chunks.jsonl`，但必须保留 `text_source` 区分 `pdf`、`notice_api`、`research_report`、`ir_record`、`irm_qa`。
-    - 不改变 embedding、chunk 策略、索引结构；如需改变必须先讨论。
-  - [ ] 重新生成事件组证据增强表：
-    - 重跑 `build_rag_event_group_evidence.py`。
-    - 对比覆盖率、强证据占比、弱证据占比和 Top 事件覆盖率。
-    - 输出覆盖变化说明，避免只追覆盖率导致误挂。
+    - [x] 新增 `data/processed/rag_text_source_manifest.csv`，统一记录来源、公司、日期、标题、文本来源强度和原始链接。
+    - [x] 扩展 `data/processed/rag_notice_chunks.jsonl`，保留 `text_source` 区分 `pdf`、`notice_api`、`research_report`、`ir_record`、`irm_qa`、`news`。
+    - [x] 不改变 embedding、chunk 策略、索引结构。
+  - [x] 重新生成事件组证据增强表：
+    - 已重跑 `build_rag_event_group_evidence.py`。
+    - 覆盖率从 756/6550（约 11.54%）提升到 1167/6550（约 17.82%）；其中强证据 717 组、辅助证据 419 组、弱证据 31 组。
+    - Top 优先级覆盖仍低：Top50 为 0/50、Top100 为 2/100、Top200 为 17/200，下一步应按缺口分批抓公告 API 正文。
   - [ ] 验收标准：
     - 优先看 Top 事件覆盖率，而不是只看全量覆盖率。
     - 证据分级必须保留：PDF/公告原文为强证据，研报/调研/互动问答为辅助证据，弱规则命中不能直接写入结论。
@@ -267,6 +277,8 @@
 
 - [x] 标记上市前事件、行情未覆盖事件、IPO/上市流程事件、交易异常波动事件。
 - [ ] 标记事件重叠窗口，避免过度归因。
+  - [x] 首轮诊断已完成：`build_ml_readiness_tables.py` 输出 `data/processed/ml_readiness/`。
+  - [ ] 下一步需要把诊断结果反向用于事件组重构：同公司连续公告、重组进展、股权激励解锁/注销、分红流程等应合并为事件簇或降级为描述。
 
 ### 3. 生成事件优先级评分
 
@@ -310,11 +322,17 @@
   - `data/processed/rag_event_group_evidence_enhanced.csv`
   - `data/processed/rag_event_group_evidence_coverage.csv`
   - `data/processed/rag_event_group_evidence_gaps.csv`
-- [ ] 将公告页面/API 文本、研报、调研纪要和互动问答正文纳入现有 RAG 文本来源。
+- [ ] 将公告页面/API 文本、研报、调研纪要和互动问答正文纳入现有 RAG 文本来源；研报/调研/互动问答/新闻结构化文本已纳入，公告 API 正文待分批抓取。
+- [x] 新增 RAG 预处理实验开关：增强清洗、元信息前缀和滑动窗口参数已接入 `extract_rag_notice_texts.py --experiment`，默认主流程不变，召回和排序暂不调整。
+- [x] 新增用户 query 补全实验工具：`enrich_rag_query.py` 可补全公司别名/代码、事件意图词和市场反应指标词，尚未接入召回和排序。
+- [x] 新增 RAG chunk 实验对比：`compare_rag_chunk_experiments.py --limit 120` 已生成对比表；增强清洗单独使用可让 chunks 从 1454 降至 1428，前缀+1400/240 窗口增至 1720，前缀+1200/240 增至 1908，前缀+1000/300 增至 2251。
+- [x] RAG 预处理样本问题已修：增强清洗已去除免责声明残留，前缀模式下结构化文本不再重复 `标题：...`。
+- [ ] RAG 暂停深入调试：RAG 是项目辅助证据层，不作为下一阶段主线；后续只在需要证据覆盖时按 Top 缺口分批补公告 API 正文，不继续调召回和排序。
 - [ ] 支持按事件返回原文段落、证据强弱等级和相似竞品案例。
 
 ### 5. 可视化报告原型
 
+- [ ] 下一阶段主线转向报告和管理层可读交付，优先生成“事件-市值变化-证据链”CFO 主表和数据验收 HTML dashboard。
 - [ ] 市值全景页：移为通信 vs 竞品市值曲线和关键事件标注。
 - [ ] 事件影响权重页：各类事件贡献、正负贡献、持续性。
 - [ ] 竞品动作外溢页：
@@ -380,12 +398,17 @@
 
 - 同公司事件时间聚集会污染 CAR 归因（本文件"当前缺口"已标）。
 - B 章尤其关键：测竞品事件对移为的反应时，**必须排除移为同期也有自身事件的窗口**，否则量到的是移为自己的事件而非外溢。
+- 首轮 ML 准入诊断已生成：`data/processed/ml_readiness/ml_readiness_summary.md`。
+  - 全事件组 [0,+5] 重叠率约 85.68%；资本动作 [0,+5] 重叠率约 88.04%。
+  - 资本动作 1630 组中，CAR 成功且 [0,+5] 无同公司重叠的只有 195 组。
+  - 竞品外溢 OK 事件 4596 组中，排除移为自身 [0,+5] 同窗事件后只剩 747 组。
+  - 结论：当前不适合直接进入面板回归；最麻烦的主线工作是先重构事件簇和入选剔除标准。
 
 ### Step0 进度与待拍板（下次续起点）
 
-研究设计骨架（路线乙 / 双章 / 双窗 / 三命门 / 七步）已定且已落本节。**Step0 = 把问题逼成可证伪句子，尚未定稿**；下次从以下三个未拍板点续起，三点定了才进 Step1，避免下游返工：
+研究设计骨架（路线乙 / 双章 / 双窗 / 三命门 / 七步）已定且已落本节。**Step0 = 把问题逼成可证伪句子，尚未定稿**；首轮 ML 准入诊断已经证实重叠污染是当前最大障碍。下次从以下三个未拍板点续起，三点定了才进 Step1，避免下游返工：
 
-- **问题是否按数据预算分层**（主要矛盾）：独立单位只有 9 家公司，子类切太细 → wild cluster bootstrap 区间必跨 0，承诺的精度不能超过数据能兑现的精度。待拍板：A 章是否只对 N 最厚、经济含义最清楚的 2-3 类资本动作下因果断言（候选未定：回购 / 定增 / 股权激励），稀疏类（分拆 / 资产注入 / 重组）降级为只描述不下因果。每类确切落几家公司须等 Step1 重分类后才知。
+- **问题是否按数据预算分层**（主要矛盾）：独立单位只有 9 家公司，子类切太细 → wild cluster bootstrap 区间必跨 0，承诺的精度不能超过数据能兑现的精度。首轮规则子类下没有任何资本动作达到“主力估计候选”；股东增减持/限售流通、股权质押/解押、股权激励/员工持股、股份回购、分红/权益分派暂只能做描述+谨慎估计。待拍板：先做事件簇重构后再判断 2-3 类能否下因果断言，还是本阶段统计/ML 全部降级为描述性支持。
 - **头条因果窗口**：取干净的 [0,+5]，还是改 [-1,+5] 吃掉 A 股公告前消息泄漏（定增 / 并购尤甚）。已算窗口含 CAR[-1,+1]，可先用它佐证泄漏幅度再定。
 - **头条异常收益基准**：用 peer-adjusted（剔同行同期，对齐「竞品对标」本意、CFO 易懂）当主口径、市场模型 / 滚动 beta / 市值加权留 Step6 稳健性；还是反过来。
 
