@@ -58,11 +58,11 @@ flowchart TD
 
 当前状态：`import-linter` 是阻塞检查；`Ruff` 会默认检查本次 staged Python 文件，全量 Ruff 和格式检查仍是手动基线；`basedpyright` 已接入但历史基线未清零，暂时只作为手动基线工具运行，避免提交和 CI 被已知 backlog 持续阻塞。`market-impact-study` 已纳入编译、Ruff、Semgrep、radon、vulture 和项目数据校验命令；其中数据校验依赖本地采集文件，默认手动运行。
 
-80/20 脏代码体检：`.ai-config/dirty_diff_review.py` 只看本次新增行；`radon` 看复杂度，`vulture` 看疑似死代码，`deptry` 看依赖脏账。它们用来触发人机讨论，不直接决定重构或删除。
+80/20 脏代码体检：`.ai-config/tools/dirty_diff_review.py` 只看本次新增行；`radon` 看复杂度，`vulture` 看疑似死代码，`deptry` 看依赖脏账。它们用来触发人机讨论，不直接决定重构或删除。
 
 你只需要问：这是机械问题，还是会改变业务行为？
 
-自动发现入口：`python3 tools/check.py changed` 会读取 staged、unstaged 和 untracked 变更，代码文件自动运行编译、Ruff、格式检查、Semgrep、相关测试和登记过的路径触发检查；规则、工具链、hook、CI 配置变化会强制跑工具契约或 hook 回归测试。`python3 tools/check.py coverage-audit` 会发现新 Python 代码目录是否漏接统一质量门。特殊检查通过 `.ai-config/tooling.registry.toml` 的 `path_triggers` 登记。
+自动发现入口：`python3 tools/check.py changed` 会读取 staged、unstaged 和 untracked 变更，代码文件自动运行编译、Ruff、格式检查、Semgrep、相关测试和登记过的路径触发检查；规则、工具链、hook、CI 配置变化会强制跑工具契约或 hook 回归测试。`python3 tools/check.py coverage-audit` 会发现新 Python 代码目录是否漏接统一质量门。特殊检查通过 `.ai-config/config/tooling.registry.toml` 的 `path_triggers` 登记。
 
 ### 2. 看起来像安全问题
 
@@ -112,9 +112,9 @@ flowchart TD
 
 ## 给 AI 维护时看的文件
 
-- `.ai-config/tooling.registry.toml`：机器登记表。
+- `.ai-config/config/tooling.registry.toml`：机器登记表。
 - `tools/check.py`：统一检查入口。
-- `.ai-config/check_rule_tool_contracts.py`：自动检查脚本。
+- `.ai-config/tools/check_rule_tool_contracts.py`：自动检查脚本。
 - `.ai-hooks/manifest.json`：hook 注册源。
 - `.pre-commit-config.yaml`：本地提交前检查。
 - `.github/workflows/ci.yml`：CI 检查。

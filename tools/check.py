@@ -14,7 +14,7 @@ import tomllib
 from collections.abc import Sequence
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-REGISTRY = ROOT / ".ai-config" / "tooling.registry.toml"
+REGISTRY = ROOT / ".ai-config" / "config" / "tooling.registry.toml"
 LOCAL_UV_CACHE = ROOT / ".uv-cache"
 LOCAL_HOME = ROOT / ".cache" / "home"
 FIXED_QUALITY_CODE_DIRS = {"app", "scripts", "market-impact-study"}
@@ -51,13 +51,15 @@ COMMANDS: dict[str, str] = {
     "coverage-audit": "python3 tools/check.py coverage-audit",
     "changed": "python3 tools/check.py changed",
     "import-linter": "uv run lint-imports --config .importlinter --no-cache",
-    "rule-tool-contracts": "uv run python .ai-config/check_rule_tool_contracts.py",
+    "rule-tool-contracts": "uv run python .ai-config/tools/check_rule_tool_contracts.py",
     "semgrep": "uv run semgrep --disable-version-check --metrics=off --config .semgrep --no-git-ignore app scripts market-impact-study tests tools .ai-config .ai-hooks",
     "dependency-change-approval": "python3 tools/check.py dependency-change-approval",
     "pip-audit": "uv run pip-audit --strict",
     "rag-drift": "uv run python scripts/check_rag_drift.py",
     "market-impact-validation": "uv run python market-impact-study/validate_market_outputs.py",
-    "detect-secrets-scan": "uv run detect-secrets scan --baseline .secrets.baseline --exclude-files '^(uv\\.lock|\\.secrets\\.baseline|\\.ai-config/settings\\.json\\.template)$'",
+    "delivery-evidence": "python3 .ai-config/tools/check_delivery_evidence.py",
+    "delivery-evidence-optional": "python3 .ai-config/tools/check_delivery_evidence.py --optional",
+    "detect-secrets-scan": "uv run detect-secrets scan --baseline .secrets.baseline --exclude-files '^(uv\\.lock|\\.secrets\\.baseline|\\.ai-config/config/settings\\.json\\.template)$'",
     "detect-secrets-audit": "uv run detect-secrets audit .secrets.baseline --report",
     "pytest": "uv run pytest tests",
     "ruff-staged": "uv run ruff check --no-fix --force-exclude",
@@ -65,7 +67,7 @@ COMMANDS: dict[str, str] = {
     "ruff-format-check": "uv run ruff format --check .",
     "basedpyright": "uv run basedpyright",
     "market-impact-basedpyright": "uv run basedpyright market-impact-study/build_management_signal_tables.py --baselinefile market-impact-study/.basedpyright-baseline.json",
-    "dirty-diff-review": "python3 .ai-config/dirty_diff_review.py",
+    "dirty-diff-review": "python3 .ai-config/tools/dirty_diff_review.py",
     "radon-cc": "uv run radon cc app scripts market-impact-study -s -n C",
     "radon-mi": "uv run radon mi app scripts market-impact-study -s",
     "vulture": "uv run vulture app scripts market-impact-study --min-confidence 80",
@@ -81,6 +83,7 @@ HOOK_TESTS = [
 
 PROFILES: dict[str, list[str]] = {
     "quick": ["coverage-audit", "python-compile", "import-linter", "rule-tool-contracts", "ruff-staged", "semgrep"],
+    "completion": ["rule-tool-contracts", "delivery-evidence-optional"],
     "manual": ["ruff-check", "ruff-format-check", "basedpyright", "pip-audit"],
     "deep": ["radon-cc", "radon-mi", "vulture", "deptry"],
     "ci": [

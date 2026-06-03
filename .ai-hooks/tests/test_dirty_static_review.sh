@@ -50,7 +50,7 @@ PY
 }
 
 repo="$TMP_ROOT/repo"
-mkdir -p "$repo/bin" "$repo/.ai-config"
+mkdir -p "$repo/bin" "$repo/.ai-config/tools"
 git init -q "$repo"
 
 cat > "$repo/bin/ruff" <<'SH'
@@ -61,7 +61,7 @@ exit 1
 SH
 chmod +x "$repo/bin/ruff"
 
-cat > "$repo/.ai-config/dirty_diff_review.py" <<'PY'
+cat > "$repo/.ai-config/tools/dirty_diff_review.py" <<'PY'
 #!/usr/bin/env python3
 import sys
 print("[dirty_diff] fake diff smell", file=sys.stderr)

@@ -1,0 +1,5 @@
+[[files]]
+path = "TODO: changed/file/path"
+conclusion = "有限通过"
+uncovered_risk = "TODO or N/A + reason"
+evidence = "TODO: reviewer, diff location, test, or reasoning artifact"

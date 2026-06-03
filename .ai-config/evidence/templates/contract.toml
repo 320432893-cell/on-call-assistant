@@ -1,0 +1,62 @@
+[[slots]]
+id = "1"
+name = "交付形态 + 验收动作"
+status = "answered"
+answer = "TODO"
+na_reason = ""
+
+[[slots]]
+id = "2"
+name = "不做什么"
+status = "answered"
+answer = "TODO"
+na_reason = ""
+
+[[slots]]
+id = "3"
+name = "业务口径/语义"
+status = "answered"
+answer = "TODO"
+na_reason = ""
+
+[[slots]]
+id = "4"
+name = "数据契约 = schema + SSOT"
+status = "answered"
+answer = "TODO"
+na_reason = ""
+
+[[slots]]
+id = "5"
+name = "状态契约 = 状态 + 合法转移"
+status = "answered"
+answer = "TODO"
+na_reason = ""
+
+[[slots]]
+id = "6"
+name = "入口边界"
+status = "answered"
+answer = "TODO"
+na_reason = ""
+
+[[slots]]
+id = "7"
+name = "产出 + oracle"
+status = "answered"
+answer = "TODO"
+na_reason = ""
+
+[[slots]]
+id = "8"
+name = "出口 + 回退"
+status = "answered"
+answer = "TODO"
+na_reason = ""
+
+[[slots]]
+id = "9"
+name = "本项目独有的不可逆"
+status = "answered"
+answer = "TODO"
+na_reason = ""

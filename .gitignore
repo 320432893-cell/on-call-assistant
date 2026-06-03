@@ -42,7 +42,7 @@ prompt/screenshot_*.png
 .codex/
 
 # AI 共享配置中含 token 的实文件不入仓，只入 template
-.ai-config/settings.json
+.ai-config/config/settings.json
 
 # 测试 / 缓存
 .cache/

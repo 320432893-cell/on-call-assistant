@@ -1,12 +1,12 @@
 # Tooling contract registry.
 # Human use: read this file to see which tool owns which mechanical check.
-# AI/CI use: .ai-config/check_rule_tool_contracts.py verifies these contracts.
+# AI/CI use: .ai-config/tools/check_rule_tool_contracts.py verifies these contracts.
 
 [metadata]
 version = 1
 owner_rule = ".ai-config/AGENTS.md"
 human_doc = "docs/TOOLING_CONTRACTS.md"
-checker = ".ai-config/check_rule_tool_contracts.py"
+checker = ".ai-config/tools/check_rule_tool_contracts.py"
 unified_entrypoint = "tools/check.py"
 
 [[tools]]
@@ -45,10 +45,10 @@ id = "rule-tool-contracts"
 kind = "project-static-tool"
 purpose = "Validate AI rules, tool registry, hooks, static rules, CI, and pre-commit wiring contracts."
 rule = ".ai-config/AGENTS.md"
-configured_in = [".ai-config/check_rule_tool_contracts.py", ".ai-config/tooling.registry.toml", "tools/check.py"]
+configured_in = [".ai-config/tools/check_rule_tool_contracts.py", ".ai-config/config/tooling.registry.toml", "tools/check.py"]
 pre_commit_hook = "rule-tool-contracts"
-entrypoint_commands = ["uv run python .ai-config/check_rule_tool_contracts.py"]
-ci_commands = ["uv run python .ai-config/check_rule_tool_contracts.py"]
+entrypoint_commands = ["uv run python .ai-config/tools/check_rule_tool_contracts.py"]
+ci_commands = ["uv run python .ai-config/tools/check_rule_tool_contracts.py"]
 run_mode = "pre-commit+ci+manual"
 scope = "AI rule files, tool registry, hook manifest/tests, Semgrep rulesets, CI, pre-commit trigger regex, and deleted-rule stale references."
 boundary = "Mechanical contract validation only; it does not decide whether a rule or tool policy is desirable."
@@ -148,8 +148,8 @@ purpose = "Secret leakage scan and baseline audit."
 rule = ".ai-config/AGENTS.md"
 configured_in = [".secrets.baseline", ".pre-commit-config.yaml"]
 pre_commit_hook = "detect-secrets"
-entrypoint_commands = ["uv run detect-secrets scan --baseline .secrets.baseline --exclude-files '^(uv\\\\.lock|\\\\.secrets\\\\.baseline|\\\\.ai-config/settings\\\\.json\\\\.template)$'", "uv run detect-secrets audit .secrets.baseline --report"]
-ci_commands = ["uv run detect-secrets scan --baseline .secrets.baseline --exclude-files '^(uv\\\\.lock|\\\\.secrets\\\\.baseline|\\\\.ai-config/settings\\\\.json\\\\.template)$'", "uv run detect-secrets audit .secrets.baseline --report"]
+entrypoint_commands = ["uv run detect-secrets scan --baseline .secrets.baseline --exclude-files '^(uv\\\\.lock|\\\\.secrets\\\\.baseline|\\\\.ai-config/config/settings\\\\.json\\\\.template)$'", "uv run detect-secrets audit .secrets.baseline --report"]
+ci_commands = ["uv run detect-secrets scan --baseline .secrets.baseline --exclude-files '^(uv\\\\.lock|\\\\.secrets\\\\.baseline|\\\\.ai-config/config/settings\\\\.json\\\\.template)$'", "uv run detect-secrets audit .secrets.baseline --report"]
 run_mode = "pre-commit+ci"
 boundary = "Does not decide whether a found value is safe to publish; human review is still required."
 
@@ -222,7 +222,7 @@ boundary = "Warns about index/schema drift risk; it does not reindex data or dec
 id = "market-impact-validation"
 kind = "project-static-tool"
 purpose = "Rebuild-independent data quality and CAR spot checks for the market-impact study outputs."
-rule = ".ai-config/rules/delivery/data.index.md"
+rule = ".ai-config/rules/process/modes.index.md"
 configured_in = ["market-impact-study/validate_market_outputs.py", "tools/check.py"]
 entrypoint_commands = ["uv run python market-impact-study/validate_market_outputs.py"]
 manual_commands = ["uv run python market-impact-study/validate_market_outputs.py"]
@@ -260,12 +260,24 @@ id = "dirty-diff-review"
 kind = "project-static-tool"
 purpose = "Dirty diff additions smell scanner for 80/20 AI-human engineering approach discussion."
 rule = ".ai-config/AGENTS.md"
-configured_in = [".ai-config/dirty_diff_review.py"]
-entrypoint_commands = ["python3 .ai-config/dirty_diff_review.py"]
-manual_commands = ["python3 .ai-config/dirty_diff_review.py"]
+configured_in = [".ai-config/tools/dirty_diff_review.py"]
+entrypoint_commands = ["python3 .ai-config/tools/dirty_diff_review.py"]
+manual_commands = ["python3 .ai-config/tools/dirty_diff_review.py"]
 run_mode = "post-edit-hook+manual"
 scope = "Reads current git diff additions and reports high-ROI smells without modifying files."
 boundary = "Heuristic discussion trigger only; not a blocker and not a refactoring decision engine."
+
+[[tools]]
+id = "delivery-evidence"
+kind = "project-static-tool"
+purpose = "Validate AI delivery evidence packs against the current git diff to catch stale reports, missing evidence, trigger omissions, and uncovered changed files."
+rule = ".ai-config/AGENTS.md"
+configured_in = [".ai-config/tools/check_delivery_evidence.py", ".ai-config/evidence/templates", "tools/check.py"]
+entrypoint_commands = ["python3 .ai-config/tools/check_delivery_evidence.py"]
+manual_commands = ["python3 .ai-config/tools/check_delivery_evidence.py"]
+run_mode = "manual-completion-gate"
+scope = "Evidence pack under .ai-evidence/current plus current tracked, staged, and untracked git diff excluding .ai-evidence itself."
+boundary = "Mechanical evidence-chain validation only; it does not decide business semantics, design quality, or whether a rationale is correct."
 
 [[tools]]
 id = "radon"
@@ -308,12 +320,12 @@ boundary = "Dynamic imports, optional providers, and script-only dependencies ne
 
 [[semgrep_rulesets]]
 path = ".semgrep/backend-contracts.yml"
-owner_rule = ".ai-config/rules/delivery/oncall-api.index.md"
+owner_rule = ".ai-config/AGENTS.md"
 purpose = "Backend API auth markers, transaction IO, sensitive response details, and traceback-preserving logs."
 
 [[semgrep_rulesets]]
 path = ".semgrep/fastapi-debug.yml"
-owner_rule = ".ai-config/rules/delivery/oncall-api.index.md"
+owner_rule = ".ai-config/AGENTS.md"
 purpose = "FastAPI/Starlette debug, reload, and unsafe CORS static guardrails."
 
 [[semgrep_rulesets]]
@@ -323,7 +335,7 @@ purpose = "HTTP client calls must set explicit timeout."
 
 [[semgrep_rulesets]]
 path = ".semgrep/html-template-safety.yml"
-owner_rule = ".ai-config/rules/delivery/oncall-web.index.md"
+owner_rule = ".ai-config/AGENTS.md"
 purpose = "HTML template injection guardrails for unsafe innerHTML/template interpolation."
 
 [[semgrep_rulesets]]
@@ -333,17 +345,17 @@ purpose = "High-ROI Python bad-smell guardrails that Ruff cannot express well."
 
 [[semgrep_rulesets]]
 path = ".semgrep/ml-timeseries.yml"
-owner_rule = ".ai-config/rules/delivery/data.index.md"
+owner_rule = ".ai-config/rules/process/modes.index.md"
 purpose = "Time-series and reproducible split guardrails."
 
 [[semgrep_rulesets]]
 path = ".semgrep/playwright-no-sleep.yml"
-owner_rule = ".ai-config/rules/delivery/web-automation.index.md"
+owner_rule = ".ai-config/AGENTS.md"
 purpose = "Playwright files should not use raw time.sleep."
 
 [[semgrep_rulesets]]
 path = ".semgrep/playwright-robustness.yml"
-owner_rule = ".ai-config/rules/delivery/web-automation.index.md"
+owner_rule = ".ai-config/AGENTS.md"
 purpose = "Playwright download, dialog, and long wait robustness guardrails."
 
 [[semgrep_rulesets]]

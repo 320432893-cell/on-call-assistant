@@ -1,6 +1,6 @@
 # TypeScript 工程细则
 
-本文件是 `AGENTS.md` § 9 在 TypeScript 上的展开。仅在写入/重写 TS 代码并命中 § 6 审查门禁时读取，不作为启动仪式。
+本文件是 `AGENTS.md` 在 TypeScript 上的展开。仅在写入/重写 TS 代码并命中审查门禁时读取，不作为启动仪式。
 
 ## 1. 工具链门禁
 
@@ -12,7 +12,7 @@
 | 测试 | vitest | jest | 新项目优先 vitest |
 
 - lockfile MUST 提交。
-- `tsconfig` 的 `strict` MUST 开（`AGENTS.md` § 10）。
+- `tsconfig` 的 `strict` MUST 开（见 `AGENTS.md` 环境默认）。
 
 ## 2. 严谨度补偿
 

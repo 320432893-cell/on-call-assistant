@@ -1,5 +1,5 @@
 {
-  "_comment": "SSOT for AI/Codex hook registry — 人写这个,scripts/regen_settings.py 生成 .ai-config/settings.json{,.template}。改 hook 注册只动这个文件。",
+  "_comment": "SSOT for AI/Codex hook registry — 人写这个,scripts/regen_settings.py 生成 .ai-config/config/settings.json{,.template}。改 hook 注册只动这个文件。",
   "model": "gpt-5-codex",
   "base_url": "",
   "enabledPlugins": {

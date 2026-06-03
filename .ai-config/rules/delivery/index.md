@@ -1,4 +1,4 @@
-# 专题索引: On-call Assistant 交付体检
+# 专题索引: 交付体检
 
 本专题只处理项目结束后或用户明确声明后的交付体检。体检目标是用二八法则找出最影响交付、验收、复盘和长期运行的少数问题，并给出证据、取舍和下一步。
 
@@ -39,33 +39,33 @@
 - 日志、诊断、复制、导出、路径选择、文件拖拽。
 - 用户明确要求交互、体验、验收、可用性或可排查性体检。
 
-### On-call 架构入口
+### 架构入口
 
-读取 `oncall-architecture.index.md`:
+读取 `architecture.index.md`:
 
 - 入口、核心逻辑、服务编排、适配层边界。
 - source of truth、配置、secret、外部服务、回退策略。
 - 多入口重复、临时脚本长期化、核心抽象失控。
 
-### On-call API 契约
+### API 契约
 
-读取 `oncall-api.index.md`:
+读取 `api.index.md`:
 
 - FastAPI / Starlette / HTTP API 路由、请求、响应、状态码。
 - 鉴权、权限、事务、后台任务、错误响应、可观测性。
 - 后端接口会影响前端、外部调用方或内部服务调用。
 
-### On-call Web 用户路径
+### Web 用户路径
 
-读取 `oncall-web.index.md`:
+读取 `web.index.md`:
 
 - Web 页面、组件、状态、API 调用、异步生命周期。
 - 图表、表格、统计口径、字段映射、前端安全。
 - loading、empty、error、success 与真实数据生命周期一致性。
 
-### On-call 操作台 UI
+### 操作台 UI
 
-读取 `oncall-operator-ui.index.md`:
+读取 `operator-ui.index.md`:
 
 - 桌面 GUI、本地可视化工具、窗口、UI 线程、后台任务。
 - 任务生命周期、状态一致性、关闭行为、错误恢复、诊断取证。
@@ -99,10 +99,10 @@
 | 文件 | 体检范围 |
 |---|---|
 | `interaction.index.md` | 用户可见交互、按钮四态、窗口承载、诊断取证 |
-| `oncall-architecture.index.md` | On-call Assistant 架构入口、模块边界、长期承载能力 |
-| `oncall-api.index.md` | On-call Assistant API 契约、鉴权、事务、后台任务、可观测性 |
-| `oncall-web.index.md` | On-call Assistant Web 用户路径、前端状态、数据可信度、安全边界 |
-| `oncall-operator-ui.index.md` | On-call Assistant 本地操作台 / GUI 任务状态、线程边界、诊断取证 |
+| `architecture.index.md` | 架构入口、模块边界、长期承载能力 |
+| `api.index.md` | API 契约、鉴权、事务、后台任务、可观测性 |
+| `web.index.md` | Web 用户路径、前端状态、数据可信度、安全边界 |
+| `operator-ui.index.md` | 本地操作台 / GUI 任务状态、线程边界、诊断取证 |
 | `data.index.md` | 数据正确性、脏数据处理、复现稳定、长任务恢复、性能定位 |
 | `package.index.md` | 打包交付、依赖资源、构建环境、配置密钥、版本、验证、分发说明 |
 | `web-automation.index.md` | 浏览器自动化、登录态、等待、iframe、弹窗、取证、批量执行 |

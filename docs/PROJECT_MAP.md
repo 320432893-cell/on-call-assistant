@@ -161,8 +161,8 @@ docker run -d -p 6379:6379 redis:7-alpine
 | `data/processed/` | 运行生成数据，gitignored | 年报 `chunks.jsonl` 和派生数据 |
 | `indexes/tantivy/` | 运行索引，gitignored | 关键词索引 |
 | `indexes/qdrant/` | 运行索引，gitignored | 嵌入式 Qdrant 存储 |
-| `.ai-config/settings.json` | 本地生成配置，gitignored | 包含本机 token |
-| `.ai-config/settings.json.template` | 入仓模板 | 由 `.ai-hooks/manifest.json` 生成 |
+| `.ai-config/config/settings.json` | 本地生成配置，gitignored | 包含本机 token |
+| `.ai-config/config/settings.json.template` | 入仓模板 | 由 `.ai-hooks/manifest.json` 生成 |
 
 ## 8. 已知运行约束
 

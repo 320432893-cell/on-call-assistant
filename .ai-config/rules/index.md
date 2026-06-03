@@ -1,19 +1,18 @@
 # 规则专题索引
 
-本目录按专题入口读取规则，不默认全量读取所有 `*.md`。`AGENTS.md` 是 tier0 常驻脊椎，`process/` 是 tier1 工作流程，其余专题是 tier2 按需检索。
+本目录按专题入口读取规则，不默认全量读取所有 `*.md`。`AGENTS.md` 是常驻卡口与触发索引；细则只负责展开。
 
 入口与触发：
 
-- `process/loop.index.md`: 任何任务的工作循环（P0–P4、P1 八槽 + 开放槽，新 = define / 老 = discover）。新任务、目标变化、从讨论进实现、上下文压缩后从这里重判。
-- `process/modes.index.md`: 判这一步靠什么裁决（建造 / 困难 / ML 三真相源、模式探测器、困难纪律）。
-- `process/dispatch.index.md`: 派发 / 注意力执行（探查 vs 编织、三闸门、粒度、信息获取边界、风险发散）。
-- `engineering/index.md`: 代码语义、设计模式参考菜单、架构 / 后端 / 前端 / GUI 体检。
-- `delivery/index.md`: 用户交互、数据处理、打包交付、浏览器自动化体检。
+- `process/modes.index.md`: ML 指标、模型、数据管道的高爆炸低可检测纪律。
+- `engineering/index.md`: 代码语义、设计模式参考菜单、跨语言与分语言细则。
+- `delivery/index.md`: 项目结束、验收、复盘、交付体检或用户明确要求交付质量审查时读取。
+- `tooling.registry.toml`: 机械工具、Semgrep ruleset、hook 与 CI 契约的 SSOT。
 
 使用原则:
 
 - 专题入口只做路由和批量维护分组，不复制具体规则正文（组织法则见 `AGENTS.md` 开头）。
-- 不确定当前任务属于哪个专题时，按 `AGENTS.md § 3 / § 5` 先收敛信息；仍不确定问用户一句。
+- 不确定当前任务属于哪个专题时，按 `AGENTS.md` 常驻卡口先收敛信息；仍不确定问用户一句。
 
 批量维护顺序:
 

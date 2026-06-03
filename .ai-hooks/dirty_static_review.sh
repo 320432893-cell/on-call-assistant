@@ -29,7 +29,7 @@ fi
 
 echo "[dirty_static] 写后提示:请和用户确认本次改动采用的范式/思想(例如局部修补、分层重构、数据契约优先、测试先行、兼容性优先),再继续扩大改动。" >&2
 
-dirty_diff="$project_root/.ai-config/dirty_diff_review.py"
+dirty_diff="$project_root/.ai-config/tools/dirty_diff_review.py"
 if [ -f "$dirty_diff" ]; then
   python3 "$dirty_diff" --file "$file_path" >/dev/null || true
 fi

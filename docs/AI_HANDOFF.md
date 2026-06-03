@@ -98,5 +98,5 @@ flowchart TD
 
 - 不要用 `--reload` 运行 uvicorn。
 - 不要删除 `data/raw/`、`data/processed/` 或 `indexes/`，除非用户明确要求；它们虽然被 gitignore，但属于运行数据。
-- 不要提交 `.env`、`.ai-config/settings.json`、`.claude/`、`.codex/`、缓存、截图、模型文件或索引文件。
+- 不要提交 `.env`、`.ai-config/config/settings.json`、`.claude/`、`.codex/`、缓存、截图、模型文件或索引文件。
 - 不要在同一步同时改 AI 规则和业务代码，除非用户明确切换重心。

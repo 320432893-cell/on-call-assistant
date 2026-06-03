@@ -1,0 +1,35 @@
+[[risks]]
+step = "TODO: execution step"
+mode = "半成"
+assumption = "TODO"
+blast_radius = "TODO"
+detectability = "TODO"
+guarantor = "TODO: tool|test|type|user|none"
+uncovered_risk = "TODO or N/A + reason"
+
+[[risks]]
+step = "TODO: execution step"
+mode = "重跑"
+assumption = "TODO"
+blast_radius = "TODO"
+detectability = "TODO"
+guarantor = "TODO: tool|test|type|user|none"
+uncovered_risk = "TODO or N/A + reason"
+
+[[risks]]
+step = "TODO: execution step"
+mode = "乱序"
+assumption = "TODO"
+blast_radius = "TODO"
+detectability = "TODO"
+guarantor = "TODO: tool|test|type|user|none"
+uncovered_risk = "TODO or N/A + reason"
+
+[[risks]]
+step = "TODO: execution step"
+mode = "中间态"
+assumption = "TODO"
+blast_radius = "TODO"
+detectability = "TODO"
+guarantor = "TODO: tool|test|type|user|none"
+uncovered_risk = "TODO or N/A + reason"
