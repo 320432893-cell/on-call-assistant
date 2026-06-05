@@ -1,0 +1,49 @@
+{
+  "model": "gpt-5-codex",
+  "permissions": {
+    "allow": []
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .ai-hooks/dangerous_bash.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash .ai-hooks/git_commit_safety.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .ai-hooks/dirty_static_review.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash .ai-hooks/rename_audit.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash .ai-hooks/rag_hygiene.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash .ai-hooks/rag_drift.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "enabledPlugins": {
+    "ui-ux-pro-max@ui-ux-pro-max-skill": true
+  }
+}
