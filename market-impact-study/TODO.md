@@ -137,6 +137,11 @@
 - [x] RAG 证据已增强到事件组级市值变化主表：`data/processed/rag_event_group_evidence_enhanced.csv`。
 - [x] RAG 事件组覆盖统计已生成：`data/processed/rag_event_group_evidence_coverage.csv`。
 - [x] RAG 证据缺口诊断已生成：`data/processed/rag_event_group_evidence_gaps.csv`。
+- [x] 交互式市值影响 dashboard 已生成：`data/processed/interactive_market_dashboard.html`。
+  - 默认聚焦移为通信，展示原始总市值渐变折线和事件点。
+  - 筛选链路为：时间期间 -> 月份/自定义日期 -> 事件窗口 -> 事件类型 -> 二级事件。
+  - 事件点和事件表均支持加号加入多事件展示篮；事件详情保留证据链接。
+  - 多公司原始值对比保留在叠加、泳道、气泡、事件对齐和下方可比矩阵，不在默认主线图中压缩展示。
 - [ ] 事件分类仍是规则初版，“其他”占比高，PPT 前需人工/LLM 辅助复核 Top 事件。
 - [ ] 管理层信号台账仍是自动整合初版，需围绕管理层动作、投关表达、战略表达、卖方认知和市场反应做人工/LLM 复核。
 - [ ] RAG 覆盖率仍偏低：第二轮结构化文本来源补入后，6550 个分析事件组中 1167 组有 RAG 证据命中，覆盖率约 17.82%；Top 优先级事件覆盖仍低，主要缺口是公告 API 候选尚未分批抓取正文。
@@ -190,6 +195,12 @@
   - 每个事件组保留事件日期、公司、分类、标题、事件前市值、5/20/60 日客观市值变化、相对竞品变化、CAR 辅助列、RAG 证据状态和最佳证据摘要。
   - 按客观市值变化、优先级评分和证据状态筛出 Top 正/负事件。
   - 管理层信号复核清单只作为辅助，不作为主线。
+- [x] 生成交互式市值影响 dashboard 原型：
+  - 输出：`data/processed/interactive_market_dashboard.html`。
+  - 生成器：`build_interactive_market_dashboard.py`。
+  - 数据：使用 `data/raw/tushare/daily_basic/*.csv` 的原始总市值，单位亿元；不使用中位数或平均替代。
+  - 事件：使用 `data/processed/rag_event_group_evidence_enhanced.csv`，并回填 `event_candidates_scored.csv` / `event_analysis_groups_scored.csv` 中的证据链接。
+  - 当前设计决定：默认页只讲移为通信主线；竞品比较通过模式切换和矩阵承载；右侧只保留事件展示篮，不再放“市值信息概览”。
 - [ ] 更新 CFO 预览报告：
   - 在 `data/processed/preview_report.html` 增加管理层信号页或管理层专题区。
   - CAR 保持辅助列，主线改成事件、客观市值变化、竞品对照和 RAG 证据链。
@@ -211,9 +222,10 @@
   evidence_url/local_pdf_path -> 证据链接/PDF路径
   ```
 
-- [ ] 运行检查：
-  - `python3 tools/check.py changed`
-  - 或至少对报告生成脚本运行 Ruff、pytest 和 `market-impact-validation`。
+- [x] 运行检查：
+  - 2026-06-05 已运行 `../.venv/bin/python ../tools/check.py changed`。
+  - market-impact 相关检查通过：python compile、ruff、import-linter、semgrep、22 个 pytest、basedpyright、market-impact-validation。
+  - 当前唯一失败为既有规则镜像问题：`AGENTS.md must mirror .ai-config/AGENTS.md exactly`，不是 dashboard 改动引入。
 
 ### 1. 生成自动事件候选池
 
@@ -333,7 +345,12 @@
 ### 5. 可视化报告原型
 
 - [ ] 下一阶段主线转向报告和管理层可读交付，优先生成“事件-市值变化-证据链”CFO 主表和数据验收 HTML dashboard。
-- [ ] 市值全景页：移为通信 vs 竞品市值曲线和关键事件标注。
+- [x] 市值全景页交互原型：`data/processed/interactive_market_dashboard.html`。
+  - 默认主线图：移为通信原始总市值渐变折线 + 事件点标注。
+  - 模式切换：主线、泳道、叠加、气泡、事件对齐。
+  - 事件篮：支持多事件加入、移除和事件对齐视图。
+  - 链接：有来源 URL/PDF 的事件在事件表和详情中保留可点击证据链接。
+- [ ] 市值全景页正式稿：继续精修视觉层级、事件点密度、默认文案和 CFO 汇报口径。
 - [ ] 事件影响权重页：各类事件贡献、正负贡献、持续性。
 - [ ] 竞品动作外溢页：
 
@@ -344,6 +361,21 @@
 
 - [ ] 竞品动作榜：产品创新、客户突破、资本动作、投关表达。
 - [ ] CFO 汇报 PPT 初稿。
+
+### 6. 交互式 dashboard 当前状态
+
+- [x] 生成器：`build_interactive_market_dashboard.py`。
+- [x] 输出文件：`data/processed/interactive_market_dashboard.html`。
+- [x] 当前设计闭包：
+  - 默认主线聚焦移为通信。
+  - 主图只显示原始总市值渐变折线和事件点，不展示“竞品原始市值压缩带”。
+  - 已删除“市值信息概览”，右侧保留事件展示篮。
+  - 事件支持多选加入展示篮；事件详情和表格保留证据链接。
+  - 不使用中位数/平均值替代公司原始市值。
+- [ ] 待继续精修：
+  - 需要浏览器截图验收；当前环境缺 Playwright/浏览器，尚未做真实截图验收。
+  - 事件点密度、标签避让、hover 细节和右侧事件篮视觉层级仍需按实际页面观感继续调。
+  - “所有公司都在一起”的总表仍未定稿，目前先用可比矩阵和气泡模式承载。
 
 ## 统计分析方法论：资本运作/竞品动作 → 市值影响
 
