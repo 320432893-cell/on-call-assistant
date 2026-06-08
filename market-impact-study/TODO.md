@@ -29,7 +29,7 @@
 
 ## 当前进度
 
-截至 2026-05-26，已完成第一轮数据采集、事件/CAR 辅助底表、RAG 证据候选、中文 Top 表、数据质量校验和管理层信号台账初版。
+截至 2026-06-08，已完成第一轮数据采集、事件/CAR 辅助底表、RAG 证据候选、中文 Top 表、数据质量校验、管理层信号台账初版，以及单页交互式市值事件工作台。
 
 ### 已搭建脚本
 
@@ -48,6 +48,7 @@
 | `compare_rag_chunk_experiments.py` | 对比 RAG 预处理、前缀和滑动窗口实验组合的 chunk 体积和样本文本 |
 | `build_rag_event_group_evidence.py` | 将候选事件级 RAG 命中增强到分析事件组和市值变化主表 |
 | `build_ml_readiness_tables.py` | 生成统计/ML 建模准入诊断表，检查事件重叠、资本动作子类样本量和竞品外溢污染 |
+| `build_market_impact_workbench.py` | 生成单页交互式市值事件工作台，承载市值走势、事件影响、竞品对比、事件对齐/外溢和 Top 专题页签 |
 
 ### 已采集数据
 
@@ -87,6 +88,7 @@
 | `data/processed/top_events/` | Top 事件、竞品动作、客观市值变化和异常影响榜单 |
 | `data/processed/validation/validation_report.md` | 数据质量和 CAR 抽样复算报告 |
 | `data/processed/preview_report.html` | CFO 可视化报告静态预览初版 |
+| `data/processed/market_impact_workbench.html` | 单页交互式市值事件工作台，已整合原交互 dashboard 和预览报告 Top 表功能 |
 | `data/processed/management/management_signal_ledger.csv` | 管理层/投关/卖方/公告信号台账，5557 行数据记录 |
 | `data/processed/management/management_signal_coverage_gaps.csv` | 管理层信号来源覆盖缺口，54 行来源/公司缺口记录 |
 | `data/processed/rag_event_group_evidence_enhanced.csv` | 事件组级 RAG 证据增强表，覆盖 6550 个分析事件组 |
@@ -142,11 +144,25 @@
   - 筛选链路为：时间期间 -> 月份/自定义日期 -> 事件窗口 -> 事件类型 -> 二级事件。
   - 事件点和事件表均支持加号加入多事件展示篮；事件详情保留证据链接。
   - 多公司原始值对比保留在叠加、泳道、气泡、事件对齐和下方可比矩阵，不在默认主线图中压缩展示。
+- [x] 单页交互式市值事件工作台已生成：`data/processed/market_impact_workbench.html`。
+  - 生成器：`build_market_impact_workbench.py`。
+  - 页面内页签：市值走势、事件影响、竞品对比、事件对齐/外溢、Top 专题。
+  - 已整合 `interactive_market_dashboard.html` 的筛选、公司选择、事件篮、事件详情、公司矩阵、气泡图、事件对齐功能。
+  - 已整合 `preview_report.html` 的 CAR 状态、分类影响汇总、IPO/上市初期事件、移为客观市值变化、竞品客观市值变化、竞品关键动作、竞品外溢和综合评分等 Top 表功能。
+  - Top 表作为同页 `Top 专题` 页签承载，不再单独生成第二个 HTML。
+  - 默认时间范围改为“移为上市以来”；保留“全样本区间”选项用于查看所有公司最早行情。
+  - 市值曲线按时间跨度自动降采样：超过 5 年使用月末采样，超过 2 年使用周采样，短周期使用交易日。
+  - 长周期事件点限量展示：超过 5 年最多 45 个，超过 2 年最多 75 个，短周期最多 140 个；完整事件仍保留在事件影响表。
+  - 图表右上角展示当前采样粒度和事件点数量。
+  - 页面口径已将“无证据”改为“RAG 未挂接”；事件原始来源通过 `source_type/source_types/source_url` 展示，RAG 挂接状态不等同于原始事件来源。
 - [ ] 事件分类仍是规则初版，“其他”占比高，PPT 前需人工/LLM 辅助复核 Top 事件。
 - [ ] 管理层信号台账仍是自动整合初版，需围绕管理层动作、投关表达、战略表达、卖方认知和市场反应做人工/LLM 复核。
 - [ ] RAG 覆盖率仍偏低：第二轮结构化文本来源补入后，6550 个分析事件组中 1167 组有 RAG 证据命中，覆盖率约 17.82%；Top 优先级事件覆盖仍低，主要缺口是公告 API 候选尚未分批抓取正文。
 - [ ] 第二轮 RAG 覆盖率提升要继续补“文本来源覆盖”，不要继续堆匹配规则；当前 `rag_text_source_manifest.csv` 已生成 12757 条 `notice_api` 候选，但为避免上万次网络请求，尚未全量抓取公告页面/API 正文。
-- [ ] 面向 CFO 的数据验收 HTML 页尚未生成；当前已有 Markdown/CSV 校验报告，但不是管理层可直接浏览的 dashboard。
+- [x] 面向 CFO 的数据验收 HTML 页已生成：
+  - `data/processed/validation/data_quality_dashboard.html`
+  - `data/processed/validation/data_quality_summary.csv`
+  - 页面只做客观数据展示，覆盖核心数量、公司事件组数量、事件分类分布、采集资产来源、基础检查项、CAR 抽样复算和事件组明细抽样；RAG 覆盖率较低，验收页不单独展示。
 - [ ] 报告主线需从“CAR 解释事件”调整为“客观市值变化 + 同期竞品/行业对照 + 证据链”，CAR 放到辅助列。
 - [ ] 管理层信息主线需从“有多少数据”推进到“哪些管理动作/披露方式/投关节奏与市场认知变化相关”。
 - [ ] 当前 CAR 使用剔除自身的竞品等权组合做基准，尚未加入指数基准、滚动 beta、市值加权和显著性检验。
@@ -191,20 +207,37 @@
     - 优先看 Top 事件覆盖率，而不是只看全量覆盖率。
     - 证据分级必须保留：PDF/公告原文为强证据，研报/调研/互动问答为辅助证据，弱规则命中不能直接写入结论。
     - 抽样检查新增证据，确认不会把同公司同日无关公告误挂到事件。
-- [ ] 生成“事件-市值变化-证据链”CFO 主表：
+- [x] 生成“事件-市值变化-证据链”CFO 主表：
   - 每个事件组保留事件日期、公司、分类、标题、事件前市值、5/20/60 日客观市值变化、相对竞品变化、CAR 辅助列、RAG 证据状态和最佳证据摘要。
   - 按客观市值变化、优先级评分和证据状态筛出 Top 正/负事件。
   - 管理层信号复核清单只作为辅助，不作为主线。
+  - 生成器：`build_cfo_event_evidence_chain.py`。
+  - 输出：
+    - `data/processed/cfo_event_evidence_chain.csv`
+    - `data/processed/cfo_event_evidence_chain_top_positive.csv`
+    - `data/processed/cfo_event_evidence_chain_top_negative.csv`
+    - `data/processed/cfo_event_evidence_chain_top_positive_with_evidence.csv`
+    - `data/processed/cfo_event_evidence_chain_top_negative_with_evidence.csv`
+    - `data/processed/cfo_event_evidence_chain_priority_top.csv`
+    - `data/processed/cfo_event_evidence_chain_summary.md`
+  - 本轮结果：全量 6550 个分析事件组；有 RAG/结构化证据 1167 组，覆盖率约 17.82%；主表以 20 日客观市值变化、相对竞品变化和证据等级为 CFO 入口，CAR 仅保留为辅助列。
 - [x] 生成交互式市值影响 dashboard 原型：
   - 输出：`data/processed/interactive_market_dashboard.html`。
   - 生成器：`build_interactive_market_dashboard.py`。
   - 数据：使用 `data/raw/tushare/daily_basic/*.csv` 的原始总市值，单位亿元；不使用中位数或平均替代。
   - 事件：使用 `data/processed/rag_event_group_evidence_enhanced.csv`，并回填 `event_candidates_scored.csv` / `event_analysis_groups_scored.csv` 中的证据链接。
   - 当前设计决定：默认页只讲移为通信主线；竞品比较通过模式切换和矩阵承载；右侧只保留事件展示篮，不再放“市值信息概览”。
+- [x] 生成单页交互式市值事件工作台：
+  - 输出：`data/processed/market_impact_workbench.html`。
+  - 生成器：`build_market_impact_workbench.py`。
+  - 数据量：市值行情 19191 行、事件组 6550 行、外溢字段 5497 行、Top 专题表 11 张。
+  - 页面结构：市值走势、事件影响、竞品对比、事件对齐/外溢、Top 专题五个页签。
+  - 设计口径：主图不承载所有辅助排名；Top 表在同页专题页签切换；RAG 覆盖率低，不做管理层图表，只在事件字段中展示 RAG 挂接状态。
+  - 图表口径：默认从移为上市后开始展示；长周期主图降采样；事件点限量，完整明细在表格中保留。
 - [ ] 更新 CFO 预览报告：
   - 在 `data/processed/preview_report.html` 增加管理层信号页或管理层专题区。
   - CAR 保持辅助列，主线改成事件、客观市值变化、竞品对照和 RAG 证据链。
-- [ ] 仍需生成管理层可直接浏览的数据验收 HTML 页，输出建议：
+- [x] 已生成管理层可直接浏览的数据验收 HTML 页：
   - `data/processed/validation/data_quality_dashboard.html`
   - `data/processed/validation/data_quality_summary.csv`
 - [x] 中文字段版本已覆盖主要 Top 表，字段包括：
@@ -226,6 +259,9 @@
   - 2026-06-05 已运行 `../.venv/bin/python ../tools/check.py changed`。
   - market-impact 相关检查通过：python compile、ruff、import-linter、semgrep、22 个 pytest、basedpyright、market-impact-validation。
   - 当前唯一失败为既有规则镜像问题：`AGENTS.md must mirror .ai-config/AGENTS.md exactly`，不是 dashboard 改动引入。
+- [x] 运行检查：
+  - 2026-06-08 已运行 `../.venv/bin/python ../tools/check.py changed`。
+  - 检查通过：coverage-audit、python compile、ruff、ruff-format、import-linter、semgrep、22 个 pytest、basedpyright、market-impact-validation。
 
 ### 1. 生成自动事件候选池
 
