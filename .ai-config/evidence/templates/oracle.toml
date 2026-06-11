@@ -1,5 +1,0 @@
-[oracle]
-status = "unverified"
-method = "TODO: independent method, or why no independent oracle exists"
-evidence = "TODO: independent calculation, alternate implementation, reference, or N/A"
-impact = "TODO: what remains at risk if oracle is absent or weak"

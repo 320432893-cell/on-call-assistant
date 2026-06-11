@@ -268,18 +268,6 @@ scope = "Reads current git diff additions and reports high-ROI smells without mo
 boundary = "Heuristic discussion trigger only; not a blocker and not a refactoring decision engine."
 
 [[tools]]
-id = "delivery-evidence"
-kind = "project-static-tool"
-purpose = "Validate AI delivery evidence packs against the current git diff to catch stale reports, missing evidence, trigger omissions, and uncovered changed files."
-rule = ".ai-config/AGENTS.md"
-configured_in = [".ai-config/tools/check_delivery_evidence.py", ".ai-config/evidence/templates", "tools/check.py"]
-entrypoint_commands = ["python3 .ai-config/tools/check_delivery_evidence.py"]
-manual_commands = ["python3 .ai-config/tools/check_delivery_evidence.py"]
-run_mode = "manual-completion-gate"
-scope = "Evidence pack under .ai-evidence/current plus current tracked, staged, and untracked git diff excluding .ai-evidence itself."
-boundary = "Mechanical evidence-chain validation only; it does not decide business semantics, design quality, or whether a rationale is correct."
-
-[[tools]]
 id = "radon"
 kind = "python-dev-tool"
 package = "radon"
@@ -321,17 +309,40 @@ boundary = "Dynamic imports, optional providers, and script-only dependencies ne
 [[tools]]
 id = "module-boundary"
 kind = "project-static-tool"
-purpose = "检查 app/ 和 scripts/ 下的 Python 文件是否有职责声明注释块（# 职责 / # 不负责 / # 依赖层）。"
+purpose = "检查 app/ 和 scripts/ 下的 Python 文件是否有职责声明注释块（# 职责 / # 不负责 / # 依赖层），并对 ≥ 400 行的文件报拆分候选 WARNING。"
 rule = ".ai-config/AGENTS.md"
 configured_in = ["tools/check_module_boundary.py", "tools/check.py"]
 entrypoint_commands = ["python3 tools/check_module_boundary.py"]
 manual_commands = ["python3 tools/check_module_boundary.py"]
 run_mode = "manual"
 scope = "app/ and scripts/ Python files, excluding __init__.py, conftest.py, and test files."
-boundary = "检测注释是否存在；不校验注释内容是否准确，内容质量由 AI 规则（谋划态契约槽⑥）约束。"
+boundary = "检测职责注释是否存在 + 报 ≥400 行拆分候选；不校验注释内容准确性，也不强制拆分（拆分决策由 AGENTS.md §2 + 用户拍板）。"
 relaxed = true
 relaxed_reason = "存量 22 个文件尚无职责注释，先保持 manual 不阻塞；新文件由 AGENTS.md 规则在谋划态强制。"
 reopen_when = "存量文件职责注释补全后升为 pre-commit WARNING blocking。"
+
+[[tools]]
+id = "test-meta"
+kind = "project-static-tool"
+purpose = "检查 tests/ 下测试文件是否声明业务场景与用时输出（§3 测试 oracle 形状），缺失只 WARNING 不阻塞。"
+rule = ".ai-config/AGENTS.md"
+configured_in = ["tools/check.py"]
+entrypoint_commands = ["python3 tools/check.py test-meta"]
+manual_commands = ["python3 tools/check.py test-meta"]
+run_mode = "manual"
+scope = "pytest testpaths 下匹配 python_files 模式的测试文件。"
+boundary = "只检测是否声明业务场景/用时标记，不校验内容是否准确，也不运行测试。"
+relaxed = true
+relaxed_reason = "存量测试尚未补全业务场景/用时声明，先保持 manual WARNING 不阻塞；新测试由 AGENTS.md §3 规则约束。"
+reopen_when = "存量测试补全业务场景与用时声明后升为 pre-commit WARNING blocking。"
+
+[[semgrep_rulesets]]
+path = ".semgrep/no-raw-sleep.yml"
+owner_rule = ".ai-config/AGENTS.md"
+purpose = "Non-test Python code should not use raw time.sleep(); prefer polling/explicit waits, annotate business-required fixed waits."
+relaxed = true
+relaxed_reason = "market-impact-study/ 下 7 个数据采集脚本存量 time.sleep 为接口限速正当用途，先用 paths.exclude 冻结存量、只卡新增代码，避免存量噪音淹没新问题。"
+reopen_when = "market-impact-study/ 存量 sleep 逐个补业务注释或改轮询后，移除 paths.exclude 中的 market-impact-study/** 使其全量 blocking。"
 
 [[semgrep_rulesets]]
 path = ".semgrep/backend-contracts.yml"

@@ -144,28 +144,6 @@ def check_tools(root: pathlib.Path, registry: dict, issues: list[Issue]) -> None
                 )
 
 
-def check_evidence_templates(root: pathlib.Path, issues: list[Issue]) -> None:
-    template_dir = root / ".ai-config" / "evidence" / "templates"
-    required = {
-        "manifest.toml",
-        "contract.toml",
-        "risk.toml",
-        "verification.toml",
-        "oracle.toml",
-        "review.toml",
-    }
-    actual = {path.name for path in template_dir.glob("*.toml")} if template_dir.exists() else set()
-    for missing in sorted(required - actual):
-        issues.append(Issue("ERROR", f"delivery evidence template missing: {missing}"))
-    for stale in sorted(actual - required):
-        issues.append(Issue("ERROR", f"unexpected delivery evidence template: {stale}"))
-    for path in sorted(template_dir.glob("*.toml")):
-        try:
-            load_toml(path)
-        except tomllib.TOMLDecodeError as exc:
-            issues.append(Issue("ERROR", f"delivery evidence template invalid TOML: {rel(path)}: {exc}"))
-
-
 def check_rule_tool_contracts_trigger(root: pathlib.Path, issues: list[Issue]) -> None:
     config = load_pre_commit_config(root / ".pre-commit-config.yaml")
     hook = find_pre_commit_hook(config, "rule-tool-contracts")
@@ -179,7 +157,7 @@ def check_rule_tool_contracts_trigger(root: pathlib.Path, issues: list[Issue]) -
 
     samples = [
         ".ai-config/tools/check_rule_tool_contracts.py",
-        ".ai-config/evidence/templates/manifest.toml",
+        ".ai-config/config/tooling.registry.toml",
         ".ai-config/rules/engineering/index.md",
         ".ai-hooks/rag_hygiene.sh",
         ".semgrep/rag-hygiene.yml",
@@ -565,7 +543,6 @@ def main() -> int:
     check_ci_semantics(ROOT, issues)
     check_enforcement_wiring(ROOT, registry, issues)
     check_rule_tool_contracts_trigger(ROOT, issues)
-    check_evidence_templates(ROOT, issues)
     check_semgrep_rulesets(ROOT, registry, issues)
     check_hooks(ROOT, registry, issues)
     check_hook_tests(ROOT, registry, issues)

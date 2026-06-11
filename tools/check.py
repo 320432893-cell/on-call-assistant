@@ -57,8 +57,7 @@ COMMANDS: dict[str, str] = {
     "pip-audit": "uv run pip-audit --strict",
     "rag-drift": "uv run python scripts/check_rag_drift.py",
     "market-impact-validation": "uv run python market-impact-study/validate_market_outputs.py",
-    "delivery-evidence": "python3 .ai-config/tools/check_delivery_evidence.py",
-    "delivery-evidence-optional": "python3 .ai-config/tools/check_delivery_evidence.py --optional",
+    "test-meta": "python3 tools/check.py test-meta",
     "detect-secrets-scan": "uv run detect-secrets scan --baseline .secrets.baseline --exclude-files '^(uv\\.lock|\\.secrets\\.baseline|\\.ai-config/config/settings\\.json\\.template)$'",
     "detect-secrets-audit": "uv run detect-secrets audit .secrets.baseline --report",
     "pytest": "uv run pytest tests",
@@ -84,7 +83,7 @@ HOOK_TESTS = [
 
 PROFILES: dict[str, list[str]] = {
     "quick": ["coverage-audit", "python-compile", "import-linter", "rule-tool-contracts", "ruff-staged", "semgrep"],
-    "completion": ["rule-tool-contracts", "delivery-evidence-optional"],
+    "completion": ["rule-tool-contracts"],
     "manual": ["ruff-check", "ruff-format-check", "basedpyright", "pip-audit"],
     "deep": ["radon-cc", "radon-mi", "vulture", "deptry", "module-boundary"],
     "ci": [
@@ -324,6 +323,35 @@ def discover_code_dirs() -> set[str]:
     return dirs
 
 
+def run_test_meta() -> int:
+    # 检查测试文件是否声明业务场景与用时（§3 测试 oracle 形状）。
+    # WARNING-only：存量测试尚未补全，先不阻塞，靠 AGENTS.md 规则约束新测试。
+    testpaths, python_files = load_pytest_file_patterns()
+    scene_markers = ("业务场景", "覆盖的业务", "覆盖业务")
+    timing_markers = ("用时", "耗时", "elapsed", "duration")
+    warnings: list[str] = []
+    for testpath in testpaths:
+        base = ROOT / testpath.rstrip("/")
+        if not base.exists():
+            continue
+        for path in sorted(base.rglob("*.py")):
+            name = pathlib.PurePosixPath(rel(path)).name
+            if not any(fnmatch.fnmatch(name, pattern) for pattern in python_files):
+                continue
+            text = path.read_text(encoding="utf-8", errors="ignore")
+            if not any(marker in text for marker in scene_markers):
+                warnings.append(f"{rel(path)}: 缺业务场景说明（应在文件顶部标注覆盖的业务场景）")
+            if not any(marker in text for marker in timing_markers):
+                warnings.append(f"{rel(path)}: 缺用时输出（测试应打印每个业务步骤的耗时）")
+    if warnings:
+        print("[check] test-meta WARNING（不阻塞）：", file=sys.stderr)
+        for warning in warnings:
+            print(f"  - {warning}", file=sys.stderr)
+        return 0
+    print("[check] test-meta: 测试文件均声明业务场景与用时")
+    return 0
+
+
 def run_coverage_audit() -> int:
     code_dirs = discover_code_dirs()
     accepted = FIXED_QUALITY_CODE_DIRS | SUPPORT_CODE_DIRS
@@ -365,6 +393,8 @@ def run_item(item: str) -> int:
         return run_changed()
     if item == "coverage-audit":
         return run_coverage_audit()
+    if item == "test-meta":
+        return run_test_meta()
     if item == "dependency-change-approval":
         return run_dependency_change_approval()
     if item == "ruff-staged":

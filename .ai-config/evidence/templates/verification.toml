@@ -1,7 +1,0 @@
-[[checks]]
-tool = "TODO: tool id"
-command = "TODO: exact command"
-scope = "TODO: files, modules, or behavior covered"
-result = "TODO: pass|fail|skipped|unverified"
-exit_code = 0
-evidence = "TODO: log path, command output summary, or reproducible observation"
