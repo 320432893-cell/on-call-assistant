@@ -24,3 +24,9 @@
 | Python | 最高 | 低：动态类型，大项目松散，运行时才暴露类型错误 | 大项目 MUST 配 pyright/mypy strict 补偿 |
 | TypeScript | 高 | 中-高：strict 近静态语言，可被 `any` 击穿 | 运行时仍是 JS |
 | Go | 高 | 高：强类型 + 编译强制 + gofmt 统一 | 表达力较低，错误处理啰嗦 |
+
+## 4. 语言专项约束
+
+- **Python**：优先清华源 `-i https://pypi.tuna.tsinghua.edu.cn/simple`；新项目 MUST 用虚拟环境
+- **TypeScript**：lockfile MUST 提交；`tsconfig strict` MUST 开
+- **Go**：`go.mod` 锁版本；提交前 `gofmt` 无差异

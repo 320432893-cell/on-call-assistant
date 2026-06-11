@@ -72,6 +72,7 @@ COMMANDS: dict[str, str] = {
     "radon-mi": "uv run radon mi app scripts market-impact-study -s",
     "vulture": "uv run vulture app scripts market-impact-study --min-confidence 80",
     "deptry": "uv run deptry .",
+    "module-boundary": "python3 tools/check_module_boundary.py",
 }
 
 HOOK_TESTS = [
@@ -85,7 +86,7 @@ PROFILES: dict[str, list[str]] = {
     "quick": ["coverage-audit", "python-compile", "import-linter", "rule-tool-contracts", "ruff-staged", "semgrep"],
     "completion": ["rule-tool-contracts", "delivery-evidence-optional"],
     "manual": ["ruff-check", "ruff-format-check", "basedpyright", "pip-audit"],
-    "deep": ["radon-cc", "radon-mi", "vulture", "deptry"],
+    "deep": ["radon-cc", "radon-mi", "vulture", "deptry", "module-boundary"],
     "ci": [
         "python-compile",
         "import-linter",

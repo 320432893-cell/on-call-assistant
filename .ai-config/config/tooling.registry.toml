@@ -318,6 +318,21 @@ run_mode = "manual"
 scope = "Use for dependency debt triage."
 boundary = "Dynamic imports, optional providers, and script-only dependencies need human review."
 
+[[tools]]
+id = "module-boundary"
+kind = "project-static-tool"
+purpose = "检查 app/ 和 scripts/ 下的 Python 文件是否有职责声明注释块（# 职责 / # 不负责 / # 依赖层）。"
+rule = ".ai-config/AGENTS.md"
+configured_in = ["tools/check_module_boundary.py", "tools/check.py"]
+entrypoint_commands = ["python3 tools/check_module_boundary.py"]
+manual_commands = ["python3 tools/check_module_boundary.py"]
+run_mode = "manual"
+scope = "app/ and scripts/ Python files, excluding __init__.py, conftest.py, and test files."
+boundary = "检测注释是否存在；不校验注释内容是否准确，内容质量由 AI 规则（谋划态契约槽⑥）约束。"
+relaxed = true
+relaxed_reason = "存量 22 个文件尚无职责注释，先保持 manual 不阻塞；新文件由 AGENTS.md 规则在谋划态强制。"
+reopen_when = "存量文件职责注释补全后升为 pre-commit WARNING blocking。"
+
 [[semgrep_rulesets]]
 path = ".semgrep/backend-contracts.yml"
 owner_rule = ".ai-config/AGENTS.md"
