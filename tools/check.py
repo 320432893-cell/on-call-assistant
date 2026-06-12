@@ -54,6 +54,7 @@ COMMANDS: dict[str, str] = {
     "rule-tool-contracts": "uv run python .ai-config/tools/check_rule_tool_contracts.py",
     "semgrep": "uv run semgrep --disable-version-check --metrics=off --config .semgrep --no-git-ignore app scripts market-impact-study tests tools .ai-config .ai-hooks",
     "dependency-change-approval": "python3 tools/check.py dependency-change-approval",
+    "code-identity": "python3 tools/check_code_identity.py",
     "pip-audit": "uv run pip-audit --strict",
     "rag-drift": "uv run python scripts/check_rag_drift.py",
     "market-impact-validation": "uv run python market-impact-study/validate_market_outputs.py",
@@ -85,7 +86,7 @@ PROFILES: dict[str, list[str]] = {
     "quick": ["coverage-audit", "python-compile", "import-linter", "rule-tool-contracts", "ruff-staged", "semgrep"],
     "completion": ["rule-tool-contracts"],
     "manual": ["ruff-check", "ruff-format-check", "basedpyright", "pip-audit"],
-    "deep": ["radon-cc", "radon-mi", "vulture", "deptry", "module-boundary"],
+    "deep": ["radon-cc", "radon-mi", "vulture", "deptry", "module-boundary", "code-identity"],
     "ci": [
         "python-compile",
         "import-linter",
@@ -272,6 +273,7 @@ def run_changed() -> int:
         status = run_coverage_audit()
     if python_paths:
         status = run_command("changed:python-compile", COMMANDS["python-compile"]) or status
+        status = run_item("code-identity") or status
         status = (
             run_command(
                 "changed:ruff-check",

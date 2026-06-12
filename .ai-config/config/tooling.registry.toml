@@ -322,6 +322,18 @@ relaxed_reason = "存量 22 个文件尚无职责注释，先保持 manual 不�
 reopen_when = "存量文件职责注释补全后升为 pre-commit WARNING blocking。"
 
 [[tools]]
+id = "code-identity"
+kind = "project-static-tool"
+purpose = "拦截明显代码身份边界违规：正式代码 import tests/tools/archive/temp，以及临时探针缺生命周期条件。"
+rule = ".ai-config/AGENTS.md"
+configured_in = ["tools/check_code_identity.py", "tools/check.py"]
+entrypoint_commands = ["python3 tools/check_code_identity.py"]
+manual_commands = ["python3 tools/check_code_identity.py"]
+run_mode = "changed"
+scope = "app, scripts, market-impact-study, tools, and tests Python files."
+boundary = "只检查通用硬边界；不判断业务模块归属、不判断 tools 是否变胖，模糊身份变化由 AGENTS.md 写入前闸门和人工审查裁判。"
+
+[[tools]]
 id = "test-meta"
 kind = "project-static-tool"
 purpose = "检查 tests/ 下测试文件是否声明业务场景与用时输出（§3 测试 oracle 形状），缺失只 WARNING 不阻塞。"

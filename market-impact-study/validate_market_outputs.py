@@ -12,6 +12,7 @@ RAW_TUSHARE_DIR = Path("market-impact-study/data/raw/tushare")
 PROCESSED_DIR = Path("market-impact-study/data/processed")
 TOP_DIR = PROCESSED_DIR / "top_events"
 VALIDATION_DIR = PROCESSED_DIR / "validation"
+DOC_REPORTS_DIR = Path("market-impact-study/docs/reports")
 EXPECTED_COMPANY_COUNT = 9
 CAR_TOLERANCE = 1e-10
 IMPACT_TOLERANCE = 1e-6
@@ -215,13 +216,13 @@ def write_report(checks: pd.DataFrame, recheck: pd.DataFrame) -> None:
 - 基准收益：同日其他 8 家竞品日收益等权平均，剔除事件公司自身。
 - 异常收益：公司日收益 - 剔除自身竞品组合收益。
 - CAR：按交易日窗口累计异常收益。
-- 异常市值影响：事件前一交易日总市值 × CAR。
+- 异常市值影响：事件前一交易日总市值 * CAR。
 - 单位：Tushare `daily_basic.total_mv` 为万元，输出异常市值影响时除以 10000 转为亿元。
 
 ## 复核产物
 
-- `data_quality_checks.csv`：基础数据和输出完整性检查。
-- `car_recheck_samples.csv`：从原始行情重新复算的 CAR 抽样明细。
+- `data/processed/validation/data_quality_checks.csv`：基础数据和输出完整性检查。
+- `data/processed/validation/car_recheck_samples.csv`：从原始行情重新复算的 CAR 抽样明细。
 
 ## 仍需人工确认
 
@@ -229,7 +230,8 @@ def write_report(checks: pd.DataFrame, recheck: pd.DataFrame) -> None:
 - 当前是竞品组合基准，未做指数基准、滚动 beta 和显著性检验。
 - 同日多事件已按公司+日期+类别聚合，但“真正是哪条事件驱动”仍需结合公告原文和时间线判断。
 """
-    (VALIDATION_DIR / "validation_report.md").write_text(report, encoding="utf-8")
+    DOC_REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    (DOC_REPORTS_DIR / "VALIDATION_REPORT.md").write_text(report, encoding="utf-8")
 
 
 def main() -> int:
@@ -241,7 +243,7 @@ def main() -> int:
     checks.to_csv(VALIDATION_DIR / "data_quality_checks.csv", index=False, encoding="utf-8-sig")
     recheck.to_csv(VALIDATION_DIR / "car_recheck_samples.csv", index=False, encoding="utf-8-sig")
     write_report(checks, recheck)
-    sys.stdout.write(f"report={VALIDATION_DIR / 'validation_report.md'}\n")
+    sys.stdout.write(f"report={DOC_REPORTS_DIR / 'VALIDATION_REPORT.md'}\n")
     sys.stdout.write(checks.to_string(index=False) + "\n")
     sys.stdout.write(recheck["复核状态"].value_counts(dropna=False).to_string() + "\n")
     return 0

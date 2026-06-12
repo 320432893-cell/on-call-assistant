@@ -10,6 +10,7 @@ import pandas as pd
 
 PROJECT_DIR = Path(__file__).resolve().parent
 PROCESSED_DIR = PROJECT_DIR / "data/processed"
+DOC_REPORTS_DIR = PROJECT_DIR / "docs/reports"
 
 EVENTS_PATH = PROCESSED_DIR / "rag_event_group_evidence_enhanced.csv"
 GROUPS_PATH = PROCESSED_DIR / "event_analysis_groups_scored.csv"
@@ -21,7 +22,7 @@ OUTPUT_NEGATIVE = PROCESSED_DIR / "cfo_event_evidence_chain_top_negative.csv"
 OUTPUT_POSITIVE_WITH_EVIDENCE = PROCESSED_DIR / "cfo_event_evidence_chain_top_positive_with_evidence.csv"
 OUTPUT_NEGATIVE_WITH_EVIDENCE = PROCESSED_DIR / "cfo_event_evidence_chain_top_negative_with_evidence.csv"
 OUTPUT_PRIORITY = PROCESSED_DIR / "cfo_event_evidence_chain_priority_top.csv"
-OUTPUT_SUMMARY = PROCESSED_DIR / "cfo_event_evidence_chain_summary.md"
+OUTPUT_SUMMARY = DOC_REPORTS_DIR / "CFO_EVENT_EVIDENCE_CHAIN_SUMMARY.md"
 
 TOP_N = 100
 
@@ -566,7 +567,7 @@ def write_summary(
         )
 
     lines = [
-        "# CFO事件-市值变化-证据链主表摘要",
+        "# CFO 事件-市值变化-证据链主表摘要",
         "",
         f"- 主表事件组数：{total}",
         f"- 移为通信自身事件组：{subject}",
@@ -593,6 +594,7 @@ def write_summary(
         "- CAR 和异常市值影响只作为辅助列，不作为主排序口径。",
         "- 证据等级保留强证据、辅助证据、弱证据、无证据；弱证据不应直接写入结论。",
     ]
+    OUTPUT_SUMMARY.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT_SUMMARY.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 

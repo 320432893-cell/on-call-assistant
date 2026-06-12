@@ -10,6 +10,7 @@ import pandas as pd
 RAW_TUSHARE_DIR = Path("market-impact-study/data/raw/tushare")
 PROCESSED_DIR = Path("market-impact-study/data/processed")
 OUTPUT_DIR = PROCESSED_DIR / "ml_readiness"
+DOC_REPORTS_DIR = Path("market-impact-study/docs/reports")
 EVENT_GROUPS_PATH = PROCESSED_DIR / "event_analysis_groups_scored.csv"
 PEER_SPILLOVER_PATH = PROCESSED_DIR / "peer_spillover_to_yiwei.csv"
 YIWEI_DAILY_PATH = RAW_TUSHARE_DIR / "daily" / "300590.SZ.csv"
@@ -467,7 +468,8 @@ def main() -> int:
     company_counts.to_csv(OUTPUT_DIR / "capital_action_company_subtype_counts.csv", index=False, encoding="utf-8-sig")
     subtype_counts.to_csv(OUTPUT_DIR / "capital_action_model_readiness.csv", index=False, encoding="utf-8-sig")
     overlap_summary.to_csv(OUTPUT_DIR / "event_overlap_summary.csv", index=False, encoding="utf-8-sig")
-    write_summary(events, peer, subtype_counts, overlap_summary, OUTPUT_DIR / "ml_readiness_summary.md")
+    DOC_REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    write_summary(events, peer, subtype_counts, overlap_summary, DOC_REPORTS_DIR / "ML_READINESS_SUMMARY.md")
 
     sys.stdout.write(f"event_groups={len(events)} capital_actions={len(capital)} output_dir={OUTPUT_DIR}\n")
     sys.stdout.write(
