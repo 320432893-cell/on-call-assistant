@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="256" viewBox="0 0 960 256">
+<style>
+text { font: 14px Arial, "Microsoft YaHei", sans-serif; fill: #222; }
+rect { fill: #2f6f8f; }
+.title { font-size: 20px; font-weight: 700; }
+</style>
+<text class="title" x="24" y="32">样本策略分布</text>
+<text x="208" y="76" text-anchor="end">main_clean_sensitivity</text><rect x="220" y="60" width="6.89" height="20" rx="2"></rect><text x="234.89277899343546" y="76">54</text><text x="208" y="110" text-anchor="end">case_or_audit_only</text><rect x="220" y="94" width="21.32" height="20" rx="2"></rect><text x="249.3165572574763" y="110">167</text><text x="208" y="144" text-anchor="end">exclude_from_model</text><rect x="220" y="128" width="31.78" height="20" rx="2"></rect><text x="259.78336980306347" y="144">249</text><text x="208" y="178" text-anchor="end">main_model_with_overlap_flag</text><rect x="220" y="162" width="56.67" height="20" rx="2"></rect><text x="284.6739606126915" y="178">444</text><text x="208" y="212" text-anchor="end">robustness_or_case</text><rect x="220" y="196" width="700.00" height="20" rx="2"></rect><text x="928.0" y="212">5484</text>
+</svg>

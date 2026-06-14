@@ -1,3 +1,8 @@
+# 生命周期：持久维护
+# 覆盖的业务场景：市场影响研究辅助函数的日期清洗、事件分类、CAR 窗口、RAG 证据、ML SSOT 和建模样本规则回归。
+# 依赖的服务/环境：本地 Python、pandas、market-impact-study 下的脚本文件；不依赖外部网络和远程服务。
+# 运行方式：uv run pytest tests/test_market_impact_study.py
+# oracle 输出形状：pytest 断言失败给出期望/实际差异；业务步骤用例名描述场景，pytest 汇总用时。
 """Focused tests for market-impact study helper functions."""
 
 from __future__ import annotations
@@ -30,6 +35,13 @@ enrich_rag_query = load_module("enrich_rag_query", "enrich_rag_query.py")
 compare_rag_chunk_experiments = load_module("compare_rag_chunk_experiments", "compare_rag_chunk_experiments.py")
 build_rag_event_group_evidence = load_module("build_rag_event_group_evidence", "build_rag_event_group_evidence.py")
 build_ml_readiness_tables = load_module("build_ml_readiness_tables", "build_ml_readiness_tables.py")
+build_ml_ssot_tables = load_module("build_ml_ssot_tables", "build_ml_ssot_tables.py")
+build_data_governance_tables = load_module("build_data_governance_tables", "build_data_governance_tables.py")
+build_modeling_assets = load_module("build_modeling_assets", "build_modeling_assets.py")
+apply_manual_review_overlay = load_module("apply_manual_review_overlay", "apply_manual_review_overlay.py")
+train_baseline_models = load_module("train_baseline_models", "train_baseline_models.py")
+build_event_intensity_features = load_module("build_event_intensity_features", "build_event_intensity_features.py")
+analyze_sample_predictability = load_module("analyze_sample_predictability", "analyze_sample_predictability.py")
 
 
 def test_normalize_date_handles_common_public_source_formats():
@@ -414,3 +426,340 @@ def test_same_company_overlap_marks_short_window_contamination():
     assert not result.loc[0, "is_overlap_clean_p0_p5"]
     assert result.loc[2, "overlap_event_count_p0_p5"] == 0
     assert result.loc[2, "is_overlap_clean_p0_p5"]
+
+
+def test_ml_ssot_split_policy_uses_time_order_and_excludes_unlabeled():
+    assert build_ml_ssot_tables.split_by_event_date("2022-12-31", "ok")[0] == "train"
+    assert build_ml_ssot_tables.split_by_event_date("2023-06-01", "ok")[0] == "valid"
+    assert build_ml_ssot_tables.split_by_event_date("2024-01-01", "ok")[0] == "test"
+    assert build_ml_ssot_tables.split_by_event_date("2024-01-01", "pre_listing")[0] == "excluded_unlabeled"
+
+
+def test_ml_ssot_relative_reaction_label_has_neutral_band():
+    assert build_ml_ssot_tables.relative_reaction_label(0.021) == "positive_revaluation"
+    assert build_ml_ssot_tables.relative_reaction_label(-0.021) == "negative_shock"
+    assert build_ml_ssot_tables.relative_reaction_label(0.0) == "neutral"
+
+
+def test_ml_ssot_text_signal_features_are_interpretable_counts():
+    features = build_ml_ssot_tables.text_signal_features("公司订单增长20%，投资者调研关注车联网产品风险")
+    assert features["text_percent_count"] == 1
+    assert features["text_has_growth_keyword"] == 1
+    assert features["text_has_ir_keyword"] == 1
+    assert features["text_has_tech_keyword"] == 1
+
+
+def test_data_governance_sample_policy_splits_main_clean_and_overlap_cases():
+    clean_row = pd.Series(
+        {
+            "has_main_label": 1,
+            "is_ipo_listing_related": "0",
+            "is_market_trading_related": "0",
+            "is_default_training_candidate": 1,
+            "is_clean_p0_p20": 1,
+            "overlap_event_count_p0_p20": 0,
+        }
+    )
+    dirty_row = clean_row.copy()
+    dirty_row["is_clean_p0_p20"] = 0
+    dirty_row["overlap_event_count_p0_p20"] = 3
+    missing_label = clean_row.copy()
+    missing_label["has_main_label"] = 0
+
+    assert build_data_governance_tables.sample_policy_for(clean_row)[0] == "main_clean_sensitivity"
+    assert build_data_governance_tables.sample_policy_for(dirty_row)[0] == "robustness_or_case"
+    assert build_data_governance_tables.sample_policy_for(missing_label)[0] == "exclude_from_model"
+
+
+def test_data_governance_review_action_prioritizes_other_category():
+    row = pd.Series(
+        {
+            "primary_category": "其他",
+            "title": "关于业务进展的公告",
+            "group_titles_sample": "",
+            "is_ipo_listing_related": "0",
+            "is_market_trading_related": "0",
+            "overlap_event_count_p0_p20": 0,
+            "relative_mv_return_p0_p20": 0.01,
+        }
+    )
+
+    assert build_data_governance_tables.suggested_action(row) == "优先人工重分类"
+
+
+def test_data_governance_review_action_excludes_trading_mechanics_title():
+    row = pd.Series(
+        {
+            "primary_category": "其他",
+            "title": "股票交易异常波动公告",
+            "group_titles_sample": "",
+            "is_ipo_listing_related": "0",
+            "is_market_trading_related": "0",
+            "overlap_event_count_p0_p20": 0,
+            "relative_mv_return_p0_p20": 0.01,
+        }
+    )
+
+    assert build_data_governance_tables.suggested_action(row) == "排除默认建模，保留为审计/案例"
+
+
+def test_modeling_assets_join_ssot_and_policy_without_row_loss():
+    tables = {
+        "event": pd.DataFrame(
+            {
+                "analysis_group_id": ["a", "b"],
+                "event_date": ["2023-01-01", "2024-01-01"],
+                "company": ["A", "B"],
+            }
+        ),
+        "label": pd.DataFrame(
+            {
+                "analysis_group_id": ["a", "b"],
+                "event_date": ["2023-01-01", "2024-01-01"],
+                "car_status": ["ok", "ok"],
+                "relative_mv_return_p0_p20": [0.1, -0.1],
+            }
+        ),
+        "feature": pd.DataFrame(
+            {
+                "analysis_group_id": ["a", "b"],
+                "event_date": ["2023-01-01", "2024-01-01"],
+                "as_of_date": ["2023-01-01", "2024-01-01"],
+                "source_count": [1, 2],
+            }
+        ),
+        "split": pd.DataFrame(
+            {
+                "analysis_group_id": ["a", "b"],
+                "event_date": ["2023-01-01", "2024-01-01"],
+                "split": ["valid", "test"],
+            }
+        ),
+        "sample_policy": pd.DataFrame(
+            {
+                "analysis_group_id": ["a", "b"],
+                "sample_policy": ["main_model_with_overlap_flag", "main_clean_sensitivity"],
+                "policy_reason": ["轻度重叠", "clean"],
+            }
+        ),
+    }
+
+    dataset = build_modeling_assets.build_modeling_dataset(tables)
+
+    assert len(dataset) == 2
+    assert "relative_mv_return_p0_p20" in dataset.columns
+    assert set(dataset["modeling_scope"]) == {"main", "clean_sensitivity"}
+
+
+def test_modeling_assets_histogram_bins_counts_values():
+    result = build_modeling_assets.histogram_bins(pd.Series([0.1, 0.2, 0.3, None]), bins=3)
+
+    assert int(result["count"].sum()) == 3
+
+
+def test_manual_review_overlay_translates_numeric_codes():
+    review = pd.DataFrame(
+        {
+            "review_rank": [1, 2],
+            "analysis_group_id": ["a", "b"],
+            "company": ["A", "B"],
+            "symbol": ["1", "2"],
+            "event_date": ["2024-01-01", "2024-01-02"],
+            "title": ["股票交易异常波动公告", "回购股份方案"],
+            "primary_category": ["其他", "其他"],
+            "keep_code": [0, 1],
+            "noise_code": [1, 0],
+            "category_code": [8, 2],
+            "confidence_code": [1, 2],
+            "note_code": [0, 1],
+        }
+    )
+
+    overlay = apply_manual_review_overlay.build_overlay(apply_manual_review_overlay.normalize_code_columns(review))
+
+    assert overlay.loc[0, "manual_review_status"] == "noise"
+    assert overlay.loc[0, "manual_corrected_category"] == "交易机制/IPO"
+    assert overlay.loc[1, "manual_review_status"] == "reclassified"
+    assert overlay.loc[1, "manual_corrected_category"] == "资本动作"
+
+
+def test_manual_review_keep_one_does_not_promote_dirty_scope_to_main():
+    modeling = pd.DataFrame(
+        {
+            "analysis_group_id": ["a", "b", "c"],
+            "primary_category": ["其他", "资本动作", "业绩信号"],
+            "modeling_scope": ["robustness_or_case", "main", "robustness_or_case"],
+        }
+    )
+    overlay = pd.DataFrame(
+        {
+            "analysis_group_id": ["a", "b"],
+            "manual_review_status": ["reclassified", "noise"],
+            "manual_keep_for_model": [1, 0],
+            "manual_is_noise": [0, 1],
+            "manual_corrected_category": ["资本动作", "交易机制/IPO"],
+            "manual_confidence": ["很确定", "很确定"],
+            "manual_note_label": ["无特殊备注", "无特殊备注"],
+            "manual_reviewer": ["user", "user"],
+            "manual_review_date": ["2026-06-14", "2026-06-14"],
+        }
+    )
+
+    dataset = apply_manual_review_overlay.build_reviewed_modeling_dataset(modeling, overlay)
+
+    assert dataset.loc[dataset["analysis_group_id"] == "a", "reviewed_modeling_scope"].item() == "robustness_or_case"
+    assert dataset.loc[dataset["analysis_group_id"] == "b", "reviewed_modeling_scope"].item() == "case_or_audit_only"
+    assert dataset.loc[dataset["analysis_group_id"] == "c", "reviewed_modeling_scope"].item() == "robustness_or_case"
+
+
+def test_baseline_feature_columns_exclude_post_event_fields():
+    dataset = pd.DataFrame(
+        {
+            "analysis_group_id": ["a"],
+            "event_date": ["2024-01-01"],
+            "as_of_date": ["2024-01-01"],
+            "source_count": [1],
+            "relative_mv_return_p0_p20": [0.1],
+            "car_p0_p20": [0.2],
+        }
+    )
+    dictionary = pd.DataFrame(
+        {
+            "table": ["feature_master", "feature_master"],
+            "column": ["source_count", "car_p0_p20"],
+            "leakage_risk": ["low", "target"],
+        }
+    )
+
+    columns = train_baseline_models.feature_columns(dataset, dictionary)
+
+    assert columns == ["source_count"]
+
+
+def test_baseline_feature_columns_exclude_raw_scale_enhanced_fields():
+    dataset = pd.DataFrame(
+        {
+            "analysis_group_id": ["a"],
+            "source_count": [1],
+            "bal_total_assets": [1000000000.0],
+            "bal_current_ratio": [1.5],
+        }
+    )
+    dictionary = pd.DataFrame(
+        {
+            "table": ["feature_master"],
+            "column": ["source_count"],
+            "leakage_risk": ["low"],
+        }
+    )
+    manifest = pd.DataFrame(
+        {
+            "feature": ["bal_total_assets", "bal_current_ratio"],
+            "source_group": ["financial", "financial"],
+            "leakage_risk": ["low", "low"],
+        }
+    )
+
+    columns = train_baseline_models.feature_columns(dataset, dictionary, manifest)
+
+    assert columns == ["source_count", "bal_current_ratio"]
+
+
+def test_quantile_clipper_learns_bounds_from_fit_data():
+    clipper = train_baseline_models.QuantileClipper(lower=0.25, upper=0.75)
+    clipper.fit(pd.DataFrame({"x": [0.0, 10.0, 20.0, 30.0]}))
+
+    result = clipper.transform(pd.DataFrame({"x": [-100.0, 15.0, 100.0]}))
+
+    assert result[:, 0].tolist() == [7.5, 15.0, 22.5]
+
+
+def test_event_intensity_extracts_profit_and_money_scale():
+    row = pd.Series(
+        {
+            "title": "预增 预计净利润11200-14200万",
+            "summary": "公司拟回购股份，金额不低于1亿元且不超过2亿元。",
+            "group_titles_sample": "2024年度业绩预告",
+            "pre_total_mv_yi": 100.0,
+        }
+    )
+
+    features = build_event_intensity_features.text_intensity_features(row)
+
+    assert features["evt_profit_direction"] == 1.0
+    assert features["evt_profit_low_yi"] == 1.12
+    assert features["evt_profit_high_yi"] == 1.42
+    assert features["evt_money_max_yi"] == 2.0
+    assert features["evt_money_max_to_mv"] == 0.02
+    assert features["evt_is_repurchase"] == 1
+
+
+def test_event_intensity_handles_first_loss_and_avoids_contract_false_positive():
+    row = pd.Series(
+        {
+            "title": "首亏 预计净利润-119000~-118500万",
+            "summary": "关于签署资产管理合同的公告",
+            "group_titles_sample": "首亏 预计净利润-119000~-118500万",
+            "pre_total_mv_yi": 100.0,
+        }
+    )
+
+    features = build_event_intensity_features.text_intensity_features(row)
+
+    assert features["evt_profit_direction"] == -1.0
+    assert features["evt_profit_low_yi"] == -11.9
+    assert features["evt_profit_high_yi"] == -11.85
+    assert features["evt_is_contract_order"] == 0
+
+
+def test_baseline_feature_sets_include_event_intensity_group():
+    features = ["source_count", "evt_money_max_yi"]
+    manifest = pd.DataFrame(
+        {
+            "feature": ["evt_money_max_yi"],
+            "source_group": ["event_intensity"],
+            "leakage_risk": ["low"],
+        }
+    )
+
+    sets = train_baseline_models.feature_sets(features, manifest)
+
+    assert sets["base_plus_event_intensity"] == ["source_count", "evt_money_max_yi"]
+    assert "evt_money_max_yi" in sets["full_safe"]
+
+
+def test_baseline_metrics_helpers_behave_sensibly():
+    y_true = pd.Series([0.1, -0.2, 0.3])
+    y_pred = pd.Series([0.2, -0.1, 0.4])
+
+    metrics = train_baseline_models.compute_metrics(y_true, y_pred)
+
+    assert metrics["mae"] > 0
+    assert metrics["directional_accuracy"] == 1.0
+    assert metrics["spearman_ic"] > 0
+    assert metrics["rmse"] > 0
+
+
+def test_sample_predictability_label_bucket_uses_neutral_band():
+    assert analyze_sample_predictability.label_bucket(0.021) == "positive"
+    assert analyze_sample_predictability.label_bucket(-0.021) == "negative"
+    assert analyze_sample_predictability.label_bucket(0.0) == "neutral"
+
+
+def test_sample_predictability_category_diagnostics_marks_ready_categories():
+    frame = pd.DataFrame(
+        {
+            "reviewed_primary_category": ["资本动作"] * 35 + ["客户/订单"] * 6,
+            "split": ["train"] * 20 + ["valid"] * 5 + ["test"] * 10 + ["train"] * 6,
+            "relative_mv_return_p0_p20": [0.03] * 35 + [-0.03] * 6,
+            "reviewed_modeling_scope": ["main"] * 41,
+        }
+    )
+    frame["label_bucket"] = frame["relative_mv_return_p0_p20"].map(analyze_sample_predictability.label_bucket)
+
+    diagnostics = analyze_sample_predictability.category_label_diagnostics(frame)
+
+    ready = diagnostics.set_index("category").loc["资本动作", "category_model_ready"]
+    not_ready = diagnostics.set_index("category").loc["客户/订单", "category_model_ready"]
+    assert ready == 1
+    assert not_ready == 0

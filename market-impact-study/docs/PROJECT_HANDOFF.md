@@ -1,121 +1,161 @@
 # Market Impact Study 项目交接
 
+> 最近核对：2026-06-14。本文件以当前磁盘真实产物为准；历史 RAG / CFO 证据链 / 单页工作台阶段的产物已不在仓库，相关入口已从本文移除。
+
 ## 项目目标
 
-本项目面向 CFO 汇报，研究主题是移为通信上市以来市值驱动因素与竞品动作对标分析。主线不是预测股价，而是解释：
+本项目面向 CFO 市值管理决策，研究主题是移为通信上市以来市值驱动因素与竞品动作对标。主线不是预测股价，而是**解释和复现**事件后相对同行的市值反应，并转化为信息披露、投关、资本动作与风险沟通建议。
 
-- 移为通信市值变化经历了哪些阶段。
-- 业绩、资本动作、管理层信号、产品创新、客户订单、风险事件对市值变化的关系。
+- 移为通信市值变化经历了哪些阶段、关键事件是什么。
+- 业绩、资本动作、管理层信号、产品创新、客户订单、风险事件与市值反应的关系。
 - 竞品动作是否对移为形成替代或共振外溢。
 - 哪些管理动作、披露方式和投关节奏更可能提升市场认知。
 
-研究主体：移为通信。竞品/参照：移远通信、高新兴、广和通、日海智能、锐明技术、有方科技、美格智能、博实结。
+研究主体：移为通信（300590）。竞品/参照：移远通信、高新兴、广和通、日海智能、锐明技术、有方科技、美格智能、博实结。
+
+完整方法口径见 `docs/PROJECT_PLAN.md` 与 `docs/METHOD_AND_EVALUATION_PROTOCOL.md`，这两份是方案权威文件。
 
 ## 当前真实进度
 
-截至本次核对，已完成第一轮数据采集、事件/CAR 辅助底表、RAG 证据候选、中文 Top 表、数据质量校验、管理层信号台账初版、CFO 事件-市值变化-证据链主表、数据验收 HTML 和单页交互式市值事件工作台。
+截至 2026-06-14，项目已从早期“采集 + RAG 证据链”阶段推进到 **ML SSOT 建模阶段**，并跑通了第一版 baseline：
 
-核心可用入口：
+- 第一轮多源数据采集完成（Tushare 行情/估值/财务/指数、AKShare/东方财富公告·研报·新闻、东方财富 IR、巨潮披露）。
+- 事件候选池、CAR/相对市值反应、事件分析组、竞品外溢底表已生成。
+- ML SSOT 五张主表（`event_master`/`label_master`/`feature_master`/`split_master`/`data_dictionary` + `schema_contract.json`）已生成并通过 20/20 项 SSOT 校验。
+- 数据治理：复核队列、样本策略分层、事件类型审计、治理图表与 dashboard 已生成。
+- 人工数字复核已应用前 100 条（70 噪声、30 重分类），落为 overlay，不改原始 SSOT。
+- 增强特征 v1（218 列）、事件强度特征 v2（244 列）已生成，入模 136 个 point-in-time 安全特征。
+- 第一版 baseline（dummy/Ridge/ElasticNet/HistGBM）+ 特征组消融已跑通，结果见下文“当前真实结论”。
+
+## 核心可用入口
 
 | 入口 | 路径 | 用途 |
 |---|---|---|
-| 单页工作台 | `data/processed/market_impact_workbench.html` | CFO/分析人员浏览市值走势、事件影响、竞品对比、事件对齐/外溢、Top 专题 |
-| 数据验收页 | `data/processed/validation/data_quality_dashboard.html` | 检查数据覆盖、事件分布、基础校验和 CAR 复算抽样 |
-| CFO 主表 | `data/processed/cfo_event_evidence_chain.csv` | 事件-客观市值变化-竞品对照-RAG 证据链主表 |
-| 项目交接 | `docs/PROJECT_HANDOFF.md` | 下一位 AI 的续作入口 |
+| 总体方案 | `docs/PROJECT_PLAN.md` | 题目、标签、特征组、模型与检验、十天计划 |
+| 计算与评估协议 | `docs/METHOD_AND_EVALUATION_PROTOCOL.md` | 标签/特征/模型/稳健性/报告边界的权威口径 |
+| ML SSOT 数据集 | `data/processed/ml_dataset/` | 五张主表 + schema 契约，建模唯一入口 |
+| 建模宽表（最新） | `data/processed/modeling/modeling_dataset_enhanced_v2.csv` | 244 列，含全部 point-in-time 安全特征，训练入口 |
+| baseline 结果 | `data/processed/modeling/baseline_models/` | 指标、消融、预测、Top 误差、模型注册表 |
+| 治理 dashboard | `data/processed/modeling/data_governance_dashboard.html` | 样本、标签、治理图表可视化 |
+| 数据预览页 | `data/processed/preview_report.html` | 早期采集预览（非主线） |
+| 报告摘要目录 | `docs/reports/` | 各阶段机器生成的 Markdown 摘要 |
 
 ## 数据与产物口径
 
-已采集数据：
+已采集数据（行数以当前磁盘为准）：
 
-| 来源 | 数据 | 覆盖 | 实际行数/文件 |
-|---|---|---:|---:|
-| Tushare | 日行情 | 9/9 | 19,191 |
-| Tushare | 日市值、估值、换手率 | 9/9 | 19,191 |
-| Tushare | 复权因子 | 9/9 | 19,671 |
-| Tushare | 公告标题 | 9/9 | 26,027 |
-| Tushare | 财务三表 | 9/9 | 1,394 |
+| 来源 | 数据 | 覆盖 | 实际行数 |
+|---|---|---|---:|
+| Tushare | 日行情 | 9/9 | 19,326 |
+| Tushare | 日市值/估值/换手率 | 9/9 | 19,326 |
+| Tushare | 复权因子 | 9/9 | 19,797 |
+| Tushare | 财务三表 | 9/9 | 1,395 |
 | Tushare | 财务指标 | 9/9 | 523 |
-| Tushare | 业绩预告/快报 | 8/9 | 301 |
-| Tushare | 分红、回购、质押、股东户数 | 基本覆盖 | 5,121 |
-| Tushare | 指数行情 | 4 个指数 | 15,805 |
-| AKShare/巨潮 | 信息披露公告 | 9/9 | 12,854 |
-| AKShare/东方财富 | 个股公告，含公告类型和链接 | 9/9 | 13,480 |
-| AKShare/东方财富 | 个股研报，含 PDF 链接 | 9/9 | 606 |
+| Tushare | 指数行情 | 4 个指数 | 15,865 |
+| AKShare/巨潮 | 信息披露公告 | 9/9 | 11,347 |
+| AKShare/东方财富 | 个股公告 | 9/9 | 13,480 |
+| AKShare/东方财富 | 个股研报 | 9/9 | 609 |
 | AKShare/东方财富 | 个股新闻 | 9/9 | 90 |
-| 东方财富 | 机构调研/业绩说明会 | 9/9 | 885 |
-| AKShare/巨潮 | 调研披露 | 7/9 | 377 |
-| AKShare/互动易 | 投资者问答 | 7/9 | 190 |
-| 东方财富公告 PDF | 高价值关键词公告 PDF | 697 份有效 | 约 307MB |
+| 东方财富 | 机构调研/业绩说明会 | 9/9 | 870 |
+| AKShare/互动易 | 投资者问答 | 7/9 | 176 |
 
 关键产物：
 
 | 产物 | 路径 | 当前状态 |
 |---|---|---|
-| 自动事件候选池 | `data/processed/event_candidates.csv` | 已生成 |
-| CAR 和异常市值影响 | `data/processed/event_candidates_scored.csv` | 已生成 |
-| 分析事件组 | `data/processed/event_analysis_groups_scored.csv` | 6,550 组 |
-| 竞品外溢底表 | `data/processed/peer_spillover_to_yiwei.csv` | 已生成 |
-| RAG 文本来源清单 | `data/processed/rag_text_source_manifest.csv` | 14,406 条 |
-| RAG chunks | `data/processed/rag_notice_chunks.jsonl` | 14,219 条 |
-| 事件组证据增强表 | `data/processed/rag_event_group_evidence_enhanced.csv` | 6,550 组 |
-| RAG 证据覆盖统计 | `data/processed/rag_event_group_evidence_coverage.csv` | 已生成 |
-| RAG 证据缺口诊断 | `data/processed/rag_event_group_evidence_gaps.csv` | 5,383 组缺口 |
-| 管理层信号台账 | `data/processed/management/management_signal_ledger.csv` | 5,557 行 |
+| 事件候选池 | `data/processed/event_candidates.csv` | 15,174 行 |
+| CAR/异常市值影响 | `data/processed/event_candidates_scored.csv` | 已生成 |
+| 事件分析组 | `data/processed/event_analysis_groups_scored.csv` | 6,398 组 |
+| 竞品外溢底表 | `data/processed/peer_spillover_to_yiwei.csv` | 5,367 行 |
+| 管理层信号台账 | `data/processed/management/management_signal_ledger.csv` | 5,430 行 |
 | 管理层信号覆盖缺口 | `data/processed/management/management_signal_coverage_gaps.csv` | 54 行 |
-| CFO 主表 | `data/processed/cfo_event_evidence_chain.csv` | 6,550 组 |
-| 数据验收 HTML | `data/processed/validation/data_quality_dashboard.html` | 已生成 |
-| 单页工作台 | `data/processed/market_impact_workbench.html` | 已生成 |
+| ML SSOT 主表 | `data/processed/ml_dataset/` | 5 表，各 6,398 行；SSOT 20/20 通过 |
+| 数据治理产物 | `data/processed/data_governance/` | 复核队列、样本策略、审计、overlay |
+| 增强建模宽表 v1/v2 | `data/processed/modeling/modeling_dataset_enhanced_v1.csv`、`_v2.csv` | 218 / 244 列 |
+| baseline 模型产物 | `data/processed/modeling/baseline_models/` | 已生成 |
+
+> 注：早期文档曾引用 `market_impact_workbench.html`、`cfo_event_evidence_chain.csv`、`rag_*` 系列、`data_quality_dashboard.html`，这些产物当前不在仓库。如需，请重新运行对应脚本生成，不要以为它们已存在。
 
 ## 已确认技术事实
 
 - 9 家公司代码和上市日已完整解析。
-- Tushare 行情、估值、财务、公告标题、指数数据可用。
-- `daily_basic.total_mv` 和 `circ_mv` 是万元口径；报告输出市值金额时统一换算为亿元。
-- 东方财富公告 PDF 可由公告代码构造：`https://pdf.dfcfw.com/pdf/H2_{announcement_code}_1.pdf`。
-- PDF 下载需校验 `%PDF` 文件头；720 条高价值公告中 697 条有效，23 条为空或无效。
-- 东方财富机构调研数据质量较高，可用于管理层信号和机构关注度指标。
-- 公告标题和公告类型足以生成自动事件候选池；公告正文/PDF 用于证据链和 RAG。
+- `daily_basic.total_mv`、`circ_mv` 为万元口径；输出亿元时除以 10000。
+- 主标签 `relative_mv_return_p0_p20` = 公司事件窗口市值收益率 − 同期剔除自身后的同行平均市值收益率。
+- 默认时间切分：train ≤2022、valid =2023、test ≥2024；无主标签样本排除但保留审计（249 条）。
+- SSOT 校验覆盖主键唯一、表间键集合一致、point-in-time（`as_of_date ≤ event_date`）、时间切分无穿越、目标泄露字段黑名单，全部通过。
+- 公告标题和公告类型足以生成自动事件候选池；公告正文/PDF 暂未进入特征。
+
+## 当前真实结论
+
+> **2026-06-14 更新（v3 → v4）**：v2 baseline 的"无样本外信号"结论已被取代。改用**全标注样本（n=3905，带 overlap 特征）+ 行业内相对（截面秩）表示**，v3（HistGBM）test Spearman IC 从 0.000 升到 0.193（去重 0.163，9 家公司全为正）。v4 用 **LightGBM/XGBoost + 早停 + 正则**进一步到 **test IC 0.216、R² 转正 +0.027、2024 不再失效（按年 IC +0.175/+0.255/+0.312）**。可解释性三方一致：SHAP ∩ 置换重要性 ∩ 固定效应+聚类稳健+WCB（**相对规模** p<0.001，相对流动性/低波动/异常机构关注边际）。复现注册表 `data/processed/modeling/v4_models/v4_registry.json`。详见 `reports/V3_MODEL_AND_INTERPRETABILITY_SUMMARY.md`、`reports/NORMALIZED_FEATURES_SUMMARY.md`。定位：**弱而稳健、跨异质公司通用、可解释的排序信号；周期平均成立、非每期可靠。**
+
+以下为 v2 第一版 baseline 的事实，保留以说明改进起点：
+
+- 主模型样本经人工复核 + 样本策略过滤后**很小**：`reviewed_keep_for_training=1` 仅 498 条，实际带标签训练/验证/测试约 **300 / 34 / 164**。
+- 按验证集选模型，**胜出的是 `dummy_mean`（直接预测全局均值）**：test MAE≈0.0722，**test Spearman IC = 0.0000**。
+- Ridge / ElasticNet / HistGBM 在 test 上 **R² 全为负**（−0.31 ~ −0.07），test IC 接近 0（最高 HistGBM≈0.085，不稳定）。
+- HistGBM 训练集 R²≈0.60、test 为负 → 典型过拟合 / 当前特征对 20 日相对市值反应**没有稳定的样本外解释力**。
+- 特征组消融中，没有任何一组在 test 上稳定优于 `dummy_mean`。
+
+结论：现阶段不能宣称“特征解释了市值反应”。下一步重点不是堆模型，而是**找到真正有样本外信号的特征 / 扩大有效样本 / 重新审视标签噪声**（详见“下一步建议”）。
 
 ## 真实缺口
 
-1. 事件分类仍是规则初版，“其他”占比高；PPT 前必须人工/LLM 复核 Top 事件。
-2. 管理层信号台账仍是自动整合初版；需要围绕管理层动作、投关表达、战略表达、卖方认知和市场反应做人工/LLM 复核。
-3. RAG 覆盖率仍偏低：6,550 个分析事件组中 1,167 组有 RAG/结构化证据，覆盖率约 17.82%。Top 优先级事件覆盖尤其低。
-4. `rag_text_source_manifest.csv` 中已有 `notice_api=12757` 候选，但 `rag_notice_chunks.jsonl` 中尚无 `notice_api` chunk。也就是公告页面/API 正文尚未抓取入 chunks；研报、调研、互动问答、新闻结构化文本已入 chunks。
-5. 报告主线仍需从“CAR 解释事件”调整为“客观市值变化 + 同期竞品/行业对照 + 证据链”，CAR 只作辅助列。
-6. 当前 CAR 使用剔除自身的竞品等权组合做基准，尚未加入指数基准、滚动 beta、市值加权和显著性检验。
-7. 事件重叠污染很高，分类权重只能作为候选排序和解释入口，不能直接当因果贡献。
-8. 沪市/科创板互动问答数据不完整：移远通信、有方科技在 `cninfo_irm_questions` 采集失败，后续需用上证 e 互动或其他源补。
-9. 23 条无效公告 PDF 可后续用 Playwright 或页面正文兜底，不阻塞主流程。
+1. ~~主模型样本过小~~ **已解决**：改用全标注样本 n=3905 + overlap 特征（v3/v4），不再用 n=300 子集。
+2. ~~特征样本外信号弱~~ **已缓解**：行业内相对（截面秩）特征 + LightGBM，v4 test IC 0.216、R² 转正；但量级仍弱（IC~0.2、R²~0.03），是近有效市场本质，定位为"弱信号+强方法"。
+3. ~~标签被极端值主导~~ **已处理**：训练用 1%/99% winsorize；结果经去极端值（IC 0.13）等对抗检查存活。
+4. 事件分类仍是规则初版，“其他”占比高；仅前 100 条做了人工复核，Top 事件需继续复核。
+5. 当前 CAR/相对收益基准为剔除自身的竞品等权组合，尚未加入指数基准、滚动 beta、市值加权和显著性检验。
+6. 事件重叠污染高；overlap-heavy 样本（约 5,400 条）目前被划入 robustness/case，未进主模型，等于丢弃了 ~90% 数据。
+7. 沪市/科创板互动问答不完整（移远、有方在 `cninfo_irm_questions` 采集失败）。
+8. 公告正文/PDF/RAG 文本尚未进入特征，文本信号目前只有标题级关键词。
 
 ## 下一步建议
 
-优先顺序：
+> 上一版"先证明有信号"的 6 步（诊断 IC / 扩样本 / 稳标签 / 补 surprise / SHAP+WCB）已全部完成：v4 test IC 0.216、R² 转正、三方可解释。surprise 与大波动检测为诚实 null。当前进入"交付物 + 应用"阶段。课程截止 **2026-07-03**，交 PPT+代码+数据。
 
-1. 按 `data/processed/rag_event_group_evidence_gaps.csv` 处理 Top 缺口，优先抓取 `notice_api` 正文并重新生成 chunks。
-2. 复核 Top 事件分类和事件标题，尤其是“其他”、交易异常、流程型公告、同日多附件公告。
-3. 重构事件簇合并/剔除规则，降低同公司连续公告、重组进展、股权激励解锁/注销、分红流程等重复计权。
-4. 更新 `data/processed/preview_report.html` 或直接基于 `market_impact_workbench.html` 出 CFO 汇报稿，主线使用客观市值变化、同期竞品对照和证据链。
-5. 管理层专题从“有多少数据”推进到“哪些动作/表达/节奏与市场认知变化相关”。
+剩余按拿分优先：
+
+1. **结果解释与应用（评分 20%，最该补）**：把 SHAP/WCB 结论落到**移为通信案例公司**——逐事件复盘（用 `v4_models/shap/shap_event_examples.csv`）、经济含义解读、对比财务理论，产出**可操作 CFO 披露/投关/风险沟通建议**。
+2. **可复现打包（模型质量 40% 的规范性）**：`run_pipeline.py` 串 SSOT→特征→v4→解释→lift/分类 + `requirements.txt`（含已装 lightgbm/xgboost/shap/statsmodels 版本）+ 复现 README + 随机种子核对。
+3. **继续 Top 事件人工复核**：把"其他"类压下去，重分类落 overlay（当前仅复核 100/6398）。
+4. **PPT 内容**（图表/排版由人做）：用 `reports/PRESENTATION_RESULTS_SUMMARY.md` + `ACCURACY_AND_EVALUATION_GUIDANCE.md` 的话术，主动讲"为何不报裸准确率"。
+5. **可选方法补强**：文本 embedding、概率校准、PSI/KS 分布漂移、把截面池从 9 家扩到更宽同行（降低 xsrank 粗糙度、增 WCB 簇数）、查 2024 早段 regime。
+
+主结果与可解释入口：`reports/V3_MODEL_AND_INTERPRETABILITY_SUMMARY.md`、`data/processed/modeling/v4_models/`、`data/processed/modeling/presentation/`。
 
 ## 运行与验证
 
-常用生成命令在 `market-impact-study` 目录运行：
+常用生成命令从**仓库根目录**运行（注意不要在 `market-impact-study/` 内直接跑使用 `Path("market-impact-study/...")` 的脚本，否则写到嵌套错误路径）：
 
 ```bash
-../.venv/bin/python build_rag_text_source_manifest.py
-../.venv/bin/python extract_rag_notice_texts.py
-../.venv/bin/python build_rag_event_group_evidence.py
-../.venv/bin/python build_cfo_event_evidence_chain.py
-../.venv/bin/python build_data_quality_dashboard.py
-../.venv/bin/python build_market_impact_workbench.py
+.venv/bin/python market-impact-study/build_ml_ssot_tables.py
+.venv/bin/python market-impact-study/validate_ml_ssot.py
+.venv/bin/python market-impact-study/build_data_governance_tables.py
+.venv/bin/python market-impact-study/build_modeling_assets.py
+.venv/bin/python market-impact-study/apply_manual_review_overlay.py
+.venv/bin/python market-impact-study/build_enhanced_features.py
+.venv/bin/python market-impact-study/build_event_intensity_features.py
+.venv/bin/python market-impact-study/train_baseline_models.py
+.venv/bin/python market-impact-study/analyze_sample_predictability.py
 ```
+
+v3/v4 建模链路（行业内相对特征 → LightGBM/XGBoost → 解释 → 面试可读产物）：
+
+```bash
+.venv/bin/python market-impact-study/build_normalized_features.py        # 行业内相对/归一化特征 v3
+.venv/bin/python market-impact-study/train_v3_normalized_models.py        # v3 模型 + 选型
+.venv/bin/python market-impact-study/explain_v3_models.py                 # 置换重要性 + WCB + waterfall
+.venv/bin/python market-impact-study/build_surprise_features.py           # 预期差特征（null 实验）
+.venv/bin/python market-impact-study/train_v4_gbm_models.py               # v4 LightGBM/XGBoost + SHAP（主模型）
+.venv/bin/python market-impact-study/build_presentation_artifacts.py      # 分位 lift + 三分类
+.venv/bin/python market-impact-study/build_largemove_model.py             # 大波动检测（null 对照）
+```
+
+依赖：除 sklearn/scipy/numpy/pandas 外，v4/解释还需 `lightgbm xgboost shap statsmodels`（已装于 `../.venv`）。
 
 切片闭包检查使用父项目工具：
 
 ```bash
-../.venv/bin/python ../tools/check.py changed
+.venv/bin/python tools/check.py changed
 ```
-
-注意：仓库根的 `AGENTS.md` / `.ai-config/AGENTS.md` 镜像清理属于其他任务，不是本项目续作范围。

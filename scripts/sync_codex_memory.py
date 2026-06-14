@@ -33,19 +33,16 @@ def build_index() -> str:
 ## 任务前读取顺序
 
 1. 先读 `{REPO_ROOT / ".ai-config" / "AGENTS.md"}`。
-2. 新项目 / 新模块读取 `{REPO_ROOT / ".ai-config" / "rules" / "process" / "flow_new_project.index.md"}`。
-3. 写代码后按 `{REPO_ROOT / ".ai-config" / "AGENTS.md"}` 的代码审查门禁，必要时读取 `{REPO_ROOT / ".ai-config" / "rules" / "engineering" / "code.index.md"}`。
-4. 其他工程 / 交付规则仅在用户声明体检、审查、复盘或验收时读取对应规则。
+2. 写代码后按 `{REPO_ROOT / ".ai-config" / "AGENTS.md"}` §代码审查时机表，必要时读取 `{REPO_ROOT / ".ai-config" / "rules" / "engineering" / "code.index.md"}`。
 3. 涉及同步、换机器、hook、settings 时读取 `{REPO_ROOT / "docs" / "TOOLING_CONTRACTS.md"}`。
 
 ## 常用规则入口
 
-- 总入口：`.ai-config/rules/index.md`
-- 新项目流程：`.ai-config/rules/process/flow_new_project.index.md`
-- 代码审查细则：`.ai-config/rules/engineering/code.index.md`
-- 工程体检专题：`.ai-config/rules/engineering/index.md`
-- 交付体检专题：`.ai-config/rules/delivery/index.md`
-- 规则、hook、settings、lint/CI 维护：`.ai-config/AGENTS.md`
+- 主规则 + 触发索引：`.ai-config/AGENTS.md`
+- 设计模式 + 子 agent 复核：`.ai-config/rules/engineering/code.index.md`
+- 跨语言（含 TS/Go）：`.ai-config/rules/engineering/polyglot.index.md`
+- ML 时序 / 数据管道：`.ai-config/rules/process/modes.index.md`
+- 工具 / CI / hook 契约：`.ai-config/config/tooling.registry.toml`
 
 ## 项目检查命令
 

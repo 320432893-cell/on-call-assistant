@@ -1,0 +1,30 @@
+rules:
+  - id: app-main-print
+    message: "app/main.py should use structured logging instead of print(), so startup/runtime diagnostics include request context where available."
+    severity: WARNING
+    languages: [python]
+    paths:
+      include:
+        - "/app/main.py"
+    pattern: print(...)
+
+  - id: api-response-raw-exception-detail
+    message: "API responses must not expose raw exception detail; log internally and return a stable error_code/message/request_id shape."
+    severity: WARNING
+    languages: [python]
+    paths:
+      include:
+        - "**/app/routers/**/*.py"
+        - "/app/main.py"
+      exclude:
+        - "**/tests/**"
+    patterns:
+      - pattern-either:
+          - pattern: HTTPException(..., detail=str($ERR), ...)
+          - pattern: HTTPException(..., detail=repr($ERR), ...)
+          - pattern: HTTPException(..., detail=f"...{$ERR}...", ...)
+          - pattern: 'JSONResponse(..., content={..., "traceback": ..., ...}, ...)'
+          - pattern: 'JSONResponse(..., content={..., "exception": ..., ...}, ...)'
+      - metavariable-regex:
+          metavariable: $ERR
+          regex: (?i)^(e|err|exc|error|exception)$

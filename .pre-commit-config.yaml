@@ -81,6 +81,14 @@ repos:
         # 任何 .py 改动都跑一遍(架构契约级,不该被跳)
         types: [python]
 
+      - id: lifecycle
+        name: lifecycle debt (临时件/别名缺机器可读过期)
+        entry: python3 tools/check.py lifecycle-changed
+        language: system
+        pass_filenames: false
+        # 只卡新增/改动的临时件缺 expires;full sweep 在 CI 跑(非阻塞 WARNING)
+        types: [python]
+
       - id: rule-tool-contracts
         name: rule/tool contract check
         entry: python3 tools/check.py rule-tool-contracts

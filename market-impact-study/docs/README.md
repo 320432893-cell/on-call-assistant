@@ -4,10 +4,26 @@
 
 ## 接手入口
 
-- `PROJECT_HANDOFF.md`：项目现状、已完成产物、真实缺口、下一步建议。
-- `reports/VALIDATION_REPORT.md`：数据质量和 CAR 抽样复算摘要。
-- `reports/CFO_EVENT_EVIDENCE_CHAIN_SUMMARY.md`：CFO 事件-市值变化-证据链主表摘要。
-- `reports/ML_READINESS_SUMMARY.md`：统计/ML 建模准入诊断摘要。
+先读这三份（项目现状 + 方法权威口径）：
+
+- `PROJECT_HANDOFF.md`：项目现状、已完成产物、真实缺口、下一步建议（含第一版 baseline 诚实结论）。
+- `PROJECT_PLAN.md`：题目、标签、特征组、模型与检验、十天执行计划。
+- `METHOD_AND_EVALUATION_PROTOCOL.md`：标签/特征/模型/稳健性/报告边界的权威计算口径。
+
+辅助口径文档：
+
+- `PRESENTER_GUIDE.md`：**汇报人手册**——全流程、做了什么/效果、要补的知识、课程与 CFO 两套口径、问答预案。
+- `NEXT_STEPS_AND_ROLES.md`：现状诚实判断、后续人机分工、特征/建模/解释下一步。
+- `SAMPLE_POLICY.md`：样本分层使用策略与当前分布。
+- `MANUAL_REVIEW_CODEBOOK.md`：人工数字复核填报码表。
+- `TODAY_STATUS.md`：最近一次日切状态。
+
+阶段摘要（机器生成，位于 `reports/`）：
+
+- **最新主结果（先看这三份）**：`V3_MODEL_AND_INTERPRETABILITY_SUMMARY.md`（v3→v4 模型+可解释,IC 0.22）、`PRESENTATION_RESULTS_SUMMARY.md`（lift+三分类，面试可读）、`ACCURACY_AND_EVALUATION_GUIDANCE.md`（该报哪些"准确率"、对应课程评分项）。
+- 特征链路：`NORMALIZED_FEATURES_SUMMARY.md`（行业内相对特征）、`SURPRISE_FEATURES_SUMMARY.md`（预期差，null result）、`ENHANCED_FEATURES_SUMMARY.md`、`EVENT_INTENSITY_FEATURES_SUMMARY.md`。
+- 建模底座：`ML_SSOT_SUMMARY.md`、`ML_SSOT_VALIDATION_SUMMARY.md`、`MODELING_ASSETS_SUMMARY.md`、`BASELINE_MODEL_SUMMARY.md`、`SAMPLE_PREDICTABILITY_DIAGNOSTICS.md`。
+- 数据与治理：`VALIDATION_REPORT.md`、`DATA_GOVERNANCE_SUMMARY.md`、`MANUAL_REVIEW_SUMMARY.md`、`ML_READINESS_SUMMARY.md`、`CFO_EVENT_EVIDENCE_CHAIN_SUMMARY.md`。
 
 ## 文档组织规则
 

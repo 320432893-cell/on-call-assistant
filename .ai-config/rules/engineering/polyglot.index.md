@@ -1,6 +1,7 @@
 # 跨语言协作细则
 
 本文件是 `AGENTS.md` 多语言约定的下放。仅在项目实际多语言配合、或改动跨语言边界时读取，单语言项目不读。
+语言专项细则：TypeScript → `typescript.index.md`；Go → `go.index.md`。
 
 ## 1. 跨语言契约
 

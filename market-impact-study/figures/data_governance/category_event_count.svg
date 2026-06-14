@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="358" viewBox="0 0 960 358">
+<style>
+text { font: 14px Arial, "Microsoft YaHei", sans-serif; fill: #222; }
+rect { fill: #2f6f8f; }
+.title { font-size: 20px; font-weight: 700; }
+</style>
+<text class="title" x="24" y="32">事件类型样本量</text>
+<text x="208" y="76" text-anchor="end">客户/订单</text><rect x="220" y="60" width="34.94" height="20" rx="2"></rect><text x="262.9381625441696" y="76">113</text><text x="208" y="110" text-anchor="end">风险事件</text><rect x="220" y="94" width="94.61" height="20" rx="2"></rect><text x="322.6113074204947" y="110">306</text><text x="208" y="144" text-anchor="end">政策/行业</text><rect x="220" y="128" width="105.12" height="20" rx="2"></rect><text x="333.12367491166077" y="144">340</text><text x="208" y="178" text-anchor="end">业绩信号</text><rect x="220" y="162" width="172.22" height="20" rx="2"></rect><text x="400.2173144876325" y="178">557</text><text x="208" y="212" text-anchor="end">产品/技术创新</text><rect x="220" y="196" width="176.86" height="20" rx="2"></rect><text x="404.8551236749117" y="212">572</text><text x="208" y="246" text-anchor="end">管理层/投关信号</text><rect x="220" y="230" width="192.01" height="20" rx="2"></rect><text x="420.0053003533569" y="246">621</text><text x="208" y="280" text-anchor="end">资本动作</text><rect x="220" y="264" width="502.43" height="20" rx="2"></rect><text x="730.4293286219081" y="280">1625</text><text x="208" y="314" text-anchor="end">其他</text><rect x="220" y="298" width="700.00" height="20" rx="2"></rect><text x="928.0" y="314">2264</text>
+</svg>

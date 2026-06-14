@@ -1,22 +1,30 @@
 #!/usr/bin/env python3
+# 职责：统一承载本仓库本地 hook、手动检查、CI 复用的静态检查入口。
+# 不做什么：不替代业务语义审查，不直接修改源码或自动修复检查结果。
+# 允许依赖层：标准库、项目工具脚本、.ai-config 工具契约配置、外部静态检查 CLI。
+# 谁不应该 import：正式业务代码、测试夹具、一次性数据处理脚本不应 import 本入口。
 """Unified static-check entrypoint for local hooks, manual runs, and CI."""
 
 from __future__ import annotations
 
 import argparse
 import fnmatch
+import json
 import os
 import pathlib
 import shlex
 import subprocess
 import sys
+import time
 import tomllib
 from collections.abc import Sequence
+from datetime import UTC, datetime
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 REGISTRY = ROOT / ".ai-config" / "config" / "tooling.registry.toml"
 LOCAL_UV_CACHE = ROOT / ".uv-cache"
 LOCAL_HOME = ROOT / ".cache" / "home"
+RUN_LOG = ROOT / ".cache" / "check-runs.jsonl"  # 度量日志（.gitignore 内），每次检查记一行供 `check.py debt` 汇总
 FIXED_QUALITY_CODE_DIRS = {"app", "scripts", "market-impact-study"}
 SUPPORT_CODE_DIRS = {"tests", "tools"}
 IGNORED_CODE_DIRS = {
@@ -55,6 +63,7 @@ COMMANDS: dict[str, str] = {
     "semgrep": "uv run semgrep --disable-version-check --metrics=off --config .semgrep --no-git-ignore app scripts market-impact-study tests tools .ai-config .ai-hooks",
     "dependency-change-approval": "python3 tools/check.py dependency-change-approval",
     "code-identity": "python3 tools/check_code_identity.py",
+    "error-catalog": "python3 tools/check_error_catalog.py",
     "pip-audit": "uv run pip-audit --strict",
     "rag-drift": "uv run python scripts/check_rag_drift.py",
     "market-impact-validation": "uv run python market-impact-study/validate_market_outputs.py",
@@ -73,6 +82,11 @@ COMMANDS: dict[str, str] = {
     "vulture": "uv run vulture app scripts market-impact-study --min-confidence 80",
     "deptry": "uv run deptry .",
     "module-boundary": "python3 tools/check_module_boundary.py",
+    "module-boundary-changed": "python3 tools/check_module_boundary.py --changed",
+    "lifecycle": "python3 tools/check_lifecycle.py",
+    "lifecycle-changed": "python3 tools/check_lifecycle.py --changed",
+    "regression": "python3 tools/check_regression.py",
+    "debt": "python3 tools/check.py debt",
 }
 
 HOOK_TESTS = [
@@ -96,6 +110,8 @@ PROFILES: dict[str, list[str]] = {
         "pip-audit",
         "rag-drift",
         "detect-secrets",
+        "lifecycle",
+        "regression",
         "pytest",
     ],
 }
@@ -155,6 +171,20 @@ def is_direct_pytest_file(name: str) -> bool:
         and any(fnmatch.fnmatch(pathlib.PurePosixPath(name).name, pattern) for pattern in python_files)
         for testpath in testpaths
     )
+
+
+def collect_test_file_names() -> set[str]:
+    testpaths, python_files = load_pytest_file_patterns()
+    names: set[str] = set()
+    for testpath in testpaths:
+        base = ROOT / testpath.rstrip("/")
+        if not base.exists():
+            continue
+        for path in base.rglob("*.py"):
+            name = pathlib.PurePosixPath(rel(path)).name
+            if any(fnmatch.fnmatch(name, pattern) for pattern in python_files):
+                names.add(rel(path))
+    return names
 
 
 def collect_changed_names() -> tuple[int, list[str]]:
@@ -274,6 +304,10 @@ def run_changed() -> int:
     if python_paths:
         status = run_command("changed:python-compile", COMMANDS["python-compile"]) or status
         status = run_item("code-identity") or status
+        status = run_item("module-boundary-changed") or status
+        status = run_item("lifecycle-changed") or status
+        status = run_item("test-meta") or status
+        status = run_item("error-catalog") or status
         status = (
             run_command(
                 "changed:ruff-check",
@@ -326,31 +360,53 @@ def discover_code_dirs() -> set[str]:
 
 
 def run_test_meta() -> int:
-    # 检查测试文件是否声明业务场景与用时（§3 测试 oracle 形状）。
-    # WARNING-only：存量测试尚未补全，先不阻塞，靠 AGENTS.md 规则约束新测试。
-    testpaths, python_files = load_pytest_file_patterns()
-    scene_markers = ("业务场景", "覆盖的业务", "覆盖业务")
-    timing_markers = ("用时", "耗时", "elapsed", "duration")
+    # 新增/改动测试阻塞，存量测试只 WARNING，避免历史 backlog 淹没新增 oracle 质量。
+    rc, changed_names = collect_changed_names()
+    if rc != 0:
+        return rc
+    changed = set(changed_names)
+    test_files = sorted(collect_test_file_names())
+    required_markers = (
+        ("生命周期", "缺生命周期说明（T0 删除条件或持久维护）"),
+        ("覆盖的业务场景", "缺覆盖的业务场景说明"),
+        ("依赖的服务/环境", "缺依赖的服务/环境说明"),
+        ("运行方式", "缺运行方式说明"),
+    )
+    oracle_markers = ("用时", "耗时", "elapsed", "duration", "期望:", "实际:", "[ENV_ERROR]", "[LOGIC_ERROR]")
+    blocking: list[str] = []
     warnings: list[str] = []
-    for testpath in testpaths:
-        base = ROOT / testpath.rstrip("/")
-        if not base.exists():
+    for name in test_files:
+        path = ROOT / name
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        missing = [message for marker, message in required_markers if marker not in text]
+        if not any(marker in text for marker in oracle_markers):
+            missing.append("缺 oracle 输出形状（用时/期望实际/ENV_ERROR/LOGIC_ERROR 至少一类）")
+        if not missing:
             continue
-        for path in sorted(base.rglob("*.py")):
-            name = pathlib.PurePosixPath(rel(path)).name
-            if not any(fnmatch.fnmatch(name, pattern) for pattern in python_files):
-                continue
-            text = path.read_text(encoding="utf-8", errors="ignore")
-            if not any(marker in text for marker in scene_markers):
-                warnings.append(f"{rel(path)}: 缺业务场景说明（应在文件顶部标注覆盖的业务场景）")
-            if not any(marker in text for marker in timing_markers):
-                warnings.append(f"{rel(path)}: 缺用时输出（测试应打印每个业务步骤的耗时）")
+        target = blocking if name in changed else warnings
+        target.extend(f"{name}: {message}" for message in missing)
+
     if warnings:
-        print("[check] test-meta WARNING（不阻塞）：", file=sys.stderr)
+        print("[check] test-meta WARNING（存量测试不阻塞）：", file=sys.stderr)
         for warning in warnings:
             print(f"  - {warning}", file=sys.stderr)
+    if blocking:
+        print("[check] test-meta failed（本次新增/改动测试必须可复现）：", file=sys.stderr)
+        for issue in blocking:
+            print(f"  - {issue}", file=sys.stderr)
+        print(
+            "\n在测试文件顶部添加：\n"
+            "  # 生命周期：T0 一次性（删除条件：XXX）/ 持久维护\n"
+            "  # 覆盖的业务场景：\n"
+            "  # 依赖的服务/环境：\n"
+            "  # 运行方式：\n"
+            "并让输出或断言信息包含用时、期望/实际或 ENV/LOGIC 错误分类。",
+            file=sys.stderr,
+        )
+        return 1
+    if warnings:
         return 0
-    print("[check] test-meta: 测试文件均声明业务场景与用时")
+    print("[check] test-meta: 测试文件均声明复现元信息和 oracle 输出形状")
     return 0
 
 
@@ -376,6 +432,23 @@ def run_coverage_audit() -> int:
     return 0
 
 
+def log_run(label: str, returncode: int, seconds: float) -> None:
+    # 度量：把每次检查的 过/挂/耗时 记一行 JSONL，供 `check.py debt` 汇总通过率。
+    # best-effort：日志失败绝不影响检查本身（检查是门禁，度量是旁路）。
+    try:
+        RUN_LOG.parent.mkdir(parents=True, exist_ok=True)
+        record = {
+            "ts": datetime.now(UTC).isoformat(timespec="seconds"),
+            "label": label,
+            "ok": returncode == 0,
+            "ms": round(seconds * 1000),
+        }
+        with RUN_LOG.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except OSError:
+        pass
+
+
 def run_command(label: str, command: Sequence[str] | str) -> int:
     print(f"[check] {label}", flush=True)
     env = os.environ.copy()
@@ -383,9 +456,11 @@ def run_command(label: str, command: Sequence[str] | str) -> int:
     env["UV_CACHE_DIR"] = str(LOCAL_UV_CACHE)
     if label == "pytest" or label.startswith("changed:pytest"):
         env["DEBUG"] = "false"
-    if isinstance(command, str):
-        return subprocess.run(shlex.split(command), cwd=ROOT, env=env, check=False).returncode
-    return subprocess.run(command, cwd=ROOT, env=env, check=False).returncode
+    args = shlex.split(command) if isinstance(command, str) else command
+    start = time.monotonic()
+    returncode = subprocess.run(args, cwd=ROOT, env=env, check=False).returncode
+    log_run(label, returncode, time.monotonic() - start)
+    return returncode
 
 
 def run_item(item: str) -> int:
@@ -397,6 +472,8 @@ def run_item(item: str) -> int:
         return run_coverage_audit()
     if item == "test-meta":
         return run_test_meta()
+    if item == "debt":
+        return run_debt()
     if item == "dependency-change-approval":
         return run_dependency_change_approval()
     if item == "ruff-staged":
@@ -422,6 +499,126 @@ def run_many(items: Sequence[tuple[str, Sequence[str] | str]] | list[tuple[str, 
         if result != 0 and status == 0:
             status = result
     return status
+
+
+def print_pass_rates(limit: int = 200) -> None:
+    # 从度量日志汇总每个检查的通过率（近 limit 条运行），低通过率=AI 在这类检查上反复返工。
+    if not RUN_LOG.exists():
+        print("  检查通过率: 暂无日志（跑几次 check.py 后再看）")
+        return
+    lines = RUN_LOG.read_text(encoding="utf-8").splitlines()[-limit:]
+    stats: dict[str, list[bool]] = {}
+    for line in lines:
+        try:
+            record = json.loads(line)
+        except ValueError:
+            continue
+        stats.setdefault(str(record.get("label")), []).append(bool(record.get("ok")))
+    if not stats:
+        print("  检查通过率: 日志为空")
+        return
+    print(f"  检查通过率（近 {len(lines)} 条运行，低=反复返工的检查）:")
+    for label in sorted(stats):
+        runs = stats[label]
+        rate = round(100 * sum(runs) / len(runs))
+        print(f"    {label:26} {rate:3d}%  ({sum(runs)}/{len(runs)})")
+
+
+def run_debt() -> int:
+    # 度量：规则系统健康度只读汇总（非门禁）。聚合已有信号——relaxed 工具、生命周期债、回归债、检查通过率。
+    print("[debt] 规则系统健康度（只读汇总，非门禁）", flush=True)
+    registry = tomllib.loads(REGISTRY.read_text(encoding="utf-8"))
+    relaxed = [tool["id"] for tool in registry.get("tools", []) if tool.get("relaxed")]
+    print(f"  relaxed 工具 {len(relaxed)}: {', '.join(relaxed) or '无'}")
+
+    lifecycle = subprocess.run(
+        [sys.executable, "tools/check_lifecycle.py"], cwd=ROOT, capture_output=True, text=True, check=False
+    )
+    for tag in ("EXPIRED", "MISSING-EXPIRY", "BACKLOG", "MANUAL"):
+        print(f"  lifecycle {tag:13} {lifecycle.stdout.count('[' + tag + ']')}")
+
+    regression = subprocess.run(
+        [sys.executable, "tools/check_regression.py"], cwd=ROOT, capture_output=True, text=True, check=False
+    )
+    missing = (regression.stdout + regression.stderr).count("X INC-")
+    print(f"  regression fixed 缺测试: {missing}")
+
+    print_pass_rates()
+    return 0
+
+
+def _module_scaffold(kind: str, name: str) -> str:
+    # 生成：吐出已带四项职责块的骨架，AI 只填业务体，一次过 module-boundary。依赖层按目录身份表预填。
+    blocks = {
+        "service": (
+            f"# 职责：TODO 一句话——{name} 业务模块做什么\n"
+            "# 不做什么：TODO 至少一项（不承载 CLI/UI 入口、不做持久化主逻辑）\n"
+            "# 允许依赖层：app/core、app/models、app/config\n"
+            "# 谁不应该 import：tools/、tests/、scripts/ 不应反向 import 本业务模块\n"
+            f'"""TODO: {name} service。"""\n\nfrom __future__ import annotations\n'
+        ),
+        "core": (
+            f"# 职责：TODO {name} 跨业务复用的基础能力\n"
+            "# 不做什么：TODO 至少一项（不含具体业务规则、不做一次性流程）\n"
+            "# 允许依赖层：标准库、app/config；可被任何正式层 import\n"
+            "# 谁不应该 import：入口/测试可调用，但本文件不反向依赖它们\n"
+            f'"""TODO: {name} core capability。"""\n\nfrom __future__ import annotations\n'
+        ),
+        "tool": (
+            f"# 职责：TODO {name} 入口——解析参数→调用正式能力→输出→退出码\n"
+            "# 不做什么：不含业务规则/核心流程/持久化主逻辑（放 app/）\n"
+            "# 允许依赖层：标准库、app/ 正式能力\n"
+            "# 谁不应该 import：正式业务代码、测试夹具不应 import 本入口\n"
+            f'"""TODO: {name} entrypoint。"""\n\nfrom __future__ import annotations\n'
+        ),
+    }
+    return blocks[kind]
+
+
+def _test_scaffold(name: str) -> str:
+    # 生成：吐出带 test-meta 头 + oracle 标记的回归测试骨架，默认 skip 不污染套件，填完去掉 skip。
+    return (
+        "# 生命周期：持久维护\n"
+        f"# 覆盖的业务场景：TODO {name} 验证什么业务行为\n"
+        "# 依赖的服务/环境：TODO 本地 Python / 需要的服务\n"
+        f"# 运行方式：uv run pytest tests/test_{name}.py\n"
+        "# oracle 输出形状：断言失败给出 期望/实际；pytest 汇总用时。\n"
+        f'"""TODO: {name} 的回归测试。"""\n\n'
+        "import pytest\n\n\n"
+        f'@pytest.mark.skip(reason="TODO: 实现 {name} 业务场景测试")\n'
+        f"def test_{name}_placeholder() -> None:\n"
+        '    raise AssertionError("期望: TODO | 实际: 尚未实现")\n'
+    )
+
+
+def run_new(rest: list[str]) -> int:
+    usage = "用法: python3 tools/check.py new <service|core|tool|test> <name>"
+    try:
+        kind, name = rest
+    except ValueError:
+        print(usage, file=sys.stderr)
+        return 2
+    if kind not in {"service", "core", "tool", "test"} or not name.isidentifier():
+        print(usage, file=sys.stderr)
+        return 2
+    module_dir = {"service": "app/services", "core": "app/core", "tool": "tools"}
+    targets: list[tuple[pathlib.Path, str]] = []
+    if kind == "test":
+        targets.append((ROOT / "tests" / f"test_{name}.py", _test_scaffold(name)))
+    else:
+        targets.append((ROOT / module_dir[kind] / f"{name}.py", _module_scaffold(kind, name)))
+        if kind == "service":  # 业务模块默认配回归测试，回归债从源头不欠
+            targets.append((ROOT / "tests" / f"test_{name}.py", _test_scaffold(name)))
+    for path, _ in targets:
+        if path.exists():
+            print(f"[new] 已存在，拒绝覆盖：{path.relative_to(ROOT)}", file=sys.stderr)
+            return 1
+    for path, content in targets:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+        print(f"[new] 生成 {path.relative_to(ROOT)}")
+    print("[new] 已带好职责块/测试头，填业务体即可，一次过 module-boundary/test-meta。")
+    return 0
 
 
 def run_profile(profile: str) -> int:
@@ -451,14 +648,17 @@ def main() -> int:
         "target",
         nargs="?",
         default="quick",
-        choices=[*PROFILES, *COMMANDS, "ai-hook-tests", "detect-secrets", "list"],
+        choices=[*PROFILES, *COMMANDS, "ai-hook-tests", "detect-secrets", "list", "new"],
     )
+    parser.add_argument("rest", nargs="*", help="`new <kind> <name>` 的额外参数")
     args = parser.parse_args()
 
     os.chdir(ROOT)
     if args.target == "list":
         print_list()
         return 0
+    if args.target == "new":
+        return run_new(args.rest)
     if args.target in PROFILES:
         return run_profile(args.target)
     return run_item(args.target)

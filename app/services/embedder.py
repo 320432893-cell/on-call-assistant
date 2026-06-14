@@ -1,3 +1,7 @@
+# 职责：封装文本向量模型加载、单条/批量编码和嵌入服务单例。
+# 不做什么：不处理 HTTP 请求、向量数据库持久化或业务检索排序。
+# 允许依赖层：app.config、外部 embedding/model 库。
+# 谁不应该 import：app.models、app.config、路由以外的低层配置模块不应反向依赖本服务。
 # Embedding服务：本地sentence-transformers + bge-m3
 
 import os
@@ -6,6 +10,7 @@ import os
 # 注意：必须在 import sentence_transformers / transformers / huggingface_hub 之前设置
 os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
 
+import logging
 from typing import Optional
 
 import numpy as np
@@ -13,6 +18,7 @@ import numpy as np
 from app.config import get_settings
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 
 class EmbeddingService:
@@ -21,12 +27,12 @@ class EmbeddingService:
     _instance: Optional["EmbeddingService"] = None
     _initialized = False
 
-    def __new__(cls):
+    def __new__(cls) -> "EmbeddingService":
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def __init__(self):
+    def __init__(self) -> None:
         if EmbeddingService._initialized:
             return
 
@@ -38,22 +44,22 @@ class EmbeddingService:
         self._load_model()
         EmbeddingService._initialized = True
 
-    def _load_model(self):
+    def _load_model(self) -> None:
         """懒加载模型"""
         if self._model is not None:
             return
 
         try:
             # 动态导入，避免启动时加载
-            from sentence_transformers import SentenceTransformer
+            from sentence_transformers import SentenceTransformer  # noqa: PLC0415
 
-            print(f"[Embedding] Loading model: {self.model_name}")
+            logger.info("embedding_model_loading model=%s", self.model_name)
             self._model = SentenceTransformer(self.model_name)
             self._dimension = self._model.get_sentence_embedding_dimension()
-            print(f"[Embedding] Model loaded, dimension={self._dimension}")
+            logger.info("embedding_model_loaded model=%s dimension=%s", self.model_name, self._dimension)
 
-        except Exception as e:
-            print(f"[EmbeddingError] Failed to load model: {e}")
+        except Exception:
+            logger.exception("embedding_model_load_failed model=%s", self.model_name)
             self._model = None
 
     def encode(
@@ -94,8 +100,11 @@ class EmbeddingService:
                 convert_to_numpy=True,
             )
 
-        except Exception as e:
-            print(f"[EmbeddingError] encode failed: {e}")
+        except Exception:
+            text_count = 1 if isinstance(texts, str) else len(texts)
+            logger.exception(
+                "embedding_encode_failed model=%s text_count=%s is_query=%s", self.model_name, text_count, is_query
+            )
             return None
 
     def encode_batch(

@@ -82,6 +82,8 @@ ignore = [
 "scripts/**" = ["T20", "ANN", "S603", "S607"]
 # 统一检查入口需要输出命令状态并调度固定工具命令。
 "tools/check.py" = ["T20", "S603", "S607"]
+# 生命周期扫描器调 git 拿改动文件清单，与 check.py 同款子进程豁免。
+"tools/check_lifecycle.py" = ["S603", "S607"]
 # 规则契约检查脚本偏重可读性和显式错误拼装，允许少量性能风格和阈值常量例外。
 ".ai-config/check_rule_tool_contracts.py" = ["PERF401", "PLR2004"]
 # market-impact-study 是采集/分析脚本目录,允许命令行输出和外部公开数据抓取; 仍保留 Ruff 基础、import、常见 bug 和数据泄漏类检查。

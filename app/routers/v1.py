@@ -1,6 +1,14 @@
+# 职责：提供 Phase1 关键词检索和文档入库 HTTP 路由。
+# 不做什么：不实现索引存储、HTML 清洗核心算法或应用生命周期。
+# 允许依赖层：app.config、app.models、app.services。
+# 谁不应该 import：app.services、app.models、app.config 不应 import 本路由。
 # Phase1: 关键词搜索 API
 
+import logging
+from pathlib import Path
+from typing import NoReturn
 
+from bs4 import BeautifulSoup
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
@@ -8,10 +16,16 @@ from pydantic import BaseModel, Field
 from app.config import get_settings
 from app.models import SearchResult
 from app.services import get_indexer, get_preprocessor
+from app.services.indexer import SearchResult as IndexerResult
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v1", tags=["Phase1-关键词搜索"])
+
+
+def _raise_index_add_failed() -> NoReturn:
+    raise HTTPException(status_code=500, detail="索引添加失败")
 
 
 # =============== API Endpoints ===============
@@ -39,7 +53,7 @@ class SearchResponseV1(BaseModel):
 
 
 @router.post("/documents", response_model=DocumentResponseV1, status_code=201)
-async def create_document(doc_input: DocumentInputV1):
+async def create_document(doc_input: DocumentInputV1) -> DocumentResponseV1:
     """
     文档入库
 
@@ -66,7 +80,7 @@ async def create_document(doc_input: DocumentInputV1):
         )
 
         if not success:
-            raise HTTPException(status_code=500, detail="索引添加失败")
+            _raise_index_add_failed()
 
         # commit
         indexer.commit()
@@ -78,13 +92,13 @@ async def create_document(doc_input: DocumentInputV1):
 
     except HTTPException:
         raise
-    except Exception as e:
-        print(f"[V1Error] document ingest failed: {e}")
-        raise HTTPException(status_code=500, detail="处理失败")
+    except Exception as exc:
+        logger.exception("v1_document_ingest_failed doc_id=%s html_length=%s", doc_input.id, len(doc_input.html))
+        raise HTTPException(status_code=500, detail="处理失败") from exc
 
 
 @router.get("/search", response_model=SearchResponseV1)
-async def search_documents(q: str, limit: int = 10):
+async def search_documents(q: str, limit: int = 10) -> SearchResponseV1:
     """
     关键词搜索
 
@@ -120,19 +134,13 @@ async def search_documents(q: str, limit: int = 10):
             ],
         )
 
-    except Exception as e:
-        print(f"[V1Error] search failed: {e}")
-        raise HTTPException(status_code=500, detail="搜索失败")
+    except Exception as exc:
+        logger.exception("v1_search_failed query=%s limit=%s", q, limit)
+        raise HTTPException(status_code=500, detail="搜索失败") from exc
 
 
 def _substring_fallback(q: str, limit: int = 10) -> list:
     """扫 data/raw/*.html，返回原文（去标签后）含 q 的文档"""
-    from pathlib import Path
-
-    from bs4 import BeautifulSoup
-
-    from app.services.indexer import SearchResult as IndexerResult
-
     raw_dir = Path("data/raw")
     if not raw_dir.exists():
         return []
@@ -166,7 +174,7 @@ def _substring_fallback(q: str, limit: int = 10) -> list:
 
 
 @router.get("/", response_class=HTMLResponse)
-async def search_page(request: Request):
+async def search_page(request: Request) -> HTMLResponse:
     """搜索页面"""
     template = request.app.templates
     return template.TemplateResponse(request, "v1_search.html")

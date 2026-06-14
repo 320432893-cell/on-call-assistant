@@ -1,6 +1,12 @@
+# 职责：提供 Phase3 Agent 会话、SSE 流式聊天和会话管理 HTTP 路由。
+# 不做什么：不实现 LLM Provider、Agent 状态机或会话存储细节。
+# 允许依赖层：app.services。
+# 谁不应该 import：app.services、app.models、app.config 不应 import 本路由。
 # Phase3: On-Call Agent SSE 接口
 
 import json
+import logging
+from collections.abc import AsyncIterator
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
@@ -10,6 +16,7 @@ from app.services.agent import AgentStateMachine, get_llm_provider
 from app.services.session_store import get_session_store
 
 router = APIRouter(prefix="/v3", tags=["Phase3-Agent"])
+logger = logging.getLogger(__name__)
 
 
 class ChatRequest(BaseModel):
@@ -23,7 +30,7 @@ def _sse_format(event: str, data: dict) -> str:
 
 
 @router.post("/chat")
-async def chat(req: ChatRequest, request: Request):
+async def chat(req: ChatRequest, request: Request) -> StreamingResponse:
     """SSE 流式对话；客户端断开（AbortController.abort()）时尽快停止"""
     if not req.message.strip():
         raise HTTPException(status_code=400, detail="message 不能为空")
@@ -36,9 +43,9 @@ async def chat(req: ChatRequest, request: Request):
 
     try:
         provider = get_llm_provider()
-    except Exception as e:
-        print(f"[V3Error] LLM Provider 初始化失败: {e}")
-        raise HTTPException(status_code=503, detail="LLM Provider 初始化失败")
+    except Exception as exc:
+        logger.exception("v3_llm_provider_init_failed session_id=%s", session_id)
+        raise HTTPException(status_code=503, detail="LLM Provider 初始化失败") from exc
 
     history_raw = store.get_history(session_id)
     history = [
@@ -47,7 +54,7 @@ async def chat(req: ChatRequest, request: Request):
         if m["role"] in ("user", "assistant") and m.get("content")
     ]
 
-    async def event_stream():
+    async def event_stream() -> AsyncIterator[str]:
         yield _sse_format("session", {"session_id": session_id})
 
         machine = AgentStateMachine(provider=provider)
@@ -62,8 +69,8 @@ async def chat(req: ChatRequest, request: Request):
                 if ev.event == "answer":
                     final_answer = ev.data.get("text", "")
                 yield _sse_format(ev.event, ev.data)
-        except Exception as e:
-            print(f"[V3Error] Agent 异常: {e}")
+        except Exception:
+            logger.exception("v3_agent_stream_failed session_id=%s history_count=%s", session_id, len(history))
             yield _sse_format("error", {"message": "Agent 异常"})
             yield _sse_format("done", {})
             return
@@ -83,7 +90,7 @@ async def chat(req: ChatRequest, request: Request):
 
 
 @router.get("/session/{session_id}")
-async def get_session(session_id: str):
+async def get_session(session_id: str) -> dict:
     """查询会话历史"""
     store = get_session_store()
     if not store.health_check():
@@ -92,13 +99,13 @@ async def get_session(session_id: str):
 
 
 @router.delete("/session/{session_id}")
-async def delete_session(session_id: str):
+async def delete_session(session_id: str) -> dict[str, bool]:
     store = get_session_store()
     store.clear_session(session_id)
     return {"ok": True}
 
 
 @router.get("/", response_class=HTMLResponse)
-async def chat_page(request: Request):
+async def chat_page(request: Request) -> HTMLResponse:
     template = request.app.templates
     return template.TemplateResponse(request, "v3_chat.html")

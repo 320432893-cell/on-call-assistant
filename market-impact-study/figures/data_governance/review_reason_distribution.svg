@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="358" viewBox="0 0 960 358">
+<style>
+text { font: 14px Arial, "Microsoft YaHei", sans-serif; fill: #222; }
+rect { fill: #2f6f8f; }
+.title { font-size: 20px; font-weight: 700; }
+</style>
+<text class="title" x="24" y="32">人工复核原因分布</text>
+<text x="208" y="76" text-anchor="end">not_default_training</text><rect x="220" y="60" width="64.17" height="20" rx="2"></rect><text x="292.16666666666663" y="76">33</text><text x="208" y="110" text-anchor="end">top_negative_label</text><rect x="220" y="94" width="99.17" height="20" rx="2"></rect><text x="327.16666666666663" y="110">51</text><text x="208" y="144" text-anchor="end">top_positive_label</text><rect x="220" y="128" width="122.50" height="20" rx="2"></rect><text x="350.5" y="144">63</text><text x="208" y="178" text-anchor="end">subject_company</text><rect x="220" y="162" width="138.06" height="20" rx="2"></rect><text x="366.05555555555554" y="178">71</text><text x="208" y="212" text-anchor="end">extreme_relative_label</text><rect x="220" y="196" width="225.56" height="20" rx="2"></rect><text x="453.55555555555554" y="212">116</text><text x="208" y="246" text-anchor="end">large_mv_impact</text><rect x="220" y="230" width="350.00" height="20" rx="2"></rect><text x="578.0" y="246">180</text><text x="208" y="280" text-anchor="end">category_other</text><rect x="220" y="264" width="678.61" height="20" rx="2"></rect><text x="906.6111111111111" y="280">349</text><text x="208" y="314" text-anchor="end">overlap_dirty_p20</text><rect x="220" y="298" width="700.00" height="20" rx="2"></rect><text x="928.0" y="314">360</text>
+</svg>

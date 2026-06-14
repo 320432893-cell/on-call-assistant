@@ -309,14 +309,14 @@ boundary = "Dynamic imports, optional providers, and script-only dependencies ne
 [[tools]]
 id = "module-boundary"
 kind = "project-static-tool"
-purpose = "检查 app/ 和 scripts/ 下的 Python 文件是否有职责声明注释块（# 职责 / # 不负责 / # 依赖层），并对 ≥ 400 行的文件报拆分候选 WARNING。"
+purpose = "检查 Python 文件是否有职责声明注释块；changed 模式要求当前四项格式（# 职责 / # 不做什么 / # 允许依赖层 / # 谁不应该 import），并对 ≥ 400 行的文件报拆分候选 WARNING。"
 rule = ".ai-config/AGENTS.md"
 configured_in = ["tools/check_module_boundary.py", "tools/check.py"]
-entrypoint_commands = ["python3 tools/check_module_boundary.py"]
+entrypoint_commands = ["python3 tools/check_module_boundary.py", "python3 tools/check_module_boundary.py --changed"]
 manual_commands = ["python3 tools/check_module_boundary.py"]
-run_mode = "manual"
-scope = "app/ and scripts/ Python files, excluding __init__.py, conftest.py, and test files."
-boundary = "检测职责注释是否存在 + 报 ≥400 行拆分候选；不校验注释内容准确性，也不强制拆分（拆分决策由 AGENTS.md §2 + 用户拍板）。"
+run_mode = "changed+manual"
+scope = "app/, scripts/, market-impact-study/, and tools/ Python files, excluding __init__.py, conftest.py, and test files."
+boundary = "检测职责注释是否存在 + 报 ≥400 行拆分候选；changed 模式只卡本次改动文件四项声明，full 模式兼容旧字段名；不校验注释内容准确性，也不强制拆分（拆分决策由 AGENTS.md §2 + 用户拍板）。"
 relaxed = true
 relaxed_reason = "存量 22 个文件尚无职责注释，先保持 manual 不阻塞；新文件由 AGENTS.md 规则在谋划态强制。"
 reopen_when = "存量文件职责注释补全后升为 pre-commit WARNING blocking。"
@@ -334,19 +334,82 @@ scope = "app, scripts, market-impact-study, tools, and tests Python files."
 boundary = "只检查通用硬边界；不判断业务模块归属、不判断 tools 是否变胖，模糊身份变化由 AGENTS.md 写入前闸门和人工审查裁判。"
 
 [[tools]]
+id = "error-catalog"
+kind = "project-static-tool"
+purpose = "校验 app/ 代码中使用的 error_payload(error_code=...) 均登记在 docs/ERROR_CATALOG.md，避免错误语义失控。"
+rule = ".ai-config/AGENTS.md"
+configured_in = ["tools/check_error_catalog.py", "tools/check.py", "docs/ERROR_CATALOG.md"]
+entrypoint_commands = ["python3 tools/check_error_catalog.py"]
+manual_commands = ["python3 tools/check_error_catalog.py"]
+run_mode = "changed+manual"
+scope = "app/ Python files and docs/ERROR_CATALOG.md."
+boundary = "只校验错误码登记关系；不判断 HTTP 状态码、用户文案或维修路径是否准确。"
+
+[[tools]]
 id = "test-meta"
 kind = "project-static-tool"
-purpose = "检查 tests/ 下测试文件是否声明业务场景与用时输出（§3 测试 oracle 形状），缺失只 WARNING 不阻塞。"
+purpose = "检查 tests/ 下测试文件是否声明生命周期、业务场景、依赖环境、运行方式和 oracle 输出形状；本次新增/改动测试缺失会阻塞，存量只 WARNING。"
 rule = ".ai-config/AGENTS.md"
 configured_in = ["tools/check.py"]
 entrypoint_commands = ["python3 tools/check.py test-meta"]
 manual_commands = ["python3 tools/check.py test-meta"]
-run_mode = "manual"
+run_mode = "changed+manual"
 scope = "pytest testpaths 下匹配 python_files 模式的测试文件。"
-boundary = "只检测是否声明业务场景/用时标记，不校验内容是否准确，也不运行测试。"
+boundary = "只检测测试复现元信息和 oracle 输出标记是否存在，不校验内容是否准确，也不运行测试。"
 relaxed = true
 relaxed_reason = "存量测试尚未补全业务场景/用时声明，先保持 manual WARNING 不阻塞；新测试由 AGENTS.md §3 规则约束。"
 reopen_when = "存量测试补全业务场景与用时声明后升为 pre-commit WARNING blocking。"
+
+[[tools]]
+id = "lifecycle"
+kind = "project-static-tool"
+purpose = "债务 forcing：临时件/T0/兼容别名缺机器可读 expires、已过期未清理、旧自由文本待迁移、expires-when 待人工核验。changed 模式阻塞新增缺 expires；full 模式为 sweep WARNING。"
+rule = ".ai-config/AGENTS.md"
+configured_in = ["tools/check_lifecycle.py", "tools/check.py", ".pre-commit-config.yaml"]
+pre_commit_hook = "lifecycle"
+entrypoint_commands = ["python3 tools/check_lifecycle.py", "python3 tools/check_lifecycle.py --changed"]
+ci_commands = ["python3 tools/check_lifecycle.py"]
+manual_commands = ["python3 tools/check_lifecycle.py"]
+run_mode = "changed+ci+manual"
+scope = "app/, scripts/, market-impact-study/ Python files;排除 tools/.ai-config/.ai-hooks/tests 等定义标记串或由 test-meta 管理的目录。"
+boundary = "只查机器可读过期标注是否存在/已过期；不删文件、不归档、不评估 expires-when 文本本身是否仍成立（交人工 sweep）。"
+
+[[tools]]
+id = "regression"
+kind = "project-static-tool"
+purpose = "status=fixed 的生产事故必须有引用其 ID 的回归测试，否则不算修好；缺则 CI 阻塞。"
+rule = ".ai-config/AGENTS.md"
+configured_in = ["tools/check_regression.py", "tools/check.py", "docs/INCIDENTS.md"]
+entrypoint_commands = ["python3 tools/check_regression.py"]
+ci_commands = ["python3 tools/check_regression.py"]
+manual_commands = ["python3 tools/check_regression.py"]
+run_mode = "ci+manual"
+scope = "docs/INCIDENTS.md 事故表与 tests/ 下回归测试的 ID 引用关系。"
+boundary = "只校验事故 ID↔测试的登记关系；不运行测试、不验证回归测试是否真能复现 bug（轻量版）。"
+
+[[tools]]
+id = "debt"
+kind = "project-static-tool"
+purpose = "度量：规则系统健康度只读汇总——relaxed 工具数、生命周期债、回归债、各检查通过率（读 .cache/check-runs.jsonl 运行日志）。"
+rule = ".ai-config/AGENTS.md"
+configured_in = ["tools/check.py"]
+entrypoint_commands = ["python3 tools/check.py debt"]
+manual_commands = ["python3 tools/check.py debt"]
+run_mode = "manual"
+scope = "聚合 registry relaxed 标记 + check_lifecycle/check_regression 输出 + run_command 写的 .cache/check-runs.jsonl 通过率。"
+boundary = "只读汇总，非门禁；通过率是每次运行的过/挂比例（非严格首过率），不评判规则是否该删——那是人看趋势后的决策。"
+
+[[tools]]
+id = "new"
+kind = "project-static-tool"
+purpose = "生成：吐出已带四项职责块/test-meta 头的合规骨架（service/core/tool/test），AI 只填业务体，一次过 module-boundary/test-meta。"
+rule = ".ai-config/AGENTS.md"
+configured_in = ["tools/check.py"]
+entrypoint_commands = ["python3 tools/check.py new"]
+manual_commands = ["python3 tools/check.py new"]
+run_mode = "manual"
+scope = "service→app/services、core→app/core、tool→tools、test→tests；service 默认配回归测试。"
+boundary = "只生成骨架，不写业务逻辑、不覆盖已存在文件；依赖层按目录身份表预填，AI 仍须填实际职责与断言。"
 
 [[semgrep_rulesets]]
 path = ".semgrep/no-raw-sleep.yml"
@@ -355,6 +418,11 @@ purpose = "Non-test Python code should not use raw time.sleep(); prefer polling/
 relaxed = true
 relaxed_reason = "market-impact-study/ 下 7 个数据采集脚本存量 time.sleep 为接口限速正当用途，先用 paths.exclude 冻结存量、只卡新增代码，避免存量噪音淹没新问题。"
 reopen_when = "market-impact-study/ 存量 sleep 逐个补业务注释或改轮询后，移除 paths.exclude 中的 market-impact-study/** 使其全量 blocking。"
+
+[[semgrep_rulesets]]
+path = ".semgrep/observability-contracts.yml"
+owner_rule = ".ai-config/AGENTS.md"
+purpose = "FastAPI entrypoint and API handlers should keep diagnostics observable without exposing raw exceptions to clients."
 
 [[semgrep_rulesets]]
 path = ".semgrep/backend-contracts.yml"

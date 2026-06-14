@@ -158,7 +158,7 @@ def check_rule_tool_contracts_trigger(root: pathlib.Path, issues: list[Issue]) -
     samples = [
         ".ai-config/tools/check_rule_tool_contracts.py",
         ".ai-config/config/tooling.registry.toml",
-        ".ai-config/rules/engineering/index.md",
+        ".ai-config/rules/engineering/code.index.md",
         ".ai-hooks/rag_hygiene.sh",
         ".semgrep/rag-hygiene.yml",
         ".github/workflows/ci.yml",
@@ -496,6 +496,12 @@ def check_rule_references(root: pathlib.Path, issues: list[Issue]) -> None:
         "engineering/frontend.index.md": "moved frontend rule",
         "engineering/architecture.index.md": "moved architecture rule",
         "engineering/gui.md": "moved GUI rule",
+        "rules/delivery/": "deleted delivery rule directory",
+        "delivery/index.md": "deleted delivery index rule",
+        "flow_new_project.index.md": "deleted new-project flow rule",
+        "rules/index.md": "deleted top rules index (AGENTS.md §4 routes directly)",
+        "rules/engineering/index.md": "deleted engineering index (route directly to leaf files)",
+        "engineering/index.md": "deleted engineering index (route directly to leaf files)",
     }
     for path in targets:
         if not path.exists():

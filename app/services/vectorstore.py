@@ -1,6 +1,11 @@
+# 职责：封装 Qdrant collection 管理、向量写入、检索、删除和健康检查。
+# 不做什么：不生成 embedding、不处理 HTTP 请求、不决定业务答案排序策略。
+# 允许依赖层：app.config、外部 Qdrant/numpy 库。
+# 谁不应该 import：app.models、app.config、路由以外的低层配置模块不应反向依赖本服务。
 # Qdrant向量数据库服务
 
 import hashlib
+import logging
 from pathlib import Path
 from typing import Optional
 
@@ -18,6 +23,7 @@ from qdrant_client.models import (
 from app.config import get_settings
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 
 def _stable_point_id(doc_id: str) -> int:
@@ -43,12 +49,12 @@ class QdrantService:
     _instance: Optional["QdrantService"] = None
     _initialized = False
 
-    def __new__(cls):
+    def __new__(cls) -> "QdrantService":
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def __init__(self):
+    def __init__(self) -> None:
         if QdrantService._initialized:
             return
 
@@ -59,7 +65,7 @@ class QdrantService:
         self._init_client()
         QdrantService._initialized = True
 
-    def _init_client(self):
+    def _init_client(self) -> None:
         """初始化Qdrant客户端"""
         qdrant_path = Path(settings.QDRANT_PATH)
         qdrant_path.mkdir(parents=True, exist_ok=True)
@@ -67,16 +73,16 @@ class QdrantService:
         try:
             # 嵌入式模式
             self._client = QdrantClient(path=str(qdrant_path))
-            print(f"[Qdrant] Initialized at {qdrant_path}")
+            logger.info("qdrant_initialized path=%s collection=%s", qdrant_path, self.collection_name)
 
             # 确保collection存在
             self._ensure_collection()
 
-        except Exception as e:
-            print(f"[QdrantError] Failed to initialize: {e}")
+        except Exception:
+            logger.exception("qdrant_initialize_failed path=%s collection=%s", qdrant_path, self.collection_name)
             self._client = None
 
-    def _ensure_collection(self):
+    def _ensure_collection(self) -> None:
         """确保collection存在"""
         if not self._client:
             return
@@ -93,10 +99,12 @@ class QdrantService:
                         distance=Distance.COSINE,
                     ),
                 )
-                print(f"[Qdrant] Created collection: {self.collection_name}")
+                logger.info(
+                    "qdrant_collection_created collection=%s dimension=%s", self.collection_name, self._dimension
+                )
 
-        except Exception as e:
-            print(f"[QdrantError] Failed to ensure collection: {e}")
+        except Exception:
+            logger.exception("qdrant_ensure_collection_failed collection=%s", self.collection_name)
 
     def ensure_collection(self, collection: str) -> bool:
         """对外暴露的按需建集合方法（多 collection 场景）"""
@@ -113,11 +121,12 @@ class QdrantService:
                         distance=Distance.COSINE,
                     ),
                 )
-                print(f"[Qdrant] Created collection: {collection}")
-            return True
-        except Exception as e:
-            print(f"[QdrantError] ensure_collection({collection}) failed: {e}")
+                logger.info("qdrant_collection_created collection=%s dimension=%s", collection, self._dimension)
+        except Exception:
+            logger.exception("qdrant_ensure_collection_failed collection=%s", collection)
             return False
+        else:
+            return True
 
     def upsert(
         self,
@@ -156,11 +165,12 @@ class QdrantService:
                 collection_name=self.collection_name,
                 points=[point],
             )
-            return True
 
-        except Exception as e:
-            print(f"[QdrantError] upsert failed: {e}")
+        except Exception:
+            logger.exception("qdrant_upsert_failed collection=%s doc_id=%s", self.collection_name, doc_id)
             return False
+        else:
+            return True
 
     def upsert_batch(
         self,
@@ -196,8 +206,10 @@ class QdrantService:
             )
             return len(points)
 
-        except Exception as e:
-            print(f"[QdrantError] upsert_batch failed: {e}")
+        except Exception:
+            logger.exception(
+                "qdrant_upsert_batch_failed collection=%s item_count=%s", self.collection_name, len(points)
+            )
             return 0
 
     def search(
@@ -251,8 +263,14 @@ class QdrantService:
                 for r in results
             ]
 
-        except Exception as e:
-            print(f"[QdrantError] search failed: {e}")
+        except Exception:
+            logger.exception(
+                "qdrant_search_failed collection=%s limit=%s score_threshold=%s department_filter=%s",
+                self.collection_name,
+                limit,
+                score_threshold,
+                department_filter,
+            )
             return []
 
     def get(self, doc_id: str) -> dict | None:
@@ -272,10 +290,10 @@ class QdrantService:
             if result:
                 return result[0].payload
 
+        except Exception:
+            logger.exception("qdrant_get_failed collection=%s doc_id=%s", self.collection_name, doc_id)
             return None
-
-        except Exception as e:
-            print(f"[QdrantError] get failed: {e}")
+        else:
             return None
 
     def delete(self, doc_id: str) -> bool:
@@ -289,11 +307,12 @@ class QdrantService:
                 collection_name=self.collection_name,
                 points_selector=[point_id],
             )
-            return True
 
-        except Exception as e:
-            print(f"[QdrantError] delete failed: {e}")
+        except Exception:
+            logger.exception("qdrant_delete_failed collection=%s doc_id=%s", self.collection_name, doc_id)
             return False
+        else:
+            return True
 
     def count(self) -> int:
         """统计文档数量"""
@@ -302,11 +321,12 @@ class QdrantService:
 
         try:
             result = self._client.count(collection_name=self.collection_name)
-            return result.count
 
-        except Exception as e:
-            print(f"[QdrantError] count failed: {e}")
+        except Exception:
+            logger.exception("qdrant_count_failed collection=%s", self.collection_name)
             return 0
+        else:
+            return result.count
 
     # ---------- 多 collection 接口（v4 年报场景） ----------
     # 默认 collection 行为不变；新方法显式传 collection 名。
@@ -340,8 +360,8 @@ class QdrantService:
         try:
             self._client.upsert(collection_name=collection, points=points)
             return len(points)
-        except Exception as e:
-            print(f"[QdrantError] upsert_batch_to({collection}) failed: {e}")
+        except Exception:
+            logger.exception("qdrant_upsert_batch_to_failed collection=%s item_count=%s", collection, len(points))
             return 0
 
     def search_in(
@@ -382,8 +402,14 @@ class QdrantService:
                 )
                 for r in results
             ]
-        except Exception as e:
-            print(f"[QdrantError] search_in({collection}) failed: {e}")
+        except Exception:
+            logger.exception(
+                "qdrant_search_in_failed collection=%s limit=%s score_threshold=%s filters=%s",
+                collection,
+                limit,
+                score_threshold,
+                filters,
+            )
             return []
 
     def count_in(self, collection: str) -> int:
@@ -392,8 +418,8 @@ class QdrantService:
             return 0
         try:
             return self._client.count(collection_name=collection).count
-        except Exception as e:
-            print(f"[QdrantError] count_in({collection}) failed: {e}")
+        except Exception:
+            logger.exception("qdrant_count_in_failed collection=%s", collection)
             return 0
 
     def scroll_distinct(
@@ -430,10 +456,13 @@ class QdrantService:
                         return out
                 if next_offset is None:
                     break
-            return out
-        except Exception as e:
-            print(f"[QdrantError] scroll_distinct({collection}) failed: {e}")
+        except Exception:
+            logger.exception(
+                "qdrant_scroll_distinct_failed collection=%s fields=%s limit=%s", collection, fields, limit
+            )
             return []
+        else:
+            return out
 
     def health_check(self) -> bool:
         """健康检查"""
