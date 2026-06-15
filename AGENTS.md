@@ -14,7 +14,7 @@ MUST=违规即停;SHOULD=默认行、豁免须说明。中文输出,技术术语
   `【谋/执/异/闭】重心:<可验收目标(outcome+验收动作),非动作清单,闭包前不变,一行> | 在做:<文件:函数 或 命令+参数> / 因为:<一句思路>`
   写入轮加 `权限:读/可逆/高恢复成本/不可逆`。高恢复成本(可逆但找回贵:改配置/参数/索引)=列后果等"可以";不可逆=标记+列后果+等拍板。**禁"偷偷改"——任何写入须在首行可见。**
 - **决策/分叉输出走 progressive disclosure**:①先结论+置信度(信则≈0注意力)②选项+关键 tradeoff ③每个踩在什么上(保证信号 vs 假设)④AI 不确定什么 ⑤一个便宜核验手段。**发散生料默认折叠(AI 草稿,非人读物)。**
-- 给人的输出通俗 > 术语堆砌;规则文本本身从简,但输出要让人接近 0 注意力就能判。
+- 给人的输出通俗 > 术语堆砌;规则文本本身从简,但输出要让人接近 0 注意力就能判，不能有任何代码内容和数据字段内容只用通俗逻辑讲解原因。
 
 ## §1 操作循环(AI 跟这个走)
 谋划(只读,定目标+假设)→执行(自主推进)→闭包(落产物)→下轮;偏航→异常/打断。首行格式见 §输出。
@@ -67,6 +67,8 @@ MUST=违规即停;SHOULD=默认行、豁免须说明。中文输出,技术术语
 
 **生命周期**〔变更〕:`[机器]` T0/临时/兼容别名缺过期标注→lifecycle;可重建产物(.venv/node_modules/编译物)、运行时产物(output/logs/cache)→.gitignore。
 
+**放行机制=欠债登记非豁免**(green-now/ratchet-later 的 ratchet 半边;同生命周期纪律)〔变更〕〔注意〕:一切放行已知问题的机制——白名单(check_arch ALLOWLIST)、ignore 注释(`# pyright: ignore`/semgrep)、**advisory/baseline 闸**(continue-on-error、类型/lint 错误计数 baseline)、secrets baseline——MUST 带 ①原因 ②**可判定清除条件 + 降到 0 的目标时机/里程碑**(不是"以后·待定·暂时"裸词)③登记日期。`[机器]` 缺项 / 含裸词→拒(check.py debt 校验)。**计数型(baseline)MUST 只减不增**:记 baseline,机器棘轮 `count>baseline→CI 失败`,降了须更新 baseline 锁战果(降到 0 即升级为阻断闸)。**条目型(白名单/ignore)默认只减不增**,新增=承重决策须 STOP 拍板/ADR。**存量/老问题不豁免——"是老问题"不是无限期的理由;advisory「不阻断」≠ 可永久拖,它同样 MUST 有降到 0 的时机。**
+
 设计模式怎么选 / 子agent复核(含 fan-out+对抗校验)→ `rules/engineering/code.index.md`。
 
 **检查时机表**(`[机器]` AI 执行调度,常驻=每轮可见不漏触发;工具定义 SSOT→registry)〔发现〕:
@@ -80,7 +82,7 @@ MUST=违规即停;SHOULD=默认行、豁免须说明。中文输出,技术术语
 | 想看健康度 | AI | `check.py debt`(relaxed 工具/各类债/检查通过率) | 只读汇总 |
 
 ## §4 交接与产物
-**指针(不复制)**:可验证检查→`config/tooling.registry.toml`;设计模式+子agent复核→`rules/engineering/code.index.md`;多语言(TS/Go 在内)→`rules/engineering/polyglot.index.md`;ML→`rules/process/modes.index.md`。
+**指针(不复制)**:可验证检查→`config/tooling.registry.toml`;设计模式+子agent复核→`rules/engineering/code.index.md`;多语言(TS/Go 在内)→`rules/engineering/polyglot.index.md`;GUI 分层骨架→`rules/engineering/gui.index.md`;ML→`rules/process/modes.index.md`。
 **决策+不变量账本**(项目大脑,solo+AI唯一连续性)〔变更〕:`[强制产物]` ADR(每承重决策:选了/为什么/弃了什么)+不变量登记(每个"动态其实静态"的发现)+检查点快照(新窗恢复)。新session先读,不重审已定、不踩已知。
 **隔脏执行**〔注意〕:`[启发]` 长过程/短结果/污染上下文的体力活(递归遍历/全仓搜/读多文件提炼)丢子agent只取结论;不得替用户拍板、改外部状态、做不可逆。
 **每状态最小产物**(`[强制产物]` 缺=未完成):
