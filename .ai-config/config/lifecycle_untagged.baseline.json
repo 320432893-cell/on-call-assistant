@@ -1,0 +1,17 @@
+{
+  "reason": "存量非正式区(scripts/ 等)文件在身份规则上线前未标 # lifecycle:",
+  "clear_by": "各文件随其切片闭包或项目收尾补标 temp/devtool 或删除，目标降到 0 条",
+  "registered": "2026-06-15",
+  "ratchet": "只减不增：新增未标注文件不得入册(CI 阻塞)；修好的条目应从此清单移除",
+  "entries": [
+    "scripts/check_rag_drift.py",
+    "scripts/init_data.py",
+    "scripts/regen_settings.py",
+    "scripts/sync_codex_memory.py",
+    "scripts/test_phase1.py",
+    "scripts/test_phase2.py",
+    "scripts/test_phase3.py",
+    "scripts/test_report_pdf.py",
+    "scripts/test_v4_report.py"
+  ]
+}

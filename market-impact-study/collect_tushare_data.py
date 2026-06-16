@@ -3,6 +3,10 @@
 Uses Tushare HTTP API directly via the Python standard library. The token must
 be provided through TUSHARE_TOKEN and is never written to disk.
 """
+# 职责：通过 Tushare HTTP API 采集 universe 内公司的行情/估值/财务/指数数据集，落盘 data/raw/tushare。
+# 不做什么：不清洗/不衍生特征/不建事件；token 仅来自环境变量、不落盘；不改 universe 口径。
+# 允许依赖层：标准库、pandas、peer_universe(口径)。
+# 谁不应该 import：建模/特征/SSOT/测试不应 import 本采集入口；它们应读 data/raw/tushare 产物。
 
 from __future__ import annotations
 
@@ -21,18 +25,9 @@ from urllib.request import Request, urlopen
 API_URL = "https://api.tushare.pro"
 TODAY = date.today().strftime("%Y%m%d")
 OUTPUT_DIR = Path("market-impact-study/data/raw/tushare")
+from peer_universe import load_companies
 
-COMPANIES = [
-    {"name": "移为通信", "ts_code": "300590.SZ", "list_date": "20170111"},
-    {"name": "移远通信", "ts_code": "603236.SH", "list_date": "20190716"},
-    {"name": "高新兴", "ts_code": "300098.SZ", "list_date": "20100728"},
-    {"name": "广和通", "ts_code": "300638.SZ", "list_date": "20170413"},
-    {"name": "日海智能", "ts_code": "002313.SZ", "list_date": "20091203"},
-    {"name": "锐明技术", "ts_code": "002970.SZ", "list_date": "20191217"},
-    {"name": "有方科技", "ts_code": "688159.SH", "list_date": "20200123"},
-    {"name": "美格智能", "ts_code": "002881.SZ", "list_date": "20170622"},
-    {"name": "博实结", "ts_code": "301608.SZ", "list_date": "20240801"},
-]
+COMPANIES = load_companies()
 
 INDEXES = [
     {"name": "创业板指", "ts_code": "399006.SZ", "start_date": "20100101"},

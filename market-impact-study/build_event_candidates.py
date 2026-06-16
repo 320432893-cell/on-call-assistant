@@ -1,4 +1,8 @@
 """Build a unified event candidate table from collected public datasets."""
+# 职责：把已采集的多源公开数据合并成统一事件候选表，落盘 data/processed。
+# 不做什么：不算 CAR/标签；不训练模型；不采集数据(只读 data/raw)。
+# 允许依赖层：标准库、pandas、peer_universe(口径)、data/raw 产物。
+# 谁不应该 import：建模/解释脚本不应 import 本入口；它们应读 event_candidates 产物。
 
 from __future__ import annotations
 
@@ -13,17 +17,10 @@ RAW_DIR = Path("market-impact-study/data/raw")
 DOC_MANIFEST = Path("market-impact-study/data/documents/eastmoney_notice_pdf_manifest.csv")
 OUTPUT_DIR = Path("market-impact-study/data/processed")
 
-COMPANY_CODE_MAP = {
-    "300590": ("移为通信", "300590.SZ"),
-    "603236": ("移远通信", "603236.SH"),
-    "300098": ("高新兴", "300098.SZ"),
-    "300638": ("广和通", "300638.SZ"),
-    "002313": ("日海智能", "002313.SZ"),
-    "002970": ("锐明技术", "002970.SZ"),
-    "688159": ("有方科技", "688159.SH"),
-    "002881": ("美格智能", "002881.SZ"),
-    "301608": ("博实结", "301608.SZ"),
-}
+from peer_universe import load_companies
+
+# {symbol: (name, ts_code)} for the full study universe (peer_universe.csv).
+COMPANY_CODE_MAP = {c["symbol"]: (c["name"], c["ts_code"]) for c in load_companies()}
 
 KEYWORD_RULES = {
     "风险事件": [

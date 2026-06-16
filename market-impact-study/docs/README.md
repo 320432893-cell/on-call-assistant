@@ -13,6 +13,7 @@
 辅助口径文档：
 
 - `PRESENTER_GUIDE.md`：**汇报人手册**——全流程、做了什么/效果、要补的知识、课程与 CFO 两套口径、问答预案。
+- `CAUSAL_EXTENSION_PLAN.md`：因果扩展子项目（机构关注→相对反应的因果版）——识别策略、安慰剂、分步清单，复用现有 80%。
 - `NEXT_STEPS_AND_ROLES.md`：现状诚实判断、后续人机分工、特征/建模/解释下一步。
 - `SAMPLE_POLICY.md`：样本分层使用策略与当前分布。
 - `MANUAL_REVIEW_CODEBOOK.md`：人工数字复核填报码表。

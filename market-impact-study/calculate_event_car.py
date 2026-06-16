@@ -1,4 +1,8 @@
 """Calculate event-window abnormal returns and market-cap impact."""
+# 职责：对事件候选计算事件窗口异常收益(CAR)与相对市值影响，落盘评分/状态表。
+# 不做什么：不建特征/不训练模型；基准=剔除自身的 universe 等权组合，不引入新口径。
+# 允许依赖层：标准库、pandas、peer_universe(口径/基准)、data/raw 行情。
+# 谁不应该 import：建模/特征脚本不应 import 本入口；它们应读 CAR 产物。
 
 from __future__ import annotations
 
@@ -13,17 +17,11 @@ RAW_TUSHARE_DIR = Path("market-impact-study/data/raw/tushare")
 PROCESSED_DIR = Path("market-impact-study/data/processed")
 TOP_EVENTS_DIR = PROCESSED_DIR / "top_events"
 
-COMPANY_CODE_MAP = {
-    "300590.SZ": "移为通信",
-    "603236.SH": "移远通信",
-    "300098.SZ": "高新兴",
-    "300638.SZ": "广和通",
-    "002313.SZ": "日海智能",
-    "002970.SZ": "锐明技术",
-    "688159.SH": "有方科技",
-    "002881.SZ": "美格智能",
-    "301608.SZ": "博实结",
-}
+from peer_universe import load_companies
+
+# {ts_code: name}. The peer benchmark in relative-reaction = all-but-self mean
+# over this set, so widening peer_universe.csv widens the cross-section.
+COMPANY_CODE_MAP = {c["ts_code"]: c["name"] for c in load_companies()}
 
 WINDOWS = {
     "m1_p1": (-1, 1),

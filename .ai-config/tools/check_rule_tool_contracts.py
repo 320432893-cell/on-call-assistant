@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 """Check rule/tool/hook contracts without a full manual scan."""
+# 职责：静态校验规则/工具/hook 契约一致(registry↔实现↔hook↔CI)，免人工全扫。
+# 不做什么：不改规则/工具/hook；不评判规则内容是否合理(只查契约一致)。
+# 允许依赖层：标准库(tomllib/subprocess 等)、registry/规则/工具源文件。
+# 谁不应该 import：业务/应用/测试不应 import 本检查脚本。
 
 from __future__ import annotations
 
@@ -165,7 +169,7 @@ def check_rule_tool_contracts_trigger(root: pathlib.Path, issues: list[Issue]) -
         ".pre-commit-config.yaml",
         ".ruff.toml",
         ".importlinter",
-        "AGENTS.md",
+        ".ai-config/AGENTS.md",
         "tools/check.py",
         "pyproject.toml",
         "uv.lock",
@@ -214,8 +218,6 @@ def check_enforcement_wiring(root: pathlib.Path, registry: dict, issues: list[Is
     for path in (".github/workflows/ci.yml", ".pre-commit-config.yaml"):
         if path not in normalized_pre_commit:
             issues.append(Issue("ERROR", f"pre-commit enforcement wiring missing path: {path}"))
-    if "AGENTS.md" not in normalized_pre_commit:
-        issues.append(Issue("ERROR", "pre-commit rule-tool-contracts trigger missing path: AGENTS.md"))
     for path in (".ruff.toml", ".importlinter"):
         if path not in normalized_pre_commit:
             issues.append(Issue("ERROR", f"pre-commit rule-tool-contracts trigger missing path: {path}"))
@@ -443,16 +445,6 @@ def check_metadata(root: pathlib.Path, registry: dict, issues: list[Issue]) -> N
             check_path_exists(root, value, issues, f"metadata.{key}")
 
 
-def check_agents_mirror(root: pathlib.Path, issues: list[Issue]) -> None:
-    root_agents = root / "AGENTS.md"
-    config_agents = root / ".ai-config" / "AGENTS.md"
-    if not root_agents.exists():
-        issues.append(Issue("ERROR", "AGENTS.md mirror is missing at repository root"))
-        return
-    if read_text(root_agents) != read_text(config_agents):
-        issues.append(Issue("ERROR", "AGENTS.md must mirror .ai-config/AGENTS.md exactly"))
-
-
 def check_rule_references(root: pathlib.Path, issues: list[Issue]) -> None:
     target_roots = [
         root / ".ai-config",
@@ -462,7 +454,7 @@ def check_rule_references(root: pathlib.Path, issues: list[Issue]) -> None:
         root / "scripts",
         root / "tools",
     ]
-    targets = [root / "AGENTS.md", root / "README.md"]
+    targets = [root / "README.md"]
     checker_path = root / ".ai-config" / "tools" / "check_rule_tool_contracts.py"
     for target_root in target_roots:
         if target_root.exists():
@@ -544,7 +536,6 @@ def main() -> int:
     issues: list[Issue] = []
 
     check_metadata(ROOT, registry, issues)
-    check_agents_mirror(ROOT, issues)
     check_tools(ROOT, registry, issues)
     check_ci_semantics(ROOT, issues)
     check_enforcement_wiring(ROOT, registry, issues)

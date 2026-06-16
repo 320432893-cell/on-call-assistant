@@ -94,7 +94,7 @@ repos:
         entry: python3 tools/check.py rule-tool-contracts
         language: system
         pass_filenames: false
-        files: ^(\.ai-config/.*|\.ai-hooks/.*|\.semgrep/.*|\.github/workflows/ci\.yml|\.pre-commit-config\.yaml|\.ruff\.toml|\.importlinter|AGENTS\.md|tools/check\.py|pyproject\.toml|uv\.lock)$
+        files: ^(\.ai-config/.*|\.ai-hooks/.*|\.semgrep/.*|\.github/workflows/ci\.yml|\.pre-commit-config\.yaml|\.ruff\.toml|\.importlinter|tools/check\.py|pyproject\.toml|uv\.lock)$
 
       - id: dependency-change-approval
         name: dependency/lock change approval gate

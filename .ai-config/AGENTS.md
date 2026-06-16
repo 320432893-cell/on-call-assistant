@@ -54,18 +54,19 @@ MUST=违规即停;SHOULD=默认行、豁免须说明。中文输出,技术术语
 **用力分配**〔变更〕:`[启发]` 开工先判 ①可逆性(撤销+发现两轴)②blast-radius ③AI强弱(CRUD/转换/清晰oracle=强,放它跑;新算法/微妙并发/性能内核/弱文档外部依赖/oracle难写=弱,你驱动)。承重→前期收敛目标+分叉决策(非锁方法)+先写测试后实现;便宜可逆→先做初版、按坏味道硬化、够好就发、勿过度打磨。架构=中后期 zoom-out 复盘动态调,前期只装缝。
 
 ## §3 产物质量(写代码时;§1 写入前/闭包指到这)
-**代码身份**(写前定;决定后面拆得动否)〔变更〕:`[机器]` 错层 import→code-identity;`[复核]` 入口是否真薄/正式层是否反依赖外层。五选一→定目录+可依赖层:
+**代码身份**(写前定;决定后面拆得动否)〔变更〕:`[机器]` 错层 import→code-identity;`[复核]` 入口是否真薄/正式层是否反依赖外层。**闸响修复方向=沿身份缝劈开**(能力上提 core/业务·入口转正 tools 薄壳·长寿工具进 devtools·验证进 tests),禁就地标正式·禁正式层 import 非正式区。五选一→定目录+可依赖层:
 - 正式·基础(跨业务复用/稳定API/封外部差异)→`core/`,可被任何层 import
 - 正式·业务(单一业务的规则/流程/契约/模型)→`<business>/`,依赖 core,不依赖 tools/tests
 - 入口(收输入→调正式能力→出结果→退出码)→`tools/`,不含业务规则/核心流程/持久化主逻辑
 - 测试(验证正式能力)→`tests/`,禁被正式代码 import
-- 临时(探针/实验/一次性)→必带删除条件(见生命周期),禁被正式流程 import
+- 短命探针(探针/实验/一次性)→必带删除条件(见生命周期),禁被正式流程 import
+- 项目级开发工具(反复用·正式项目不依赖·活到项目结束:如递归控件树/灌库/重生成脚本)→`devtools/`,可依赖 core/业务,正式层禁 import,免查过期但 MUST 住 devtools/,项目结束清
 - (存量混合:只许局部修复,禁新增正式能力)
 **新文件先写边界块**:`[机器]` 缺块/错层→module-boundary。`# 职责: / # 不做什么(≥1): / # 允许依赖层: / # 谁不应该 import:`(可用 `check.py new` 直接生成合规骨架)。
 
 **测试=oracle**〔发现〕〔注意〕〔变更〕:`[机器]` 文件头四项+oracle 标记→test-meta;`[复核]` 测试是否测意图非行覆盖。测=业务语言验收信号,非覆盖率。头标 生命周期/覆盖场景/依赖环境/运行方式。输出 `✓[业务]|用时Xs` / `✗[业务]|期望:X|实际:Y` / `[ENV_ERROR]` `[LOGIC_ERROR]`。测试深度随 blast-radius。`[机器]` 禁 `time.sleep(N)`→semgrep,等待按轮询(窗口/PID/端口/DOM,默认0.5s/10s)。
 
-**生命周期**〔变更〕:`[机器]` T0/临时/兼容别名缺过期标注→lifecycle;可重建产物(.venv/node_modules/编译物)、运行时产物(output/logs/cache)→.gitignore。
+**生命周期**〔变更〕:`[机器]` T0/临时/兼容别名缺过期标注→lifecycle;非正式区(scripts/devtools/tmp/probes)缺 `# lifecycle:` 标注→lifecycle(新增阻塞·存量记 baseline 棘轮,见放行机制);可重建产物(.venv/node_modules/编译物)、运行时产物(output/logs/cache)→.gitignore。
 
 **放行机制=欠债登记非豁免**(green-now/ratchet-later 的 ratchet 半边;同生命周期纪律)〔变更〕〔注意〕:一切放行已知问题的机制——白名单(check_arch ALLOWLIST)、ignore 注释(`# pyright: ignore`/semgrep)、**advisory/baseline 闸**(continue-on-error、类型/lint 错误计数 baseline)、secrets baseline——MUST 带 ①原因 ②**可判定清除条件 + 降到 0 的目标时机/里程碑**(不是"以后·待定·暂时"裸词)③登记日期。`[机器]` 缺项 / 含裸词→拒(check.py debt 校验)。**计数型(baseline)MUST 只减不增**:记 baseline,机器棘轮 `count>baseline→CI 失败`,降了须更新 baseline 锁战果(降到 0 即升级为阻断闸)。**条目型(白名单/ignore)默认只减不增**,新增=承重决策须 STOP 拍板/ADR。**存量/老问题不豁免——"是老问题"不是无限期的理由;advisory「不阻断」≠ 可永久拖,它同样 MUST 有降到 0 的时机。**
 

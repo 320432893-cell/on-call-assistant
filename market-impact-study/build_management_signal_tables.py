@@ -1,4 +1,8 @@
 """Build management-signal ledgers and source coverage gap tables."""
+# 职责：从多源采集数据建管理层信号台账与来源覆盖缺口表，落盘 data/processed/management。
+# 不做什么：不算 CAR/标签/不训练模型；不改 universe 口径。
+# 允许依赖层：标准库、pandas、data/raw 多源产物、peer_universe(口径)。
+# 谁不应该 import：建模/解释脚本不应 import 本入口；它们应读 management 台账产物。
 
 from __future__ import annotations
 
@@ -16,17 +20,9 @@ EASTMONEY_IR_DIR = RAW_DIR / "eastmoney_ir"
 PROCESSED_DIR = Path("market-impact-study/data/processed")
 OUTPUT_DIR = PROCESSED_DIR / "management"
 
-COMPANIES = [
-    ("移为通信", "300590.SZ", "300590"),
-    ("移远通信", "603236.SH", "603236"),
-    ("高新兴", "300098.SZ", "300098"),
-    ("广和通", "300638.SZ", "300638"),
-    ("日海智能", "002313.SZ", "002313"),
-    ("锐明技术", "002970.SZ", "002970"),
-    ("有方科技", "688159.SH", "688159"),
-    ("美格智能", "002881.SZ", "002881"),
-    ("博实结", "301608.SZ", "301608"),
-]
+from peer_universe import load_companies
+
+COMPANIES = [(c["name"], c["ts_code"], c["symbol"]) for c in load_companies()]
 COMPANY_BY_NAME = {name: {"ts_code": ts_code, "symbol": symbol} for name, ts_code, symbol in COMPANIES}
 COMPANY_BY_SYMBOL = {symbol.lstrip("0"): name for name, _, symbol in COMPANIES}
 COMPANY_BY_TS_CODE = {ts_code: name for name, ts_code, _ in COMPANIES}

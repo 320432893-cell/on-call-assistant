@@ -8,12 +8,19 @@
 from __future__ import annotations
 
 import importlib.util
+import sys
 from pathlib import Path
 
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
 MARKET_DIR = ROOT / "market-impact-study"
+
+# Scripts under MARKET_DIR import sibling modules (e.g. `from peer_universe import
+# load_companies`). Running them as scripts puts that dir on sys.path[0]; importlib
+# loading here does not, so add it explicitly to keep sibling imports resolvable.
+if str(MARKET_DIR) not in sys.path:
+    sys.path.insert(0, str(MARKET_DIR))
 
 
 def load_module(name: str, filename: str):

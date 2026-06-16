@@ -5,6 +5,10 @@ This tool keeps the static side intentionally small: it blocks production code
 from depending on tests/entry/archive/temp code, and warns when temp probes lack
 their lifecycle. Ambiguous placement remains an AI/human review matter.
 """
+# 职责：静态检查代码身份越界——拦正式代码依赖 tests/入口/archive/temp，警告 temp 探针缺生命周期。
+# 不做什么：不判模糊归属(交人复核)；不改/不删文件；不做语义层判断。
+# 允许依赖层：标准库(ast/pathlib)、被扫描源码的 import 结构、git 工作区。
+# 谁不应该 import：正式业务/应用/测试不应 import 本检查脚本。
 
 from __future__ import annotations
 
@@ -24,7 +28,7 @@ IGNORED_PARTS = {
     ".venv",
     "__pycache__",
 }
-OUTER_MODULES = {"tests", "tools", "archive", "tmp", "probes"}
+OUTER_MODULES = {"tests", "tools", "archive", "tmp", "probes", "scripts", "devtools"}
 TEMP_NAME_MARKERS = ("tmp", "probe", "debug")
 TEMP_LIFECYCLE_MARKERS = ("删除条件", "归档条件")
 
@@ -50,7 +54,7 @@ def is_outer_path(path: pathlib.Path) -> bool:
     if not parts:
         return False
     first = parts[0]
-    if first in {"tests", "tools", "archive", "tmp", "probes"}:
+    if first in OUTER_MODULES:
         return True
     return any(marker in path.name.lower() for marker in TEMP_NAME_MARKERS)
 

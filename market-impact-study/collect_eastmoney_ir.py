@@ -1,4 +1,8 @@
 """Collect Eastmoney organization survey / IR activity records."""
+# 职责：采集 universe 内公司的东方财富机构调研/业绩说明会 IR 记录，落盘 data/raw/eastmoney_ir。
+# 不做什么：不衍生管理层信号/不建台账；不改 universe 口径。
+# 允许依赖层：标准库、pandas、peer_universe(口径)。
+# 谁不应该 import：管理层信号/建模/测试不应 import 本采集入口；它们应读 data/raw/eastmoney_ir 产物。
 
 from __future__ import annotations
 
@@ -11,19 +15,11 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
+from peer_universe import load_companies
+
 OUTPUT_DIR = Path("market-impact-study/data/raw/eastmoney_ir")
 
-COMPANIES = [
-    {"name": "移为通信", "symbol": "300590"},
-    {"name": "移远通信", "symbol": "603236"},
-    {"name": "高新兴", "symbol": "300098"},
-    {"name": "广和通", "symbol": "300638"},
-    {"name": "日海智能", "symbol": "002313"},
-    {"name": "锐明技术", "symbol": "002970"},
-    {"name": "有方科技", "symbol": "688159"},
-    {"name": "美格智能", "symbol": "002881"},
-    {"name": "博实结", "symbol": "301608"},
-]
+COMPANIES = load_companies()
 
 
 def request_json(url: str) -> dict[str, Any]:

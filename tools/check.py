@@ -47,7 +47,6 @@ CONTRACT_TRIGGER_PATTERNS = (
     ".pre-commit-config.yaml",
     ".ruff.toml",
     ".semgrep/**",
-    "AGENTS.md",
     "pyproject.toml",
     "tools/check.py",
     "uv.lock",
