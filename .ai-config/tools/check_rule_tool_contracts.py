@@ -163,7 +163,7 @@ def check_rule_tool_contracts_trigger(root: pathlib.Path, issues: list[Issue]) -
         ".ai-config/tools/check_rule_tool_contracts.py",
         ".ai-config/config/tooling.registry.toml",
         ".ai-config/rules/engineering/code.index.md",
-        ".ai-hooks/rag_hygiene.sh",
+        ".ai-hooks/rename_audit.sh",
         ".semgrep/rag-hygiene.yml",
         ".github/workflows/ci.yml",
         ".pre-commit-config.yaml",

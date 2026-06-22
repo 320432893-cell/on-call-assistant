@@ -40,10 +40,12 @@ DATASETS = {
     "daily": "ts_code,trade_date,open,high,low,close,pre_close,change,pct_chg,vol,amount",
     "daily_basic": "ts_code,trade_date,close,turnover_rate,volume_ratio,pe,pb,ps,total_mv,circ_mv",
     "adj_factor": "ts_code,trade_date,adj_factor",
-    "income": "ts_code,ann_date,f_ann_date,end_date,report_type,total_revenue,revenue,operate_profit,total_profit,n_income,n_income_attr_p",
-    "balancesheet": "ts_code,ann_date,f_ann_date,end_date,total_assets,total_liab,total_hldr_eqy_inc_min_int,total_cur_assets,total_cur_liab",
-    "cashflow": "ts_code,ann_date,f_ann_date,end_date,n_cashflow_act,n_cashflow_inv_act,n_cash_flows_fnc_act,c_cash_equ_end_period",
-    "fina_indicator": "ts_code,ann_date,end_date,roe,roa,grossprofit_margin,netprofit_margin,rd_exp,ocfps,bps",
+    # 四张财报表用空 fields 拉全部默认列(三费/营业成本/存货/应收/货币资金/商誉/capex/筹资分项/
+    # roic/quick_ratio/inv_turn/ar_turn/ebit_to_interest/fcff/各种yoy 等全量,见 INV-036)
+    "income": "",
+    "balancesheet": "",
+    "cashflow": "",
+    "fina_indicator": "",
     "forecast": "ts_code,ann_date,end_date,type,p_change_min,p_change_max,net_profit_min,net_profit_max,summary,change_reason",
     "express": "ts_code,ann_date,end_date,revenue,operate_profit,total_profit,n_income,total_assets,total_hldr_eqy_exc_min_int,diluted_eps",
     "dividend": "ts_code,ann_date,end_date,stk_div,stk_bo_rate,stk_co_rate,cash_div,cash_div_tax,record_date,ex_date,pay_date,div_proc",

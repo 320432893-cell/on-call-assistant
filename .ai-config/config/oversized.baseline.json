@@ -1,0 +1,11 @@
+{
+  "reason": "存量超 600 行的非测试文件，在 600 行硬闸上线前已存在；冻结当前行数，计数型棘轮只减不增，逐个拆分后移除条目。",
+  "clear_by": "逐个拆分降到 <600 行后从 entries 移除，目标清零；tools/check.py 是头号待拆（编排+各检查命令混在一处）。",
+  "registered": "2026-06-20",
+  "ratchet": "计数型只减不增：在册文件行数不得超过记录值(超=阻塞)；新文件≥600 直接阻塞。",
+  "entries": {
+    "market-impact-study/build_valuation_model.py": 712,
+    "tools/check.py": 706,
+    "market-impact-study/build_management_signal_tables.py": 633
+  }
+}

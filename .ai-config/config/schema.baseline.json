@@ -1,0 +1,55 @@
+{
+  "reason": "契约 schema 稳定核心：app/models Pydantic 模型字段名+类型，只增不改。",
+  "clear_by": "破坏性改(删/改名/改类型)走③晋升门承重决策;加字段后运行 --update-baseline 锁新核心。",
+  "registered": "2026-06-20",
+  "ratchet": "只增不改：删/改名/改类型字段=阻塞;加字段=允许。标 `# experimental` 的字段豁免(流动前沿)。",
+  "models": {
+    "DocumentInput": {
+      "id": "str",
+      "html": "str"
+    },
+    "DocumentResponse": {
+      "id": "str",
+      "title": "str"
+    },
+    "SearchResult": {
+      "id": "str",
+      "title": "str",
+      "snippet": "str",
+      "score": "float"
+    },
+    "SearchResponse": {
+      "query": "str",
+      "results": "list[SearchResult]"
+    },
+    "ChatRequest": {
+      "message": "str",
+      "session_id": "str | None",
+      "provider": "str | None"
+    },
+    "ChatSession": {
+      "session_id": "str",
+      "state": "str",
+      "history": "list[dict]",
+      "context": "dict",
+      "created_at": "datetime",
+      "updated_at": "datetime"
+    },
+    "ToolCall": {
+      "tool": "str",
+      "args": "dict",
+      "result": "str | None",
+      "timestamp": "datetime"
+    },
+    "AgentResponse": {
+      "event": "str",
+      "data": "dict"
+    },
+    "ClarifyForm": {
+      "problem_type": "str | None",
+      "system_scope": "list[str] | None",
+      "severity": "str | None",
+      "has_tried": "str | None"
+    }
+  }
+}

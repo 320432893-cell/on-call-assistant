@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
-# Regression tests for rename_audit.sh and rag_drift.sh.
+# Regression tests for rename_audit.sh.
 set -u
 
 HOOK_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 RENAME_AUDIT="$HOOK_DIR/rename_audit.sh"
-RAG_DRIFT="$HOOK_DIR/rag_drift.sh"
 PASS=0; FAIL=0; TOTAL=0
 TMP_ROOT=$(mktemp -d)
 trap 'rm -rf "$TMP_ROOT"; rm -f /tmp/rename_pwned' EXIT
@@ -96,35 +95,6 @@ rc=$?
 set -e
 assert_exit "rename_audit ghost reference check exits cleanly" 0 "$rc"
 assert_contains "rename_audit reports old symbol" "old_symbol" /tmp/rename_err
-
-echo "--- rag_drift: warns on chunk contract change ---"
-rag_repo="$TMP_ROOT/rag_repo"
-mkdir -p "$rag_repo"
-git -C "$rag_repo" init -q
-git -C "$rag_repo" config user.email test@example.com
-git -C "$rag_repo" config user.name Test
-cat > "$rag_repo/rag.py" <<'PY'
-from sentence_transformers import SentenceTransformer
-
-EMBEDDING_MODEL = "BAAI/bge-m3"
-CHUNK_SIZE = 800
-embedder = SentenceTransformer(EMBEDDING_MODEL)
-PY
-git -C "$rag_repo" add rag.py
-git -C "$rag_repo" commit -q -m init
-python3 - "$rag_repo/rag.py" <<'PY'
-from pathlib import Path
-import sys
-path = Path(sys.argv[1])
-text = path.read_text()
-path.write_text(text.replace('CHUNK_SIZE = 800', 'CHUNK_SIZE = 1000'))
-PY
-set +e
-json_file_payload "$rag_repo/rag.py" | bash "$RAG_DRIFT" >/tmp/rag_out 2>/tmp/rag_err
-rc=$?
-set -e
-assert_exit "rag_drift hook remains non-blocking" 0 "$rc"
-assert_contains "rag_drift reports chunk contract change" "CHUNK_SIZE" /tmp/rag_err
 
 echo ""
 echo "========================================="

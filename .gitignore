@@ -67,3 +67,7 @@ node_modules/
 
 # 个人简历（按题面要求放在仓库根目录，但不入 git 跟踪）
 /*.pdf
+.venv-causal/
+
+# 快速验证草稿区（零检查实验区：随便试、用完即弃，禁被正式代码 import）
+scratch/

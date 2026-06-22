@@ -84,7 +84,11 @@ COMMANDS: dict[str, str] = {
     "module-boundary-changed": "python3 tools/check_module_boundary.py --changed",
     "lifecycle": "python3 tools/check_lifecycle.py",
     "lifecycle-changed": "python3 tools/check_lifecycle.py --changed",
+    "dup-symbol": "python3 tools/check_dup_symbol.py",
+    "dup-symbol-changed": "python3 tools/check_dup_symbol.py --changed",
     "regression": "python3 tools/check_regression.py",
+    "complexity": "python3 tools/check_complexity.py",
+    "schema": "python3 tools/check_schema.py",
     "debt": "python3 tools/check.py debt",
 }
 
@@ -92,7 +96,6 @@ HOOK_TESTS = [
     "bash .ai-hooks/tests/test_bash_safety_hooks.sh",
     "bash .ai-hooks/tests/test_dirty_static_review.sh",
     "bash .ai-hooks/tests/test_reference_drift_hooks.sh",
-    "bash .ai-hooks/tests/test_rag_hygiene.sh",
 ]
 
 PROFILES: dict[str, list[str]] = {
@@ -112,6 +115,9 @@ PROFILES: dict[str, list[str]] = {
         "lifecycle",
         "regression",
         "pytest",
+        "debt",
+        "complexity",
+        "schema",
     ],
 }
 
@@ -305,6 +311,7 @@ def run_changed() -> int:
         status = run_item("code-identity") or status
         status = run_item("module-boundary-changed") or status
         status = run_item("lifecycle-changed") or status
+        status = run_item("dup-symbol-changed") or status
         status = run_item("test-meta") or status
         status = run_item("error-catalog") or status
         status = (
@@ -523,26 +530,58 @@ def print_pass_rates(limit: int = 200) -> None:
         print(f"    {label:26} {rate:3d}%  ({sum(runs)}/{len(runs)})")
 
 
-def run_debt() -> int:
-    # 度量：规则系统健康度只读汇总（非门禁）。聚合已有信号——relaxed 工具、生命周期债、回归债、检查通过率。
-    print("[debt] 规则系统健康度（只读汇总，非门禁）", flush=True)
-    registry = tomllib.loads(REGISTRY.read_text(encoding="utf-8"))
-    relaxed = [tool["id"] for tool in registry.get("tools", []) if tool.get("relaxed")]
-    print(f"  relaxed 工具 {len(relaxed)}: {', '.join(relaxed) or '无'}")
+# 放行登记里"清除条件"禁用的含糊词：它们让 reopen_when 不可判定，等于无限期拖。
+DEBT_VAGUE_WORDS = ("暂时", "以后", "待定", "回头", "慢慢", "再说", "未定", "看情况", "tbd", "todo")
 
+
+def _debt_registrations(registry: dict) -> list[tuple[str, dict]]:
+    # 放行登记 = relaxed 的工具 + relaxed 的 semgrep ruleset（都属"green-now/ratchet-later"的欠债）。
+    items: list[tuple[str, dict]] = [
+        (f"tool:{tool['id']}", tool) for tool in registry.get("tools", []) if tool.get("relaxed")
+    ]
+    items.extend(
+        (f"semgrep:{rs.get('path', '?')}", rs) for rs in registry.get("semgrep_rulesets", []) if rs.get("relaxed")
+    )
+    return items
+
+
+def run_debt() -> int:
+    # 放行登记校验（门禁）+ 健康度汇总。把"放行机制=欠债登记"从纸面升成机器闸：
+    # 每条 relaxed 放行 MUST 有 ①原因(relaxed_reason) ②可判定的清除条件(reopen_when，禁含糊词)，否则非0。
+    registry = tomllib.loads(REGISTRY.read_text(encoding="utf-8"))
+    registrations = _debt_registrations(registry)
+    violations: list[str] = []
+    for name, item in registrations:
+        reason = (item.get("relaxed_reason") or "").strip()
+        clear = (item.get("reopen_when") or "").strip()
+        if not reason:
+            violations.append(f"{name}: 缺 relaxed_reason（放行必须写原因）")
+        if not clear:
+            violations.append(f"{name}: 缺 reopen_when（放行必须写可判定的清除条件 + 目标时机）")
+        elif hits := [w for w in DEBT_VAGUE_WORDS if w in clear.lower()]:
+            violations.append(f"{name}: reopen_when 含糊词 {hits}（须给可判定条件，非『暂时/以后/待定』）")
+
+    print(f"[debt] 放行登记 {len(registrations)} 条，校验原因 + 可判定清除条件…", flush=True)
+
+    # 健康度汇总（只读参考，不参与门禁）
     lifecycle = subprocess.run(
         [sys.executable, "tools/check_lifecycle.py"], cwd=ROOT, capture_output=True, text=True, check=False
     )
-    for tag in ("EXPIRED", "MISSING-EXPIRY", "BACKLOG", "MANUAL"):
-        print(f"  lifecycle {tag:13} {lifecycle.stdout.count('[' + tag + ']')}")
-
+    for tag in ("UNTAGGED", "DEVTOOL-MISPLACED", "BASELINE-STALE"):
+        print(f"  lifecycle {tag:16} {lifecycle.stdout.count('[' + tag + ']')}")
     regression = subprocess.run(
         [sys.executable, "tools/check_regression.py"], cwd=ROOT, capture_output=True, text=True, check=False
     )
-    missing = (regression.stdout + regression.stderr).count("X INC-")
-    print(f"  regression fixed 缺测试: {missing}")
-
+    print(f"  regression fixed 缺测试: {(regression.stdout + regression.stderr).count('X INC-')}")
     print_pass_rates()
+
+    if violations:
+        sys.stderr.write("\n[debt] 放行登记校验失败：\n")
+        for v in violations:
+            sys.stderr.write(f"  X {v}\n")
+        sys.stderr.write("  放行=欠债登记：每条 relaxed MUST 带 原因 + 可判定清除条件(reopen_when)，禁裸词。\n")
+        return 1
+    print(f"[debt] 放行登记校验通过（{len(registrations)} 条均有原因 + 可判定清除条件）。")
     return 0
 
 

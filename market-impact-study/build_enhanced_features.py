@@ -83,7 +83,9 @@ def load_index_panel() -> pd.DataFrame:
     index["index_ret"] = pd.to_numeric(index["pct_chg"], errors="coerce") / 100
     index = index.sort_values("trade_dt")
     for window in TRADING_WINDOWS:
-        index[f"mkt_ret_m{window}_m1"] = index["index_ret"].rolling(window, min_periods=max(2, window // 2)).sum().shift(1)
+        index[f"mkt_ret_m{window}_m1"] = (
+            index["index_ret"].rolling(window, min_periods=max(2, window // 2)).sum().shift(1)
+        )
     return index[["trade_dt", *[f"mkt_ret_m{window}_m1" for window in TRADING_WINDOWS]]]
 
 
@@ -118,10 +120,18 @@ def add_peer_features(panel: pd.DataFrame) -> pd.DataFrame:
     peer = panel[["ts_code", "trade_dt", *feature_cols]].copy()
     for column in feature_cols:
         peer[f"peer_avg_{column}"] = peer.groupby("trade_dt")[column].transform(
-            lambda values: (values.sum(skipna=True) - values) / (values.notna().sum() - values.notna()).replace(0, np.nan)
+            lambda values: (
+                (values.sum(skipna=True) - values) / (values.notna().sum() - values.notna()).replace(0, np.nan)
+            )
         )
         peer[f"rel_to_peer_{column}"] = peer[column] - peer[f"peer_avg_{column}"]
-    return peer[["ts_code", "trade_dt", *[column for column in peer.columns if column.startswith(("peer_avg_", "rel_to_peer_"))]]]
+    return peer[
+        [
+            "ts_code",
+            "trade_dt",
+            *[column for column in peer.columns if column.startswith(("peer_avg_", "rel_to_peer_"))],
+        ]
+    ]
 
 
 def asof_by_company(
@@ -215,7 +225,8 @@ def add_financial_features(events: pd.DataFrame) -> pd.DataFrame:
         rename = {
             column: f"{suffix}_{column}"
             for column in joined.columns
-            if column not in {"analysis_group_id", "ts_code", "event_date", "event_dt", "ann_dt", "ann_date", "end_date"}
+            if column
+            not in {"analysis_group_id", "ts_code", "event_date", "event_dt", "ann_dt", "ann_date", "end_date"}
         }
         joined = joined.rename(columns=rename)
         return joined[["analysis_group_id", *rename.values()]]
@@ -341,7 +352,21 @@ def build_enhanced_dataset() -> tuple[pd.DataFrame, pd.DataFrame]:
 
 
 def source_group(column: str) -> str:
-    if column.startswith(("ret_", "volatility_", "turnover_", "amount_", "pe_", "pb_", "ps_", "log_", "rel_to_peer_", "peer_avg_", "mkt_")):
+    if column.startswith(
+        (
+            "ret_",
+            "volatility_",
+            "turnover_",
+            "amount_",
+            "pe_",
+            "pb_",
+            "ps_",
+            "log_",
+            "rel_to_peer_",
+            "peer_avg_",
+            "mkt_",
+        )
+    ):
         return "trading_valuation_peer"
     if column.startswith(("fin_", "inc_", "bal_", "cf_")):
         return "financial"
@@ -359,7 +384,11 @@ def markdown_table(frame: pd.DataFrame) -> str:
 
 
 def write_report(enhanced: pd.DataFrame, manifest: pd.DataFrame) -> None:
-    group_summary = manifest.groupby("source_group").agg(features=("feature", "count"), avg_missing=("missing_rate", "mean")).reset_index()
+    group_summary = (
+        manifest.groupby("source_group")
+        .agg(features=("feature", "count"), avg_missing=("missing_rate", "mean"))
+        .reset_index()
+    )
     rows = [
         "# 增强结构化特征摘要",
         "",

@@ -11,12 +11,9 @@
 - `dirty_static_review.sh`: 写文件后读取刚改的脏文件，做非修复静态检查，并提示本次改动应先和用户确认采用的范式/思想。
 - `rename_audit.sh`: Edit/MultiEdit 删除或改名符号后，扫描项目其他文件是否仍引用旧名；只提醒，不阻断。
 
-## 当前项目独有 hook
+## 已删除的项目独有 hook
 
-这些 hook 依赖本项目的 RAG/embedding 业务，不作为通用模板扩散。
-
-- `rag_hygiene.sh`: Python RAG 文件中，BGE 双塔 embedding 调用 `encode` 时提醒显式区分 `is_query=True/False`。
-- `rag_drift.sh`: 发现 embedding model、chunk 参数、向量 schema 等 RAG 数据契约改动时，调用 `scripts/check_rag_drift.py` 提醒是否需要 reindex。
+- `rag_hygiene.sh` / `rag_drift.sh`（已删）：RAG/embedding 提醒过于项目专用，且属"写文件即提醒"的低频噪音，不该占 hook 层。其能力已下放到更便宜的静态层——embedding 卫生由 `.semgrep/rag-hygiene.yml` 覆盖，数据契约漂移由 `rag-drift` 工具（`scripts/check_rag_drift.py`，CI 跑）覆盖。
 
 ## 不保留的 hook 类型
 

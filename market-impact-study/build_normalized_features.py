@@ -31,6 +31,11 @@ look-ahead. This is a first-pass diagnostic; a strict version would snapshot all
 peers as-of date t from the raw daily series.
 """
 
+# 职责：对建模特征造无量纲/行业相对变体(within-z / YoY / 截面秩 / 截面去中位)并诊断其样本外 IC 稳定性,
+#       产 enhanced_v3 宽表 + normalized_feature_manifest = INV-014 特征工程层;让异体量公司同空间可比。
+# 不做什么：不做因果估计/不训练预测模型;只造特征变体 + 单变量 IC 诊断。
+# 允许依赖层：标准库、numpy/pandas/scipy、enhanced_v2 宽表。
+# 谁不应该 import：因果/仪表板脚本不应 import 本入口,只读其输出 CSV(enhanced_v3)。
 from __future__ import annotations
 
 import json
@@ -52,10 +57,10 @@ COMPANY = "ts_code"
 EVENT_DATE = "event_date"
 SPLIT = "split"
 EPS = 1e-9
-MIN_SELFZ_PRIOR = 3      # need >=3 prior obs for a trailing std
-MIN_XS_GROUP = 4         # need >=4 firms in a quarter to rank cross-sectionally
-IC_THRESHOLD = 0.03      # |test IC| considered non-trivial
-MIN_EFF_N = 200          # ignore IC built on a tiny effective sample
+MIN_SELFZ_PRIOR = 3  # need >=3 prior obs for a trailing std
+MIN_XS_GROUP = 4  # need >=4 firms in a quarter to rank cross-sectionally
+IC_THRESHOLD = 0.03  # |test IC| considered non-trivial
+MIN_EFF_N = 200  # ignore IC built on a tiny effective sample
 
 
 def load_base_features() -> list[str]:
@@ -83,7 +88,7 @@ def selfz(df: pd.DataFrame, col: str) -> pd.Series:
 
 def yoy(df: pd.DataFrame, col: str) -> pd.Series:
     out = pd.Series(np.nan, index=df.index)
-    for _, idx in df.groupby(COMPANY).groups.items():
+    for idx in df.groupby(COMPANY).groups.values():
         sub = df.loc[idx, [EVENT_DATE, col]].dropna(subset=[col])
         if len(sub) < 2:
             continue
@@ -109,7 +114,7 @@ def xs_quarter(df: pd.DataFrame, col: str) -> tuple[pd.Series, pd.Series]:
     q = df[EVENT_DATE].dt.to_period("Q")
     rank = pd.Series(np.nan, index=df.index)
     demed = pd.Series(np.nan, index=df.index)
-    for _, idx in df.groupby(q).groups.items():
+    for idx in df.groupby(q).groups.values():
         vals = df.loc[idx, col]
         if vals.notna().sum() < MIN_XS_GROUP:
             continue
@@ -127,7 +132,7 @@ def ic(feat: pd.Series, target: pd.Series) -> tuple[float, int]:
     return float(rho), n
 
 
-def main() -> None:
+def main() -> None:  # noqa: PLR0915
     df = pd.read_csv(WIDE_PATH)
     df[EVENT_DATE] = pd.to_datetime(df[EVENT_DATE], errors="coerce")
     df = df.sort_values([COMPANY, EVENT_DATE]).reset_index(drop=True)
@@ -189,19 +194,28 @@ def main() -> None:
         )
 
     man = pd.DataFrame(rows).sort_values(
-        ["sign_stable_nontrivial", "ic_test"], ascending=[False, False], key=lambda s: s.abs() if s.name == "ic_test" else s
+        ["sign_stable_nontrivial", "ic_test"],
+        ascending=[False, False],
+        key=lambda s: s.abs() if s.name == "ic_test" else s,
     )
     man.to_csv(OUT_MANIFEST, index=False, encoding="utf-8-sig")
     print(f"wrote {OUT_MANIFEST.name}: {len(man)} (feature,representation) rows")
 
     # ---- summary ----
-    print("\n=== sign-stable, non-trivial (|test IC|>=%.2f, n_test>=%d) by representation ===" % (IC_THRESHOLD, MIN_EFF_N))
+    print(f"\n=== sign-stable, non-trivial (|test IC|>={IC_THRESHOLD:.2f}, n_test>={MIN_EFF_N}) by representation ===")
     summ = (
         man.groupby("representation")
         .agg(
             candidates=("column", "count"),
             stable=("sign_stable_nontrivial", "sum"),
-            mean_abs_test_ic_stable=("ic_test", lambda s: round(s[man.loc[s.index, "sign_stable_nontrivial"]].abs().mean(), 4) if man.loc[s.index, "sign_stable_nontrivial"].any() else np.nan),
+            mean_abs_test_ic_stable=(
+                "ic_test",
+                lambda s: (
+                    round(s[man.loc[s.index, "sign_stable_nontrivial"]].abs().mean(), 4)
+                    if man.loc[s.index, "sign_stable_nontrivial"].any()
+                    else np.nan
+                ),
+            ),
         )
         .reset_index()
         .sort_values("stable", ascending=False)

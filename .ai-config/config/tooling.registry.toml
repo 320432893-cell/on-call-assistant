@@ -309,16 +309,16 @@ boundary = "Dynamic imports, optional providers, and script-only dependencies ne
 [[tools]]
 id = "module-boundary"
 kind = "project-static-tool"
-purpose = "检查 Python 文件是否有职责声明注释块；changed 模式要求当前四项格式（# 职责 / # 不做什么 / # 允许依赖层 / # 谁不应该 import），并对 ≥ 400 行的文件报拆分候选 WARNING。"
+purpose = "检查 Python 文件职责声明块（changed 要求当前四项格式）+ 文件行数硬闸：changed 模式 ≥ 600 行阻塞(存量超限挂 oversized.baseline·计数型棘轮只减不增)，full 模式仅 WARNING；tests/ 不强加职责块，按 ≥ 600 行只报膨胀 WARNING。"
 rule = ".ai-config/AGENTS.md"
-configured_in = ["tools/check_module_boundary.py", "tools/check.py"]
+configured_in = ["tools/check_module_boundary.py", "tools/check.py", ".ai-config/config/oversized.baseline.json"]
 entrypoint_commands = ["python3 tools/check_module_boundary.py", "python3 tools/check_module_boundary.py --changed"]
 manual_commands = ["python3 tools/check_module_boundary.py"]
 run_mode = "changed+manual"
-scope = "app/, scripts/, market-impact-study/, and tools/ Python files, excluding __init__.py, conftest.py, and test files."
-boundary = "检测职责注释是否存在 + 报 ≥400 行拆分候选；changed 模式只卡本次改动文件四项声明，full 模式兼容旧字段名；不校验注释内容准确性，也不强制拆分（拆分决策由 AGENTS.md §2 + 用户拍板）。"
+scope = "职责块检查覆盖 app/, scripts/, market-impact-study/, and tools/ Python files, excluding __init__.py, conftest.py, and test files; 膨胀行数检查另对 tests/ 测试文件按更高阈值生效。"
+boundary = "changed 模式：缺四项职责声明阻塞 + 文件 ≥600 行阻塞(在册存量未长大则挂账 WARNING，新增/长大才阻塞)；full 模式行数仅 WARNING、兼容旧字段名；不校验注释内容准确性。职责注释全量补全仍按 relaxed(见下)。"
 relaxed = true
-relaxed_reason = "存量 22 个文件尚无职责注释，先保持 manual 不阻塞；新文件由 AGENTS.md 规则在谋划态强制。"
+relaxed_reason = "relaxed 仅指『职责注释全量补全』：存量 22 文件尚无注释，full-scan 保持 manual 不阻塞；行数硬闸与新文件四项声明已是 changed 模式阻塞，不在 relaxed 范围。"
 reopen_when = "存量文件职责注释补全后升为 pre-commit WARNING blocking。"
 
 [[tools]]
@@ -363,7 +363,7 @@ reopen_when = "存量测试补全业务场景与用时声明后升为 pre-commit
 [[tools]]
 id = "lifecycle"
 kind = "project-static-tool"
-purpose = "债务 forcing：临时件/T0/兼容别名缺机器可读 expires、已过期未清理、旧自由文本待迁移、expires-when 待人工核验。changed 模式阻塞新增缺 expires；full 模式为 sweep WARNING。"
+purpose = "身份标注 forcing：非正式区(scripts/devtools/tmp/probes)文件缺 # lifecycle: 身份标注、或标 devtool 却不在 devtools/。changed 模式阻塞新增缺标注/错位；full 模式 sweep + 存量挂 baseline 棘轮(只减不增)。expires 日期/superseded 标记那套已删(理想情况设计·0 使用)。"
 rule = ".ai-config/AGENTS.md"
 configured_in = ["tools/check_lifecycle.py", "tools/check.py", ".pre-commit-config.yaml"]
 pre_commit_hook = "lifecycle"
@@ -371,8 +371,8 @@ entrypoint_commands = ["python3 tools/check_lifecycle.py", "python3 tools/check_
 ci_commands = ["python3 tools/check_lifecycle.py"]
 manual_commands = ["python3 tools/check_lifecycle.py"]
 run_mode = "changed+ci+manual"
-scope = "app/, scripts/, market-impact-study/ Python files;排除 tools/.ai-config/.ai-hooks/tests 等定义标记串或由 test-meta 管理的目录。"
-boundary = "只查机器可读过期标注是否存在/已过期；不删文件、不归档、不评估 expires-when 文本本身是否仍成立（交人工 sweep）。"
+scope = "非正式区(scripts/devtools/tmp/probes) Python 文件；排除 tools/.ai-config/.ai-hooks/tests/scratch 等。"
+boundary = "只查身份标注是否存在 + devtool 是否住对地方；不删文件、不归档。旧码清理交「取代纪律」的状态推导(死码+重复块+晋升门)，不再靠 expires/superseded 标记。"
 
 [[tools]]
 id = "regression"
@@ -390,14 +390,15 @@ boundary = "只校验事故 ID↔测试的登记关系；不运行测试、不�
 [[tools]]
 id = "debt"
 kind = "project-static-tool"
-purpose = "度量：规则系统健康度只读汇总——relaxed 工具数、生命周期债、回归债、各检查通过率（读 .cache/check-runs.jsonl 运行日志）。"
+purpose = "放行登记校验（门禁）+ 健康度汇总。校验每条 relaxed 放行有 ①relaxed_reason ②可判定 reopen_when（禁含糊词『暂时/以后/待定』），违规非0；并汇总生命周期/回归债与各检查通过率（读 .cache/check-runs.jsonl）。"
 rule = ".ai-config/AGENTS.md"
 configured_in = ["tools/check.py"]
 entrypoint_commands = ["python3 tools/check.py debt"]
+ci_commands = ["python3 tools/check.py debt"]
 manual_commands = ["python3 tools/check.py debt"]
-run_mode = "manual"
-scope = "聚合 registry relaxed 标记 + check_lifecycle/check_regression 输出 + run_command 写的 .cache/check-runs.jsonl 通过率。"
-boundary = "只读汇总，非门禁；通过率是每次运行的过/挂比例（非严格首过率），不评判规则是否该删——那是人看趋势后的决策。"
+run_mode = "ci+manual"
+scope = "校验 registry 里 relaxed 工具 + relaxed semgrep_rulesets 的放行登记；并聚合 check_lifecycle/check_regression 输出 + 通过率。"
+boundary = "门禁只卡放行登记是否带原因 + 可判定清除条件；健康度汇总部分(债数/通过率)仍只读，不评判规则是否该删——那是人看趋势后的决策。"
 
 [[tools]]
 id = "new"
@@ -410,6 +411,44 @@ manual_commands = ["python3 tools/check.py new"]
 run_mode = "manual"
 scope = "service→app/services、core→app/core、tool→tools、test→tests；service 默认配回归测试。"
 boundary = "只生成骨架，不写业务逻辑、不覆盖已存在文件；依赖层按目录身份表预填，AI 仍须填实际职责与断言。"
+
+[[tools]]
+id = "complexity"
+kind = "project-static-tool"
+purpose = "函数圈复杂度硬闸：冻结存量 CC≥21(radon rank D+) 的复杂块数(计数型棘轮·只减不增)，新增/变多即阻塞；<21(rank C) 仍归 radon deep 建议不阻塞。"
+rule = ".ai-config/AGENTS.md"
+configured_in = ["tools/check_complexity.py", "tools/check.py", ".ai-config/config/complexity.baseline.json"]
+entrypoint_commands = ["python3 tools/check_complexity.py"]
+ci_commands = ["python3 tools/check_complexity.py"]
+manual_commands = ["python3 tools/check_complexity.py"]
+run_mode = "ci+manual"
+scope = "app/, scripts/, market-impact-study/ 的函数/方法圈复杂度(radon cc -j)。"
+boundary = "只卡 CC≥21 的块数是否超基线；不重构、不评判某处复杂是否正当、不管 <21 的(那归 deep 建议)。"
+
+[[tools]]
+id = "schema"
+kind = "project-static-tool"
+purpose = "契约 schema 只增不改硬闸：快照 app/models Pydantic 模型字段名+类型，删/改名/改类型=破坏性阻塞，加字段=允许；标 # experimental 的字段豁免(流动前沿)。"
+rule = ".ai-config/AGENTS.md"
+configured_in = ["tools/check_schema.py", "tools/check.py", ".ai-config/config/schema.baseline.json"]
+entrypoint_commands = ["python3 tools/check_schema.py"]
+ci_commands = ["python3 tools/check_schema.py"]
+manual_commands = ["python3 tools/check_schema.py"]
+run_mode = "ci+manual"
+scope = "app/models/schemas.py 的 Pydantic 模型字段；基线 schema.baseline.json。"
+boundary = "只卡稳定核心字段的破坏性改(删/改名/改类型)；加字段允许、experimental 字段豁免；不校验默认值/语义。"
+
+[[tools]]
+id = "dup-symbol"
+kind = "project-static-tool"
+purpose = "近似重复符号检测：正式代码顶层 def/class 与别处同名(或去版本后缀后同词根)→WARN『取代还是重复?』，强制把已有同类摆台面、逼出取代分叉交人拍板。词法信号·非语义;WARN 不阻塞。"
+rule = ".ai-config/AGENTS.md"
+configured_in = ["tools/check_dup_symbol.py", "tools/check.py"]
+entrypoint_commands = ["python3 tools/check_dup_symbol.py", "python3 tools/check_dup_symbol.py --changed"]
+manual_commands = ["python3 tools/check_dup_symbol.py"]
+run_mode = "changed+manual"
+scope = "app/, market-impact-study/ 顶层 def/class 名(排除 dunder/通用入口名/<4 字符)；changed 模式只报涉及改动文件的碰撞。"
+boundary = "只报名字/词根碰撞(WARN 不阻塞)；不判取代/重复、不删、不查类内方法名、不抓零名字重叠的语义重复(交子agent复核/人)。"
 
 [[semgrep_rulesets]]
 path = ".semgrep/no-raw-sleep.yml"
@@ -455,16 +494,6 @@ owner_rule = ".ai-config/rules/process/modes.index.md"
 purpose = "Time-series and reproducible split guardrails."
 
 [[semgrep_rulesets]]
-path = ".semgrep/playwright-no-sleep.yml"
-owner_rule = ".ai-config/AGENTS.md"
-purpose = "Playwright files should not use raw time.sleep."
-
-[[semgrep_rulesets]]
-path = ".semgrep/playwright-robustness.yml"
-owner_rule = ".ai-config/AGENTS.md"
-purpose = "Playwright download, dialog, and long wait robustness guardrails."
-
-[[semgrep_rulesets]]
 path = ".semgrep/rag-hygiene.yml"
 owner_rule = ".ai-config/rules/engineering/code.index.md"
 purpose = "RAG retrieval and embedding static guardrails."
@@ -493,18 +522,6 @@ event = "PostToolUse_EditWriteMultiEdit"
 rule_route = ".ai-config/AGENTS.md"
 purpose = "Rename/reference drift reminder after edits."
 
-[[hooks]]
-file = ".ai-hooks/rag_hygiene.sh"
-event = "PostToolUse_EditWriteMultiEdit"
-rule_route = ".ai-config/rules/engineering/code.index.md"
-purpose = "Immediate BGE embedding semantic reminder not expressible by mature static tools."
-
-[[hooks]]
-file = ".ai-hooks/rag_drift.sh"
-event = "PostToolUse_EditWriteMultiEdit"
-rule_route = ".ai-config/rules/engineering/code.index.md"
-purpose = "RAG data-contract drift reminder backed by scripts/check_rag_drift.py."
-
 [[hook_tests]]
 file = ".ai-hooks/tests/test_bash_safety_hooks.sh"
 ci_command = "bash .ai-hooks/tests/test_bash_safety_hooks.sh"
@@ -520,11 +537,5 @@ covers = [".ai-hooks/dirty_static_review.sh"]
 [[hook_tests]]
 file = ".ai-hooks/tests/test_reference_drift_hooks.sh"
 ci_command = "bash .ai-hooks/tests/test_reference_drift_hooks.sh"
-purpose = "Regression tests for rename_audit.sh and rag_drift.sh reference/data-contract drift reminders."
-covers = [".ai-hooks/rename_audit.sh", ".ai-hooks/rag_drift.sh"]
-
-[[hook_tests]]
-file = ".ai-hooks/tests/test_rag_hygiene.sh"
-ci_command = "bash .ai-hooks/tests/test_rag_hygiene.sh"
-purpose = "Regression tests for rag_hygiene.sh BGE encode reminder."
-covers = [".ai-hooks/rag_hygiene.sh"]
+purpose = "Regression tests for rename_audit.sh reference drift reminders."
+covers = [".ai-hooks/rename_audit.sh"]

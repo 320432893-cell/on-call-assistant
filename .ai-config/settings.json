@@ -30,14 +30,6 @@
           {
             "type": "command",
             "command": "bash .ai-hooks/rename_audit.sh"
-          },
-          {
-            "type": "command",
-            "command": "bash .ai-hooks/rag_hygiene.sh"
-          },
-          {
-            "type": "command",
-            "command": "bash .ai-hooks/rag_drift.sh"
           }
         ]
       }

@@ -1,0 +1,7 @@
+{
+  "reason": "存量 CC≥21(radon rank D+) 的复杂函数，在复杂度硬闸上线前已存在；冻结其总数为 5（3 个 D + 2 个 E）。",
+  "clear_by": "逐个把复杂函数拆小到 CC<21，count 降到 0；头号是 market-impact-study/build_* 里的巨型函数。",
+  "registered": "2026-06-20",
+  "ratchet": "计数型只减不增：CC≥21 的块数不得超过 count(超=阻塞)；降了须更新 baseline 锁战果。",
+  "count": 5
+}

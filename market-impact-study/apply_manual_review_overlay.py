@@ -185,9 +185,9 @@ def build_reviewed_modeling_dataset(modeling: pd.DataFrame, overlay: pd.DataFram
     decisions = dataset.apply(reviewed_scope, axis=1)
     dataset["reviewed_modeling_scope"] = [item[0] for item in decisions]
     dataset["reviewed_scope_reason"] = [item[1] for item in decisions]
-    dataset["reviewed_keep_for_training"] = dataset["reviewed_modeling_scope"].isin(
-        ["main", "clean_sensitivity"]
-    ).astype(int)
+    dataset["reviewed_keep_for_training"] = (
+        dataset["reviewed_modeling_scope"].isin(["main", "clean_sensitivity"]).astype(int)
+    )
     return dataset
 
 
@@ -215,9 +215,7 @@ def markdown_table(frame: pd.DataFrame) -> str:
 
 
 def write_report(overlay: pd.DataFrame, dataset: pd.DataFrame) -> None:
-    category_counts = (
-        overlay["manual_corrected_category"].value_counts().sort_index().reset_index(name="events")
-    )
+    category_counts = overlay["manual_corrected_category"].value_counts().sort_index().reset_index(name="events")
     category_counts.columns = ["manual_corrected_category", "events"]
     status_counts = overlay["manual_review_status"].value_counts().sort_index().reset_index(name="events")
     status_counts.columns = ["manual_review_status", "events"]

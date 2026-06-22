@@ -15,9 +15,7 @@
     ],
     "PostToolUse_EditWriteMultiEdit": [
       "dirty_static_review.sh",
-      "rename_audit.sh",
-      "rag_hygiene.sh",
-      "rag_drift.sh"
+      "rename_audit.sh"
     ]
   }
 }

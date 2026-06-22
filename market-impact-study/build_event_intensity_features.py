@@ -132,12 +132,18 @@ def text_intensity_features(row: pd.Series) -> dict[str, float]:
         "evt_profit_mid_to_mv": safe_ratio(float(np.nanmean([profit_low, profit_high])), pre_mv)
         if not np.isnan(profit_low)
         else np.nan,
-        "evt_is_forecast": keyword_flag(text, ("业绩预告", "预计", "预增", "预减", "略增", "略减", "首亏", "续亏", "扭亏")),
-        "evt_is_earnings_report": keyword_flag(text, ("年度报告", "季度报告", "一季报", "半年报", "三季报", "业绩快报")),
+        "evt_is_forecast": keyword_flag(
+            text, ("业绩预告", "预计", "预增", "预减", "略增", "略减", "首亏", "续亏", "扭亏")
+        ),
+        "evt_is_earnings_report": keyword_flag(
+            text, ("年度报告", "季度报告", "一季报", "半年报", "三季报", "业绩快报")
+        ),
         "evt_is_repurchase": keyword_flag(text, ("回购公司股份", "股份回购", "回购股份")),
         "evt_is_pledge": keyword_flag(text, ("质押", "解押", "解除质押")),
         "evt_is_restructuring": keyword_flag(text, ("重大资产重组", "发行股份购买资产", "募集配套资金")),
-        "evt_is_contract_order": keyword_flag(text, ("中标", "订单", "框架协议", "战略合作协议", "重大合同", "签订合同")),
+        "evt_is_contract_order": keyword_flag(
+            text, ("中标", "订单", "框架协议", "战略合作协议", "重大合同", "签订合同")
+        ),
         "evt_is_inquiry": keyword_flag(text, ("问询函", "关注函", "监管函")),
         "evt_is_litigation_penalty": keyword_flag(text, ("诉讼", "仲裁", "处罚", "立案", "违规")),
         "evt_is_impairment": keyword_flag(text, ("减值", "商誉", "计提")),
@@ -145,7 +151,9 @@ def text_intensity_features(row: pd.Series) -> dict[str, float]:
         "evt_is_ir_activity": keyword_flag(text, ("投资者关系", "调研", "业绩说明会", "电话会议", "线上会议")),
         "evt_is_product_launch": keyword_flag(text, ("新产品", "量产", "认证", "发布", "AI", "车联网", "智能座舱")),
         "evt_positive_word_count": float(keyword_count(text, ("增长", "增加", "提升", "中标", "扭亏", "盈利", "高增"))),
-        "evt_negative_word_count": float(keyword_count(text, ("亏损", "下降", "减少", "下滑", "风险", "问询", "关注函", "处罚", "减值"))),
+        "evt_negative_word_count": float(
+            keyword_count(text, ("亏损", "下降", "减少", "下滑", "风险", "问询", "关注函", "处罚", "减值"))
+        ),
     }
 
 

@@ -184,7 +184,7 @@ car_i,[a,b] = sum(abret_i,t), t in [a,b]
 | Spearman IC | 预测排序和真实排序相关性 | CFO 事件优先级排序 |
 | Directional Accuracy | 正负方向判断准确率 | 风险提示 |
 
-最低评估表（2026-06-14 第一版 baseline，按验证集选出的模型为 `dummy_mean`，即全局均值基线；完整四模型与消融见 `reports/BASELINE_MODEL_SUMMARY.md`）：
+最低评估表（2026-06-14 第一版 baseline，按验证集选出的模型为 `dummy_mean`，即全局均值基线；完整四模型与消融见 `archive/reports/BASELINE_MODEL_SUMMARY.md`（v2 基线，已归档；现行主结果见 v3/v4））：
 
 | split | n | MAE | RMSE | R2 | Spearman IC | Directional Accuracy |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
