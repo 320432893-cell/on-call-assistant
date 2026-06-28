@@ -1,21 +1,11 @@
-# 每日大体检（地板·浅而广；枢纽见 review.index.md）
+# 每日体检·执行(地板;人触发;范围=工作区 vs HEAD)
 
-触发：**人**收工时贴本路径。范围 = 工作区相对 HEAD / `git diff <上次每日标记>..HEAD`。
-目标：把机械债清在当天（债不过夜=每次修复都小、便宜，永不长成纠缠的大堆）。
-**不碰设计层**（设计模式/语义味道是 stage.md 的活，每日做不起也不该做）。
+执行(机器跑+我收尾,默认不派子agent):
+1. 跑 `./sweep`(=tools/sweep.py)→ 产 `logs/sweep-report-<ts>.md`(机器闸 ruff/import-linter/vulture/radon + 死码+扇入+漂移)。读它。
+2. **死码(名单外)**:每条 grep 自验——全仓零 live caller、无 `getattr`/`__all__`/字符串动态分发。按报告 git 年龄:老=删、新=留(WIP)。≤3 条主循环 grep 删;>3 或牵连复杂→派 refuter。删后重跑 `./sweep` 收级联孤儿。
+3. **放行 pending**:新提议分类(假阳性 / 预留API / 延迟清)写 `.vulture_whitelist.pending`,摆给人批;**闸保持红,不自动加白名单**。
+4. **漂移红**(超行棘轮 / skip / 白名单涨):**不修**,记待办 → 提示人是否贴 `stage.md`。
 
-## 第一步·跑机械引擎(脚本,确定性,只读)
-跑项目的 `./sweep`(=`tools/sweep.py`,缺则按 registry 等价命令)→ 它跑机器闸(ruff/import-linter/vulture/radon)+ 死码/孤儿(带 git 年龄)+ 改动模块扇入排序 + 漂移仪表,**写 `logs/sweep-report.md`**。
-- 脚本**只读+写报告**,绝不删码/改白名单/动 git;
-- 机械事实由脚本定(可复现、产物落文件),**不靠我即兴跑命令**。
+禁:碰设计层(L1–L3 是 stage 的活)、批放行登记、动 main(改在工作分支)。
 
-## 第二步·读报告,按判断规则动手(只此处需判断)
-1. **死码(名单外)**:小批量(1–3 条)**主循环 grep 自验**(全仓零 live 调用、无动态分发)→ 看报告里 git 年龄:老=rot 删 / 新=WIP 宽限。**默认不派子agent**(一两条派 agent 比 grep 还贵);批量异常大/牵连复杂才扇 refuter。删后重跑 `./sweep` 收级联孤儿。
-2. **白名单/skip pending**:我把新提议分类(假阳性/有意保留/延迟清)→ **摆给你批**,一条不自动生效;没批的闸保持红逼你看。
-3. **漂移红灯**(超行数棘轮/skip 数/白名单增长):每日**不修**——它是"该上 stage 深审/重构"的信号,记进待办交你定何时贴 `stage.md`。
-
-## `[强制产物]`(全落文件,非聊天)
-- `logs/sweep-report.md`(脚本产);
-- 白名单/skip 的 `pending`(待你批);
-- 待办里标清:已删的死码 / 漂移红灯是否转 stage。
-**不替你批放行登记、不动 main(改在工作分支)。**
+`[强制产物]`:`logs/sweep-report-<ts>.md` + `.vulture_whitelist.pending` + 待办(标:已删死码 / 漂移红是否转 stage)。
