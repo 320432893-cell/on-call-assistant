@@ -80,7 +80,7 @@ def test_<batch>_partial_failure():
 
 ## §5 分支闭包专项:死码 / 废弃逻辑清理复核(人触发大清理;死码用 git 年龄分诊:老=rot删/新=WIP宽限,仅作人审提示、非到期自动删)
 触发=分支功能闭包(merge/PR 前),范围 `git diff main...HEAD`(非单切片)。why:切片复核只看自身 diff——切片1 建的符号被切片3 改废,两次切片复核都看不见;跨切片涌现的死码/双源只有分支级全 diff 能见。装闸而非留 `[启发]`:删旧码=成本现在·回报延迟,靠自律必烂。
-机器先行(复核不碰机器能判的):`check.py deep` = vulture(不可达死码)+ deptry(未用依赖)+ radon(复杂度)+ module-boundary + code-identity;非正式区临时件身份另由 `lifecycle`(changed/ci 已查 `# lifecycle:` 标注)。复核只接手下面 vulture 判不出的语义层。
+机器先行(复核不碰机器能判的):跑 `check.py cleanup`(全量机器闸;具体清单见 `check.py --list`,别在此枚举=会漂)。复核只接手机器(vulture/可达性等)判不出的语义层。
 复核只接手 vulture 判不出的语义死码/废弃:
 - 废弃但仍 live 的旧路径:新实现已上、旧路径仍有真实 caller=双源 SSOT(取代纪律 AGENTS.md §5);vulture 见有 caller 判不出"废弃",不过。
 - 注册表/动态分发/反射僵尸:vulture 误判"可达",实则无真实触发 key / 无注册来源。

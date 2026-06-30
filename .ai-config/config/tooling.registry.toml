@@ -450,6 +450,17 @@ run_mode = "changed+manual"
 scope = "app/, market-impact-study/ 顶层 def/class 名(排除 dunder/通用入口名/<4 字符)；changed 模式只报涉及改动文件的碰撞。"
 boundary = "只报名字/词根碰撞(WARN 不阻塞)；不判取代/重复、不删、不查类内方法名、不抓零名字重叠的语义重复(交子agent复核/人)。"
 
+[[tools]]
+id = "check-split"
+kind = "project-static-tool"
+purpose = "拆分/移动/删除 .py 后的体检：basedpyright(改名漏更新的悬空引用)+vulture(拆分留死码)+import-linter(跨层循环)。只在 git diff 出现 .py 删除/重命名信号时跑(否则秒退)，非阻塞——结果交人复核(basedpyright relaxed、vulture 有误报，硬拦会拿误报卡死提交)。"
+rule = ".ai-config/AGENTS.md"
+configured_in = ["tools/check_split.py"]
+pre_commit_hook = "check-split"
+run_mode = "changed(pre-commit·仅拆分信号触发)+manual"
+scope = "触发后跑 basedpyright(app/)、vulture(app/scripts/market-impact-study)、lint-imports；手动入口 python3 tools/check_split.py。"
+boundary = "只在拆分/删除信号下跑、非阻塞、不改源码；同层循环 SCC 检测是下一步增量(需 grimp)；不进统一入口 check.py(后者超标待拆)。"
+
 [[semgrep_rulesets]]
 path = ".semgrep/no-raw-sleep.yml"
 owner_rule = ".ai-config/AGENTS.md"
@@ -539,3 +550,39 @@ file = ".ai-hooks/tests/test_reference_drift_hooks.sh"
 ci_command = "bash .ai-hooks/tests/test_reference_drift_hooks.sh"
 purpose = "Regression tests for rename_audit.sh reference drift reminders."
 covers = [".ai-hooks/rename_audit.sh"]
+
+[[tools]]
+id = "reachability"
+kind = "project-static-tool"
+purpose = "调用图可达性死码扫描:从真入口求可达闭包,报传递性死码(死代理/孤岛递归/死分支),补 vulture 名字级判可达的盲区。"
+rule = ".ai-config/rules/review/review.index.md"
+configured_in = ["tools/reachability_probe.py"]
+entrypoint_commands = ["python3 tools/reachability_probe.py app scripts market-impact-study"]
+manual_commands = ["python3 tools/reachability_probe.py app scripts market-impact-study"]
+run_mode = "manual"
+scope = "大清理档·advisory,人核后再删。误报源:facade 再导出/反射/外部按名调入口。"
+boundary = "只报候选;删码近不可逆,举证在发现方,宁漏删不误删。"
+
+[[tools]]
+id = "name-health"
+kind = "project-static-tool"
+purpose = "名字图破口扫描:模块级撞名 + 动态分发断点(getattr 非字面/importlib/import X as X 门面)。"
+rule = ".ai-config/rules/review/review.index.md"
+configured_in = ["tools/name_health.py"]
+entrypoint_commands = ["python3 tools/name_health.py app scripts market-impact-study"]
+manual_commands = ["python3 tools/name_health.py app scripts market-impact-study"]
+run_mode = "manual"
+scope = "大清理档·advisory。近名前缀提示可能噪。"
+boundary = "撞名/复制是候选;是否合并/改名归人裁。"
+
+[[tools]]
+id = "import-cycles"
+kind = "project-static-tool"
+purpose = "模块级 import 图(含函数内延迟 import)Tarjan 找环,补 import-linter independence 查不到的全图任意环。"
+rule = ".ai-config/rules/review/review.index.md"
+configured_in = ["tools/import_cycles.py"]
+entrypoint_commands = ["python3 tools/import_cycles.py app scripts market-impact-study"]
+manual_commands = ["python3 tools/import_cycles.py app scripts market-impact-study"]
+run_mode = "changed+manual"
+scope = "阶段档(依赖类·高影响·快);报循环依赖簇。"
+boundary = "报环;谁让步=边界重划,人裁。"
