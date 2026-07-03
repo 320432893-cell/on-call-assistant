@@ -52,7 +52,7 @@
 - 契约(checklist·非强制产物):每槽答案或 N/A——验收动作 / 业务口径(给反例) / SSOT(唯一处) / 状态+合法转移 / oracle+回退 / 新文件边界。契约设计细则见 `rules/engineering/code.index.md`。
 - 假设 → 逐条等确认,沉默≠确认。
 - 开工先判:可逆性 / blast-radius / AI 强弱(CRUD/转换/清晰 oracle=强;新算法/微妙并发/性能内核/弱文档外部依赖=弱→人驱动)。承重→先收敛+先写测试后实现;便宜可逆→先初版按坏味道硬化。
-- 早锁不变量(谋划起手定·登账本):**依赖方向**(core←`<business>`←entry,core 不反依赖上层)=**头号不变量**,`[机器]` import-linter+code-identity 守;另:能力归属/SSOT、跨边界·被持久化的名字(error_code/字段/事件类型·只增不改)、窄腰核心接口。锁**变化规则、非内容**(锁方向不锁 core 装啥);未证明波及全仓的别提前锁=过度设计。**承重识别归机器扇入(grimp fan-in 高=承重),非人眼**(用户自认判不准);语义级 blast(少调用大影响)扇入抓不到→归测试。细则 `rules/review/`。
+- 早锁不变量(谋划起手定·登账本):**依赖方向**(core←`<business>`←entry,core 不反依赖上层)=**头号不变量**,`[机器]` import-linter+code-identity 守(**前提:import 必须绝对·按包名(`from pkg.x import Y`),禁相对(`from .`/`from ..`)——相对 import 按文件地址、绕过 import-linter/check_arch 的分层分析=盲区;`[机器]` 对相对 import 报红**);另:能力归属/SSOT、跨边界·被持久化的名字(error_code/字段/事件类型·只增不改)、窄腰核心接口。锁**变化规则、非内容**(锁方向不锁 core 装啥);未证明波及全仓的别提前锁=过度设计。**承重识别归机器扇入(grimp fan-in 高=承重),非人眼**(用户自认判不准);语义级 blast(少调用大影响)扇入抓不到→归测试。细则 `rules/review/`。
 - 承重发现/高 blast-radius 结论 → `[复核]` 派 1-2 个独立子agent反驳(默认存疑·宁可误杀),任一反驳成立即推翻/降候选;一行不扇。(细则 `rules/engineering/code.index.md` §3)
 
 ## §5 产物质量(机器闸细则不复述,只点不可机器化判断 + 指针)
