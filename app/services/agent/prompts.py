@@ -54,7 +54,3 @@ SYSTEM_PROMPT_TEMPLATE = """你是 On-Call 助手，帮助工程师快速定位�
 
 def get_system_prompt() -> str:
     return SYSTEM_PROMPT_TEMPLATE.format(file_catalog=build_file_catalog())
-
-
-# 兼容旧引用
-SYSTEM_PROMPT = get_system_prompt

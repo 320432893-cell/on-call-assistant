@@ -172,46 +172,6 @@ class QdrantService:
         else:
             return True
 
-    def upsert_batch(
-        self,
-        items: list[dict],
-    ) -> int:
-        """
-        批量插入
-
-        Args:
-            items: [{"id": str, "vector": np.ndarray, "payload": dict}, ...]
-
-        Returns:
-            int: 成功插入数量
-        """
-        if not self._client or not items:
-            return 0
-
-        points = []
-        for item in items:
-            point_id = abs(hash(item["id"])) % (2**63)
-            points.append(
-                PointStruct(
-                    id=point_id,
-                    vector=item["vector"].tolist(),
-                    payload={"doc_id": item["id"], **item.get("payload", {})},
-                )
-            )
-
-        try:
-            self._client.upsert(
-                collection_name=self.collection_name,
-                points=points,
-            )
-            return len(points)
-
-        except Exception:
-            logger.exception(
-                "qdrant_upsert_batch_failed collection=%s item_count=%s", self.collection_name, len(points)
-            )
-            return 0
-
     def search(
         self,
         query_vector: np.ndarray,
@@ -272,29 +232,6 @@ class QdrantService:
                 department_filter,
             )
             return []
-
-    def get(self, doc_id: str) -> dict | None:
-        """根据ID获取文档"""
-        if not self._client:
-            return None
-
-        try:
-            point_id = abs(hash(doc_id)) % (2**63)
-            result = self._client.retrieve(
-                collection_name=self.collection_name,
-                ids=[point_id],
-                with_payload=True,
-                with_vectors=False,
-            )
-
-            if result:
-                return result[0].payload
-
-        except Exception:
-            logger.exception("qdrant_get_failed collection=%s doc_id=%s", self.collection_name, doc_id)
-            return None
-        else:
-            return None
 
     def delete(self, doc_id: str) -> bool:
         """删除文档"""

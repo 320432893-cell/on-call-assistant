@@ -451,9 +451,3 @@ def get_llm_provider() -> BaseLLMProvider:
     else:
         _provider = OpenAICompatProvider()
     return _provider
-
-
-def reset_llm_provider():
-    """重置（用于测试或配置切换）"""
-    global _provider
-    _provider = None

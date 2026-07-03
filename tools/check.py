@@ -80,6 +80,9 @@ COMMANDS: dict[str, str] = {
     "radon-mi": "uv run radon mi app scripts market-impact-study -s",
     "vulture": "uv run vulture app scripts market-impact-study --min-confidence 80",
     "deptry": "uv run deptry .",
+    "reachability": "python3 tools/reachability_probe.py app scripts market-impact-study",
+    "name-health": "python3 tools/name_health.py app scripts market-impact-study",
+    "import-cycles": "python3 tools/import_cycles.py app scripts market-impact-study",
     "module-boundary": "python3 tools/check_module_boundary.py",
     "module-boundary-changed": "python3 tools/check_module_boundary.py --changed",
     "lifecycle": "python3 tools/check_lifecycle.py",
@@ -102,7 +105,17 @@ PROFILES: dict[str, list[str]] = {
     "quick": ["coverage-audit", "python-compile", "import-linter", "rule-tool-contracts", "ruff-staged", "semgrep"],
     "completion": ["rule-tool-contracts"],
     "manual": ["ruff-check", "ruff-format-check", "basedpyright", "pip-audit"],
-    "deep": ["radon-cc", "radon-mi", "vulture", "deptry", "module-boundary", "code-identity"],
+    "deep": [
+        "radon-cc",
+        "radon-mi",
+        "vulture",
+        "deptry",
+        "module-boundary",
+        "code-identity",
+        "import-cycles",
+        "name-health",
+        "reachability",
+    ],
     "ci": [
         "python-compile",
         "import-linter",
@@ -118,6 +131,50 @@ PROFILES: dict[str, list[str]] = {
         "debt",
         "complexity",
         "schema",
+    ],
+    # 大清理：全量·最严格·多档(L1 依赖方向 → L5 整洁 + 行为 + 安全 + 类型)。人触发,见 rules/review/review.index.md。
+    "cleanup": [
+        # 编译 + 整洁(L5)
+        "python-compile",
+        "ruff-check",
+        "ruff-format-check",
+        # L1 依赖方向 / 分层
+        "import-linter",
+        "import-cycles",
+        # L2 归属 / 双源 / 边界
+        "code-identity",
+        "dup-symbol",
+        "name-health",
+        "module-boundary",
+        # L3 契约 / 测试
+        "test-meta",
+        "regression",
+        "schema",
+        "pytest",
+        "market-impact-validation",
+        # L4 死码 / 复杂度 / 形状
+        "vulture",
+        "reachability",
+        "radon-cc",
+        "radon-mi",
+        "complexity",
+        "deptry",
+        # 生命周期 / 身份 / 覆盖
+        "lifecycle",
+        "coverage-audit",
+        # 安全
+        "semgrep",
+        "detect-secrets",
+        "pip-audit",
+        # 类型
+        "basedpyright",
+        # 债 / 契约 / 依赖 / 错误目录 / RAG 漂移 + hook 自测
+        "dependency-change-approval",
+        "rule-tool-contracts",
+        "error-catalog",
+        "debt",
+        "rag-drift",
+        "ai-hook-tests",
     ],
 }
 

@@ -31,17 +31,6 @@ class ProcessedDocument:
         self.tags = tags
         self.sections = sections
 
-    def to_dict(self) -> dict:
-        return {
-            "id": self.id,
-            "title": self.title,
-            "content": self.content,
-            "content_raw": self.content_raw,
-            "department": self.department,
-            "tags": self.tags,
-            "sections": self.sections,
-        }
-
 
 class DocumentPreprocessor:
     """文档预处理器"""

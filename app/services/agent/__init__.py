@@ -5,7 +5,7 @@ from .llm_provider import (
     LLMEvent,
     get_llm_provider,
 )
-from .prompts import SYSTEM_PROMPT, build_file_catalog
+from .prompts import build_file_catalog
 from .state_machine import AgentEvent, AgentStateMachine
 from .tools import (
     READ_FILE_TOOL_SCHEMA,
@@ -16,7 +16,6 @@ from .tools import (
 
 __all__ = [
     "READ_FILE_TOOL_SCHEMA",
-    "SYSTEM_PROMPT",
     "WRITE_FILE_TOOL_SCHEMA",
     "AgentEvent",
     "AgentStateMachine",

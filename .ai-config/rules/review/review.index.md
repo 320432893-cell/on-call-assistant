@@ -6,11 +6,11 @@
 
 | 你说 | 机器跑 | 谁触发 |
 |---|---|---|
-| (默认) | `check.py fast`(ruff/compile,秒级) | 每次改完·hook 自动 |
-| **阶段** | `check.py stage`(import-linter/import-cycles/architecture/naming/detect-secrets) | 你喊 |
-| **大清理** | `check.py cleanup`(全量:+vulture/reachability/name-health/layer-drift/radon/basedpyright/semgrep/pytest) | 你喊 |
+| (默认) | ruff/compile(秒级);手动全档 `check.py quick` | 每次改完·hook 自动 |
+| **阶段** | `check.py deep`(结构档:import-cycles/name-health/vulture/reachability/radon/deptry/module-boundary/code-identity) | 你喊 |
+| **大清理** | `check.py cleanup`(全量·所有工具·最严格·多档) | 你喊 |
 
-闸健康先于信任:`check.py --doctor` 验每个闸装了没(假闸=配了没装,红)。
+闸清单:`check.py list` 看 profile 与命令。契约闸 `rule-tool-contracts` 守"登记即接线":registry 声明的工具命令必须在 check.py 兑现,否则红=僵尸工具(写了没触发档=该删或该接)。
 
 不变量(违则停):
 - 时机=人(机器拿不到进度);承重=机器扇入/`check_cohesion`(非人眼);放行批准=人(AI 提议+证据、闸红逼审);行为安全=测试。
@@ -43,7 +43,8 @@ hook 跑 ruff/compile(秒级)。无需你喊;不过别提交。
 合 main:机器档全过 + 四档结论 + 死码/双源清单 + 放行 pending(待批)。
 
 ## 大清理(你喊「大清理」+ 路径)
-机器:`check.py cleanup`(全量;假闸自动跳过,`--doctor` 看健康)。人/agent 审 vulture/可达性判不出的语义死码:
+**铁律:大清理 = 所有工具全上、取最严口径、L1 依赖方向 → L5 整洁多档无死角,不挑档不减项。** 新增静态闸一律纳入 `cleanup`。
+机器:`check.py cleanup`(全量·所有静态/类型/安全/测试闸;`check.py list` 看清单)。人/agent 再审 vulture/可达性判不出的语义死码:
 - 每条「该删」grep 自验**全仓零 live caller**(无 `getattr`/`__all__`/字符串分发)→ finder→refuter 全局证伪 → 人裁才删。删码近不可逆,举证责任在发现方,**宁漏删不误删**。
 - 弃用但仍 live 的旧路径(双源 SSOT)、注册表/反射僵尸、孤儿文件 → 同上证伪。
 - 漂移红(超行/skip/白名单涨)、晋升/降级候选(扇入)→ **记待办,不自动改**。
